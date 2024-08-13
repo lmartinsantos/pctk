@@ -11,7 +11,7 @@ const (
 	FontDefaultSize = 9
 
 	// FontDialogSize is the size of the font used for dialogs.
-	FontDialogSize = 11
+	FontDialogSize = 12
 )
 
 type TextAlignment int
@@ -51,6 +51,39 @@ func (a *App) drawDefaultText(text string, x, y int32, align TextAlignment, colo
 		0,
 		color,
 	)
+}
+
+func (a *App) drawDialogText(text string, x, y int32, color Color) {
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+
+		tsize := rl.MeasureTextEx(a.fontDialogOutline, line, FontDialogSize, 0)
+		tw := int32(tsize.X)
+
+		if x-tw/2 < 0 {
+			x = tw / 2
+		}
+		if x+tw/2 > ScreenWidth {
+			x = ScreenWidth - tw/2
+		}
+
+		rl.DrawTextEx(
+			a.fontDialogSolid,
+			line,
+			rl.Vector2{X: float32(x - tw/2), Y: float32(y + int32(i)*FontDialogSize)},
+			FontDialogSize,
+			0,
+			color,
+		)
+		rl.DrawTextEx(
+			a.fontDialogOutline,
+			line,
+			rl.Vector2{X: float32(x - tw/2), Y: float32(y + int32(i)*FontDialogSize)},
+			FontDialogSize,
+			0,
+			rl.Black,
+		)
+	}
 }
 
 var fontDefaultData = []byte{

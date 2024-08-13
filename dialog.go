@@ -2,8 +2,6 @@ package pctk
 
 import (
 	"time"
-
-	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 const (
@@ -29,7 +27,7 @@ func (a *App) ShowDialog(text string, x, y int32, col Color, speed float32) (don
 	if shownDuring < 2*time.Second {
 		shownDuring = 2 * time.Second
 	}
-	shownDuring *= time.Duration(speed)
+	shownDuring /= time.Duration(speed)
 	expiresAt := time.Now().Add(shownDuring)
 	dchan := make(chan struct{})
 
@@ -65,21 +63,6 @@ func (a *App) drawDialog(d *Dialog) (expired bool) {
 		return true
 	}
 
-	rl.DrawTextEx(
-		a.fontDialogSolid,
-		d.text,
-		rl.Vector2{X: float32(d.x), Y: float32(d.y)},
-		FontDialogSize,
-		-1,
-		d.color,
-	)
-	rl.DrawTextEx(
-		a.fontDialogOutline,
-		d.text,
-		rl.Vector2{X: float32(d.x), Y: float32(d.y)},
-		FontDialogSize,
-		-1,
-		rl.Black,
-	)
+	a.drawDialogText(d.text, d.x, d.y, d.color)
 	return false
 }
