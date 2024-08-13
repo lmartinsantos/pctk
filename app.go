@@ -25,6 +25,8 @@ type App struct {
 	fontDefault       rl.Font
 	fontDialogSolid   rl.Font
 	fontDialogOutline rl.Font
+	cursorTx          rl.Texture2D
+	cursorColor       Color
 }
 
 // New creates a new pctk application.
@@ -49,6 +51,7 @@ func (a *App) init() {
 
 	a.cam.Zoom = float32(a.screenZoom)
 	a.initFonts()
+	a.initMouse()
 }
 
 // ResourceCatalog returns the resource catalog of the application.
