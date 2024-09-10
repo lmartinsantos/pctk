@@ -7,6 +7,16 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+var goodbyes = []string{
+	"Venga, que curres.",
+	"Deja de perder el tiempo.",
+	"No seas perro.",
+	"Luego no me eches la culpa\nsi tu manager te pilla.",
+	"Por cierto, vendo estas estupendas\nchaquetas de cuero.",
+}
+
+
+
 func main() {
 	app := pctk.New()
 	bg := pctk.BackgroundFromImage(rl.LoadImage("background.jpg"))
@@ -15,9 +25,17 @@ func main() {
 		log.Fatalf("Failed setting background: %v", err)
 	}
 	go func() {
-		<-app.ShowDialog("Don't sneak up on me like that!", 160, 20, rl.White, 1.0)
-		<-app.ShowDialog("This is an example of a scene\nusing raw functions.", 160, 20, rl.White, 1.0)
-		<-app.ShowDialog("Do you remember the years\nof Monkey Island?", 160, 20, rl.Magenta, 1.0)
+		<-app.ShowDialog("Hi, my name is Javier Solana\nand I want to be a pirate!", 120, 20, rl.White, 1.0)
+		<-app.ShowDialog("Si, correcto. Es un proto-invento\npara hacer aventuras graficas.", 120, 20, rl.Magenta, 1.0)
+		<-app.ShowDialog("Aun faltan bastantes cosas.\nPero nos podria servir en Kenia.", 120, 20, rl.Red, 1.0)
+		<-app.ShowDialog("Ahora deja de perder el tiempo\ny ponte a currar.", 120, 20, rl.Yellow, 1.0)
+		<-app.ShowDialog("Que el Dev/X no sale adelante solo!", 120, 20, rl.Yellow, 1.0)
+
+		for {
+			for _, g := range goodbyes {
+				<-app.ShowDialog(g, 120, 20, rl.White, 1.0)
+			}
+		}
 	}()
 	app.Run()
 }
