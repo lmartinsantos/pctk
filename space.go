@@ -1,6 +1,10 @@
 package pctk
 
-import rl "github.com/gen2brain/raylib-go/raylib"
+import (
+	"fmt"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
 
 const (
 	// ScreenWidth is the width of the screen (ignoring zoom).
@@ -30,6 +34,10 @@ func positionFromRaylib(v rl.Vector2) Position {
 	return Position{int(v.X), int(v.Y)}
 }
 
+func (p Position) String() string {
+	return fmt.Sprintf("(X:%d, Y:%d)", p.X, p.Y)
+}
+
 // Add adds two positions.
 func (p Position) Add(other Position) Position {
 	return Position{p.X + other.X, p.Y + other.Y}
@@ -46,7 +54,15 @@ func (p Position) toRaylib() rl.Vector2 {
 
 // Size represents a 2D size.
 type Size struct {
-	W, H uint
+	W, H int
+}
+
+func (s Size) String() string {
+	return fmt.Sprintf("(W:%d, H:%d)", s.W, s.H)
+}
+
+func (s Size) FlipH() Size {
+	return Size{W: -s.W, H: s.H}
 }
 
 func (s Size) toRaylib() rl.Vector2 {
@@ -59,11 +75,15 @@ type Rectangle struct {
 	Size Size
 }
 
-func NewRect(x, y int, w, h uint) Rectangle {
+func NewRect(x, y, w, h int) Rectangle {
 	return Rectangle{
 		Pos:  Position{x, y},
-		Size: Size{uint(w), uint(h)},
+		Size: Size{w, h},
 	}
+}
+
+func (r Rectangle) String() string {
+	return fmt.Sprintf("(Pos:%v, Size:%v)", r.Pos, r.Size)
 }
 
 func (r Rectangle) toRaylib() rl.Rectangle {
@@ -71,3 +91,13 @@ func (r Rectangle) toRaylib() rl.Rectangle {
 		float32(r.Pos.X), float32(r.Pos.Y), float32(r.Size.W), float32(r.Size.H),
 	)
 }
+
+// Direction represents a direction in 2D space.
+type Direction int
+
+const (
+	DirUp Direction = iota
+	DirDown
+	DirLeft
+	DirRight
+)

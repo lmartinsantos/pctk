@@ -28,7 +28,7 @@ func (a *App) PlayScene(loc ResourceLocator) {
 	defer a.mutex.Unlock()
 
 	// TODO: dispose the previous scene if any
-	a.scene = a.cat.LoadScene(loc)
+	a.scene = a.res.LoadScene(loc)
 }
 
 func (a *App) drawBackgroud() {

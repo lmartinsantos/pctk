@@ -29,8 +29,8 @@ func (a *App) drawControlPanel() {
 func (a *App) drawActionVerb(verb string, col, row int) {
 	x := 2 + col*ScreenWidth/6
 	y := ScreenHeightScene + (row+1)*FontDefaultSize
-	w := uint(ScreenWidth / 6)
-	h := uint(FontDefaultSize)
+	w := ScreenWidth / 6
+	h := FontDefaultSize
 
 	color := ControlVerbColor
 	if a.MouseIsInto(NewRect(x, y, w, h)) {

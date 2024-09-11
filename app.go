@@ -11,13 +11,14 @@ import (
 type App struct {
 	mutex sync.Mutex
 
-	cat ResourceLoader
+	res ResourceLoader
 
 	screenCaption string
 	screenZoom    int32
 
 	scene   *Scene
 	dialogs []Dialog
+	actors  []*Actor
 
 	cam               rl.Camera2D
 	fontDefault       rl.Font
@@ -30,7 +31,7 @@ type App struct {
 // New creates a new pctk application.
 func New(resources ResourceLoader, opts ...AppOption) *App {
 	app := &App{
-		cat: resources,
+		res: resources,
 	}
 
 	opts = append(defaultAppOptions, opts...)
