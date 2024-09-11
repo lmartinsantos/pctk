@@ -6,20 +6,18 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-const ()
-
 // App is the pctk application. It is the main struct that holds all the context necessary to run
 // the application.
 type App struct {
 	mutex sync.Mutex
 
-	cat *ResourceCatalog
+	cat ResourceLoader
 
 	screenCaption string
 	screenZoom    int32
 
-	background *Background
-	dialogs    []Dialog
+	scene   *Scene
+	dialogs []Dialog
 
 	cam               rl.Camera2D
 	fontDefault       rl.Font
@@ -30,9 +28,9 @@ type App struct {
 }
 
 // New creates a new pctk application.
-func New(opts ...AppOption) *App {
+func New(resources ResourceLoader, opts ...AppOption) *App {
 	app := &App{
-		cat: NewResourceCatalog(),
+		cat: resources,
 	}
 
 	opts = append(defaultAppOptions, opts...)
@@ -52,9 +50,4 @@ func (a *App) init() {
 	a.cam.Zoom = float32(a.screenZoom)
 	a.initFonts()
 	a.initMouse()
-}
-
-// ResourceCatalog returns the resource catalog of the application.
-func (a *App) ResourceCatalog() *ResourceCatalog {
-	return a.cat
 }

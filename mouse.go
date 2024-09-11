@@ -7,13 +7,15 @@ import (
 )
 
 // MousePosition returns the current mouse position in the screen.
-func (a *App) MousePosition() ScreenPosition {
-	return rl.GetScreenToWorld2D(rl.GetMousePosition(), a.cam)
+func (a *App) MousePosition() Position {
+	return positionFromRaylib(
+		rl.GetScreenToWorld2D(rl.GetMousePosition(), a.cam),
+	)
 }
 
 // MouseIsInto returns true if the mouse is into the given region.
-func (a *App) MouseIsInto(reg ScreenRegion) bool {
-	return rl.CheckCollisionPointRec(a.MousePosition(), reg)
+func (a *App) MouseIsInto(rect Rectangle) bool {
+	return rl.CheckCollisionPointRec(a.MousePosition().toRaylib(), rect.toRaylib())
 }
 
 func (a *App) initMouse() {

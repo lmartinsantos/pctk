@@ -1,9 +1,5 @@
 package pctk
 
-import (
-	rl "github.com/gen2brain/raylib-go/raylib"
-)
-
 var (
 	ControlVerbColor      = Green
 	ControlVerbHoverColor = BrigthGreen
@@ -31,19 +27,20 @@ func (a *App) drawControlPanel() {
 }
 
 func (a *App) drawActionVerb(verb string, col, row int) {
-	x := 2 + float32(col)*ScreenWidth/6
-	y := ScreenHeightScene + float32(row+1)*FontDefaultSize
-	w := float32(ScreenWidth / 6)
-	h := float32(FontDefaultSize)
+	x := 2 + col*ScreenWidth/6
+	y := ScreenHeightScene + (row+1)*FontDefaultSize
+	w := uint(ScreenWidth / 6)
+	h := uint(FontDefaultSize)
 
 	color := ControlVerbColor
-	if a.MouseIsInto(rl.NewRectangle(x, y, w, h)) {
+	if a.MouseIsInto(NewRect(x, y, w, h)) {
 		color = ControlVerbHoverColor
 	}
 
-	a.drawDefaultText(verb, int32(x), int32(y), AlignLeft, color)
+	a.drawDefaultText(verb, NewPos(x, y), AlignLeft, color)
 }
 
 func (a *App) drawFullAction(action string) {
-	a.drawDefaultText(action, ScreenWidth/2, ScreenHeightScene, AlignCenter, ControlActionColor)
+	pos := NewPos(ScreenWidth/2, ScreenHeightScene)
+	a.drawDefaultText(action, pos, AlignCenter, ControlActionColor)
 }

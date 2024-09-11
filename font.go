@@ -28,25 +28,23 @@ func (a *App) initFonts() {
 	a.fontDialogOutline = rl.LoadFontFromMemory(".ttf", fontDialogOutlineData, 32, nil)
 }
 
-func (a *App) drawDefaultText(text string, x, y int32, align TextAlignment, color Color) {
+func (a *App) drawDefaultText(text string, pos Position, align TextAlignment, color Color) {
 	// Hack needed to render spaces correctly, as they are too narrow in the default font.
 	text = strings.ReplaceAll(text, " ", "    ")
 
 	textSize := rl.MeasureTextEx(a.fontDefault, text, FontDefaultSize, 0)
-	var pos rl.Vector2
 	switch align {
 	case AlignLeft:
-		pos = rl.NewVector2(float32(x), float32(y))
 	case AlignCenter:
-		pos = rl.NewVector2(float32(x)-textSize.X/2, float32(y))
+		pos.X -= int(textSize.X / 2)
 	case AlignRight:
-		pos = rl.NewVector2(float32(x)-textSize.X, float32(y))
+		pos.X -= int(textSize.X)
 	}
 
 	rl.DrawTextEx(
 		a.fontDefault,
 		text,
-		pos,
+		pos.toRaylib(),
 		FontDefaultSize,
 		0,
 		color,

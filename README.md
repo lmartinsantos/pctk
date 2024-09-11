@@ -1,4 +1,4 @@
-# Point & Click Toolkig
+# Point & Click Toolkit
 
 Welcome to the pctk repository: the toolkit to make Point&Click adventure 
 games. 

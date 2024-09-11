@@ -1,7 +1,5 @@
 package pctk
 
-import "fmt"
-
 // ResourceLocator is the name of a resource.
 type ResourceLocator string
 
@@ -13,35 +11,31 @@ func (l ResourceLocator) Append(other ResourceLocator) ResourceLocator {
 	return l + "/" + other
 }
 
-type Resource interface{}
-
-// ResourceCatalog is a catalog of resources that the application can use.
-type ResourceCatalog struct {
-	index map[ResourceLocator]Resource
+// ResourceLoader is a value that can load game resources.
+type ResourceLoader interface {
+	// LoadScene loads a scene from the given locator. It returns nil if the scene is not found.
+	LoadScene(locator ResourceLocator) *Scene
 }
 
-// NewResourceCatalog creates a new resource catalog.
-func NewResourceCatalog() *ResourceCatalog {
-	return &ResourceCatalog{
-		index: make(map[ResourceLocator]Resource),
+// ResourceBundle is a bundle of resources that are loaded in memory. This can be used for
+// testing purposes mainly.
+type ResourceBundle struct {
+	scenes map[ResourceLocator]*Scene
+}
+
+// NewResourceBundle creates a new resource bundle that can be used as resource loader.
+func NewResourceBundle() *ResourceBundle {
+	return &ResourceBundle{
+		scenes: make(map[ResourceLocator]*Scene),
 	}
 }
 
-// Add adds a resource to the catalog.
-func (c *ResourceCatalog) Add(loc ResourceLocator, r Resource) {
-	c.index[loc] = r
+// PutScene adds a scene to the catalog.
+func (c *ResourceBundle) PutScene(loc ResourceLocator, sc *Scene) {
+	c.scenes[loc] = sc
 }
 
-// Get gets a resource from the catalog.
-func (c *ResourceCatalog) Get(locator ResourceLocator) Resource {
-	return c.index[locator]
-}
-
-// GetBackground gets the background from the catalog.
-func (c *ResourceCatalog) GetBackground(loc ResourceLocator) (*Background, error) {
-	bg, ok := c.index[loc].(*Background)
-	if !ok {
-		return nil, fmt.Errorf("invalid resource type")
-	}
-	return bg, nil
+// LoadScene loads a scene from the given locator. It returns nil if the scene is not found.
+func (c *ResourceBundle) LoadScene(locator ResourceLocator) *Scene {
+	return c.scenes[locator]
 }
