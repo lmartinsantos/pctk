@@ -24,6 +24,14 @@ func main() {
 		<-app.ShowDialog("Do you remember the years\nof Monkey Island?", 160, 20, rl.Magenta, 1.0)
 		guybrush.WalkTo(pctk.NewPos(360, 90))
 	}()
+
+	// test music
+	go func() {
+		time.Sleep(20 * time.Second)
+		//app.SetMasterVolume(app.GetMasterVolume() / 2)
+		app.LoadMusic("guitar_noodling.ogg")
+		// app.StopMusic()
+	}()
 	app.Run()
 }
 
