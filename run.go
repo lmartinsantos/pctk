@@ -5,7 +5,7 @@ import (
 )
 
 func (a *App) Run() {
-	defer rl.CloseWindow()
+	defer a.Close()
 
 	for !rl.WindowShouldClose() {
 		a.run()
@@ -13,6 +13,7 @@ func (a *App) Run() {
 }
 
 func (a *App) run() {
+	a.UpdateMusic()
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.Black)
 	rl.BeginMode2D(a.cam)

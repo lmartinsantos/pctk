@@ -13,6 +13,7 @@ func main() {
 
 	makeScene(bundle)
 
+	app.LoadMusic("On_the_Hill.ogg")
 	app.PlayScene("/main")
 	guybrush := app.ShowActor("/guybrush", pctk.NewPos(290, 90)).Looking(pctk.NewPos(0, 0)).Stand()
 	go func() {
