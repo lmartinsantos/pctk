@@ -12,8 +12,6 @@ func main() {
 	app := pctk.New(bundle)
 
 	makeScene(bundle)
-
-	app.LoadMusic("On_the_Hill.ogg")
 	app.PlayScene("/main")
 	guybrush := app.ShowActor("/guybrush", pctk.NewPos(290, 90)).Looking(pctk.NewPos(0, 0)).Stand()
 	go func() {
@@ -26,16 +24,29 @@ func main() {
 	}()
 
 	// test music
+	bundle.PutMusic("/music/on-the-hill", pctk.LoadMusicFromFile("On_the_Hill.ogg"))
+	bundle.PutMusic("/music/guitar_noodling", pctk.LoadMusicFromFile("guitar_noodling.ogg"))
+
 	go func() {
-		time.Sleep(20 * time.Second)
-		//app.SetMasterVolume(app.GetMasterVolume() / 2)
-		app.LoadMusic("guitar_noodling.ogg")
-		// app.StopMusic()
+
+		app.SetMasterVolume(0)
+		app.PlayMusic("/music/on-the-hill")
+		app.MusicFadeIn(app.GetMasterVolume(), 5*time.Second)
+		time.Sleep(10 * time.Second)
+		app.MusicFadeOut(app.GetMasterVolume(), 5*time.Second)
+		time.Sleep(5 * time.Second)
+		// smooth transition between songs using directly FadeIn / FadeOut
+		app.PlayMusic("/music/guitar_noodling")
+		app.MusicFadeIn(app.GetMasterVolume(), 5*time.Second)
+		time.Sleep(5 * time.Second)
+		// smooth transition using switch music feature
+		app.SwitchMusic("/music/on-the-hill", 5*time.Second)
 	}()
 	app.Run()
 }
 
 func makeScene(bundle *pctk.ResourceBundle) {
+
 	bg := pctk.LoadImageFromFile("background.jpg")
 	scene := pctk.NewScene(bg)
 	bundle.PutScene("/main", scene)

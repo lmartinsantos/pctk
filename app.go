@@ -26,7 +26,7 @@ type App struct {
 	fontDialogOutline rl.Font
 	cursorTx          rl.Texture2D
 	cursorColor       Color
-	music             Music
+	music             *Music
 }
 
 // New creates a new pctk application.
