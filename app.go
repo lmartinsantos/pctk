@@ -26,6 +26,7 @@ type App struct {
 	fontDialogOutline rl.Font
 	cursorTx          rl.Texture2D
 	cursorColor       Color
+	music             *Music
 }
 
 // New creates a new pctk application.
@@ -46,9 +47,16 @@ func New(resources ResourceLoader, opts ...AppOption) *App {
 
 func (a *App) init() {
 	rl.InitWindow(ScreenWidth*a.screenZoom, ScreenHeight*a.screenZoom, a.screenCaption)
+	rl.InitAudioDevice()
 	rl.SetTargetFPS(60)
 
 	a.cam.Zoom = float32(a.screenZoom)
 	a.initFonts()
 	a.initMouse()
+}
+
+func (a *App) Close() {
+	a.UnloadMusic()
+	rl.CloseAudioDevice()
+	rl.CloseWindow()
 }
