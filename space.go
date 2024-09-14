@@ -53,6 +53,36 @@ func (p Position) Above(h int) Position {
 	return Position{p.X, p.Y - h}
 }
 
+// Distance returns the distance between two positions.
+func (p Position) Distance(other Position) Size {
+	s := Size{other.X - p.X, other.Y - p.Y}
+	if s.W < 0 {
+		s.W = -s.W
+	}
+	if s.H < 0 {
+		s.H = -s.H
+	}
+	return s
+}
+
+// DirectionTo returns the direction from the current position to another.
+func (p Position) DirectionTo(other Position) Direction {
+	dist := p.Distance(other)
+	if dist.W > dist.H {
+		// Horizontal direction
+		if other.X < p.X {
+			return DirLeft
+		}
+		return DirRight
+	} else {
+		// Vertical direction
+		if other.Y < p.Y {
+			return DirUp
+		}
+		return DirDown
+	}
+}
+
 func (p Position) toRaylib() rl.Vector2 {
 	return rl.NewVector2(float32(p.X), float32(p.Y))
 }
@@ -103,6 +133,21 @@ func (r Rectangle) toRaylib() rl.Rectangle {
 
 // Direction represents a direction in 2D space.
 type Direction int
+
+func (d Direction) String() string {
+	switch d {
+	case DirUp:
+		return "Up"
+	case DirDown:
+		return "Down"
+	case DirLeft:
+		return "Left"
+	case DirRight:
+		return "Right"
+	default:
+		return "Unknown"
+	}
+}
 
 const (
 	DirUp Direction = iota
