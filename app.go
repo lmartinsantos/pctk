@@ -24,6 +24,7 @@ type App struct {
 	cursorTx          rl.Texture2D
 	cursorColor       Color
 	music             *Music
+	sound             *Sound
 }
 
 // New creates a new pctk application.
