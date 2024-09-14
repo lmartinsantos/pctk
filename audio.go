@@ -2,7 +2,6 @@ package pctk
 
 import (
 	"log"
-	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -26,154 +25,67 @@ func LoadMusicFromFile(path string) *Music {
 	return &music
 }
 
-// IsMusicPlaying - Check if music is playing
-func (a *App) IsMusicPlaying() bool {
-	return a.IsMusicReady() && rl.IsMusicStreamPlaying(*a.music)
+// MusicPlay is a command that will play the music with the given resource locator.
+type MusicPlay struct {
+	MusicResource ResourceLocator
 }
 
-// IsMusicReady - Check if the music stream is ready to play
-func (a *App) IsMusicReady() bool {
-	return a.music != nil && rl.IsMusicReady(*a.music)
-}
-
-// PlayMusic - Load and start playing music from a given resource location
-func (a *App) PlayMusic(loc ResourceLocator) {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	a.music = a.res.LoadMusic(loc)
-	if a.IsMusicReady() {
-		rl.PlayMusicStream(*a.music)
+func (cmd MusicPlay) Execute(app *App, done Promise) {
+	app.music = app.res.LoadMusic(cmd.MusicResource)
+	if app.isMusicReady() {
+		rl.PlayMusicStream(*app.music)
 	}
+	// TODO: determine if future is bounded to the music stream end or just the play begin.
+	done.Complete()
 }
 
-// UpdateMusic - Update the currently playing music stream
-func (a *App) UpdateMusic() {
-	if a.IsMusicReady() {
-		rl.UpdateMusicStream(*a.music)
-	}
+// MusicStop is a command that will stop the music.
+type MusicStop struct{}
+
+func (cmd MusicStop) Execute(app *App, done Promise) {
+	app.stopMusic()
+	done.Complete()
 }
 
-// PauseMusic - Pause the currently playing music stream
-func (a *App) PauseMusic() {
-	if a.IsMusicReady() {
-		rl.PauseMusicStream(*a.music)
-	}
-}
-
-// ResumeMusic - Resume the paused music stream
-func (a *App) ResumeMusic() {
-	if a.IsMusicReady() {
-		rl.ResumeMusicStream(*a.music)
-	}
-}
-
-// StopMusic - Stop the currently playing music stream
-func (a *App) StopMusic() {
-	if a.IsMusicReady() {
-		rl.StopMusicStream(*a.music)
-	}
-}
-
-// UnloadMusic - Unload and free memory associated with the music stream
-func (a *App) UnloadMusic() {
-	if a.IsMusicReady() {
-		rl.UnloadMusicStream(*a.music)
-	}
-}
-
-// SetMasterVolume - Set the global master volume for the application
+// SetMasterVolume sets the global volume for the application.
 func (a *App) SetMasterVolume(volume float32) {
 	rl.SetMasterVolume(volume)
 }
 
-// GetMasterVolume - Get the current global master volume
+// GetMasterVolume returns the global master volume for the application.
 func (a *App) GetMasterVolume() float32 {
 	return rl.GetMasterVolume()
 }
+func (a *App) isMusicReady() bool {
+	return a.music != nil && rl.IsMusicReady(*a.music)
+}
 
-// SetMusicPan - Set the stereo panning for the currently playing music
-func (a *App) SetMusicPan(pan float32) {
-	if a.IsMusicReady() {
-		rl.SetMusicPan(*a.music, pan)
+func (a *App) updateMusic() {
+	if a.isMusicReady() {
+		rl.UpdateMusicStream(*a.music)
 	}
 }
 
-// SetMusicPitch - Set the pitch (frequency) for the currently playing music
-func (a *App) SetMusicPitch(pitch float32) {
-	if a.IsMusicReady() {
-		rl.SetMusicPitch(*a.music, pitch)
+func (a *App) pauseMusic() {
+	if a.isMusicReady() {
+		rl.PauseMusicStream(*a.music)
 	}
 }
 
-// GetMusicTimeLength - Get the total duration of the music stream (in seconds)
-func (a *App) GetMusicTimeLength(music Music) float32 {
-	if !a.IsMusicReady() {
-		return 0
-	}
-	return rl.GetMusicTimeLength(*a.music)
-}
-
-// GetMusicTimePlayed - Get the current time played in the music stream (in seconds)
-func (a *App) GetMusicTimePlayed(music Music) float32 {
-	if !a.IsMusicReady() {
-		return 0
-	}
-	return rl.GetMusicTimePlayed(*a.music)
-}
-
-// SeekMusicStream - Seek to a specific position in the music stream (in seconds)
-func (a *App) SeekMusicStream(music Music, position float32) {
-	if a.IsMusicReady() {
-		rl.SeekMusicStream(*a.music, position)
+func (a *App) resumeMusic() {
+	if a.isMusicReady() {
+		rl.ResumeMusicStream(*a.music)
 	}
 }
 
-// MusicFadeIn - Gradually fade in the music volume from a starting value over a specified duration
-func (a *App) MusicFadeIn(from float32, duration time.Duration) {
-	if a.IsMusicReady() {
-		a.SetMasterVolume(from)
-		go func() {
-			steps := int(duration.Seconds() * float64(StepsPerSecond))
-
-			stepDuration := duration / time.Duration(steps)
-			incrementValue := 1.0 / float64(steps)
-
-			for i := 0; i <= steps && a.GetMasterVolume() <= MaxMasterVolume-float32(incrementValue); i++ {
-				a.SetMasterVolume(a.GetMasterVolume() + float32(incrementValue))
-				time.Sleep(stepDuration)
-			}
-		}()
+func (a *App) stopMusic() {
+	if a.isMusicReady() {
+		rl.StopMusicStream(*a.music)
 	}
 }
 
-// MusicFadeOut - Gradually fade out the music volume from a starting value over a specified duration
-func (a *App) MusicFadeOut(from float32, duration time.Duration) {
-	if a.IsMusicReady() {
-		a.SetMasterVolume(from)
-
-		go func() {
-			steps := int(duration.Seconds() * float64(StepsPerSecond))
-
-			stepDuration := duration / time.Duration(steps)
-			incrementValue := 1.0 / float64(steps)
-
-			for i := 0; i <= steps && a.GetMasterVolume() >= float32(incrementValue); i++ {
-				a.SetMasterVolume(a.GetMasterVolume() - float32(incrementValue))
-				time.Sleep(stepDuration)
-			}
-		}()
+func (a *App) unloadMusic() {
+	if a.isMusicReady() {
+		rl.UnloadMusicStream(*a.music)
 	}
 }
-
-// SwitchMusic - Provide a smooth transition between the current and the new music using FadeIn / FadeOut effects
-func (a *App) SwitchMusic(loc ResourceLocator, duration time.Duration) {
-	if a.IsMusicPlaying() {
-		a.MusicFadeOut(a.GetMasterVolume(), duration)
-		time.Sleep(duration)
-	}
-	a.PlayMusic(loc)
-	a.MusicFadeIn(a.GetMasterVolume(), 5*time.Second)
-}
-
-// TODO spatial sounds (play with pan & pitch)

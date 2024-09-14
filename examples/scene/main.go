@@ -11,13 +11,14 @@ func main() {
 	app := pctk.New(bundle)
 
 	makeScene(bundle)
-	app.PlayScene("/main") // TODO: convert into a command
+	app.Do(pctk.PlayScene{SceneResource: "/main"})
 	app.Do(pctk.ActorShow{
 		ActorResource: "/guybrush",
 		ActorName:     "guybrush",
 		Position:      pctk.NewPos(340, 90),
 		LookAt:        pctk.DirLeft,
 	})
+	app.Do(pctk.MusicPlay{MusicResource: "/music/on-the-hill"})
 	go func() {
 		app.Do(pctk.ActorWalkToPosition{
 			ActorName: "guybrush",
@@ -38,11 +39,11 @@ func main() {
 		}).Wait()
 		app.Do(pctk.ActorSpeak{
 			ActorName: "guybrush",
-			Text:      "I think I've lost the\nkeys of my boat.",
+			Text:      "I think I've lost my boat keys.",
 		}).Wait()
 		app.Do(pctk.ActorSpeak{
 			ActorName: "guybrush",
-			Text:      "Did you find any keys?",
+			Text:      "Have you seen any keys?",
 			Delay:     2 * time.Second,
 		}).Wait()
 		pctk.WithDelay(
@@ -53,6 +54,7 @@ func main() {
 			}),
 			2*time.Second,
 		).Wait()
+		app.Do(pctk.MusicPlay{MusicResource: "/music/guitar_noodling"})
 		pctk.WithDelay(
 			app.Do(pctk.ActorLookAtDirection{
 				ActorName: "guybrush",
@@ -98,26 +100,6 @@ func main() {
 			Color:    pctk.Magenta,
 		}).Wait()
 	}()
-
-	// test music
-	bundle.PutMusic("/music/on-the-hill", pctk.LoadMusicFromFile("On_the_Hill.ogg"))
-	bundle.PutMusic("/music/guitar_noodling", pctk.LoadMusicFromFile("guitar_noodling.ogg"))
-
-	go func() {
-
-		app.SetMasterVolume(0)
-		app.PlayMusic("/music/on-the-hill")
-		app.MusicFadeIn(app.GetMasterVolume(), 5*time.Second)
-		time.Sleep(10 * time.Second)
-		app.MusicFadeOut(app.GetMasterVolume(), 5*time.Second)
-		time.Sleep(5 * time.Second)
-		// smooth transition between songs using directly FadeIn / FadeOut
-		app.PlayMusic("/music/guitar_noodling")
-		app.MusicFadeIn(app.GetMasterVolume(), 5*time.Second)
-		time.Sleep(5 * time.Second)
-		// smooth transition using switch music feature
-		app.SwitchMusic("/music/on-the-hill", 5*time.Second)
-	}()
 	app.Run()
 }
 
@@ -153,4 +135,7 @@ func makeScene(bundle *pctk.ResourceBundle) {
 			WithFrame(5, 1, 100*time.Millisecond),
 		)
 	bundle.PutActor("/guybrush", actor)
+
+	bundle.PutMusic("/music/on-the-hill", pctk.LoadMusicFromFile("On_the_Hill.ogg"))
+	bundle.PutMusic("/music/guitar_noodling", pctk.LoadMusicFromFile("guitar_noodling.ogg"))
 }

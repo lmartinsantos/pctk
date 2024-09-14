@@ -1,16 +1,12 @@
 package pctk
 
 import (
-	"sync"
-
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 // App is the pctk application. It is the main struct that holds all the context necessary to run
 // the application.
 type App struct {
-	mutex sync.Mutex
-
 	res ResourceLoader
 
 	screenCaption string
@@ -58,7 +54,7 @@ func (a *App) init() {
 }
 
 func (a *App) Close() {
-	a.UnloadMusic()
+	a.unloadMusic()
 	rl.CloseAudioDevice()
 	rl.CloseWindow()
 }

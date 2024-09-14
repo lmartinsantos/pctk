@@ -167,7 +167,7 @@ func (cmd ActorSpeak) Execute(app *App, done Promise) {
 	}
 
 	app.withActor(cmd.ActorName, func(a *Actor) {
-		dialogDone := app.Do(ShowDialog{
+		dialogDone := app.doNow(ShowDialog{
 			Text:     cmd.Text,
 			Position: a.pos.Above(50),
 			Color:    rl.White,

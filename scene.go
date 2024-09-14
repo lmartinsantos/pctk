@@ -22,13 +22,15 @@ func NewScene(bg *Image) *Scene {
 	}
 }
 
-// PlayScene loads and plays the scene with the given resource locator.
-func (a *App) PlayScene(loc ResourceLocator) {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
+// PlayScene is a command that will play the scene with the given resource locator.
+type PlayScene struct {
+	SceneResource ResourceLocator
+}
 
+func (cmd PlayScene) Execute(app *App, done Promise) {
 	// TODO: dispose the previous scene if any
-	a.scene = a.res.LoadScene(loc)
+	app.scene = app.res.LoadScene(cmd.SceneResource)
+	done.Complete()
 }
 
 func (a *App) drawBackgroud() {
