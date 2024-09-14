@@ -179,13 +179,13 @@ func (a *App) pauseSound() {
 }
 
 func (a *App) resumeSound() {
-	if a.isMusicReady() {
+	if a.isSoundReady() {
 		rl.ResumeSound(*a.sound)
 	}
 }
 
 func (a *App) stopSound() {
-	if a.isMusicReady() {
+	if a.isSoundReady() {
 		rl.StopSound(*a.sound)
 	}
 }
