@@ -48,6 +48,11 @@ func (p Position) Sub(other Position) Position {
 	return Position{p.X - other.X, p.Y - other.Y}
 }
 
+// Above returns a position above the current one.
+func (p Position) Above(h int) Position {
+	return Position{p.X, p.Y - h}
+}
+
 func (p Position) toRaylib() rl.Vector2 {
 	return rl.NewVector2(float32(p.X), float32(p.Y))
 }
@@ -55,6 +60,10 @@ func (p Position) toRaylib() rl.Vector2 {
 // Size represents a 2D size.
 type Size struct {
 	W, H int
+}
+
+func sizeFromRaylib(v rl.Vector2) Size {
+	return Size{int(v.X), int(v.Y)}
 }
 
 func (s Size) String() string {

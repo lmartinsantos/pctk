@@ -12,6 +12,9 @@ const (
 
 	// FontDialogSize is the size of the font used for dialogs.
 	FontDialogSize = 12
+
+	// DialogScreenMarging is the margin of the screen left by the dialog.
+	DialogScreenMarging = 10
 )
 
 type TextAlignment int
@@ -51,24 +54,24 @@ func (a *App) drawDefaultText(text string, pos Position, align TextAlignment, co
 	)
 }
 
-func (a *App) drawDialogText(text string, x, y int32, color Color) {
+func (a *App) drawDialogText(text string, pos Position, color Color) {
 	lines := strings.Split(text, "\n")
 	for i, line := range lines {
 
-		tsize := rl.MeasureTextEx(a.fontDialogOutline, line, FontDialogSize, 0)
-		tw := int32(tsize.X)
+		tsize := sizeFromRaylib(rl.MeasureTextEx(a.fontDialogOutline, line, FontDialogSize, 0))
+		tw := tsize.W
 
-		if x-tw/2 < 0 {
-			x = tw / 2
+		if pos.X-tw/2 < DialogScreenMarging {
+			pos.X = tw/2 + DialogScreenMarging
 		}
-		if x+tw/2 > ScreenWidth {
-			x = ScreenWidth - tw/2
+		if pos.X+tw/2 > ScreenWidth-DialogScreenMarging {
+			pos.X = ScreenWidth - tw/2 - DialogScreenMarging
 		}
 
 		rl.DrawTextEx(
 			a.fontDialogSolid,
 			line,
-			rl.Vector2{X: float32(x - tw/2), Y: float32(y + int32(i)*FontDialogSize)},
+			rl.Vector2{X: float32(pos.X - tw/2), Y: float32(pos.Y + i*FontDialogSize)},
 			FontDialogSize,
 			0,
 			color,
@@ -76,7 +79,7 @@ func (a *App) drawDialogText(text string, x, y int32, color Color) {
 		rl.DrawTextEx(
 			a.fontDialogOutline,
 			line,
-			rl.Vector2{X: float32(x - tw/2), Y: float32(y + int32(i)*FontDialogSize)},
+			rl.Vector2{X: float32(pos.X - tw/2), Y: float32(pos.Y + i*FontDialogSize)},
 			FontDialogSize,
 			0,
 			rl.Black,

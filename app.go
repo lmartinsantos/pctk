@@ -16,9 +16,10 @@ type App struct {
 	screenCaption string
 	screenZoom    int32
 
-	scene   *Scene
-	dialogs []Dialog
-	actors  []*Actor
+	scene    *Scene
+	dialogs  []Dialog
+	actors   map[string]*Actor
+	commands commandQueue
 
 	cam               rl.Camera2D
 	fontDefault       rl.Font
@@ -32,7 +33,8 @@ type App struct {
 // New creates a new pctk application.
 func New(resources ResourceLoader, opts ...AppOption) *App {
 	app := &App{
-		res: resources,
+		res:    resources,
+		actors: make(map[string]*Actor),
 	}
 
 	opts = append(defaultAppOptions, opts...)

@@ -24,4 +24,5 @@ func (a *App) run() {
 	a.drawMouseCursor()
 	rl.EndMode2D()
 	rl.EndDrawing()
+	a.commands.execute(a)
 }

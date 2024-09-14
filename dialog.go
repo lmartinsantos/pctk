@@ -11,46 +11,19 @@ const (
 
 type Dialog struct {
 	text  string
-	x, y  int32
+	pos   Position
 	color Color
 	speed float32
 
 	expiresAt time.Time
-	done      chan<- struct{}
-}
-
-func (a *App) ShowDialog(text string, x, y int32, col Color, speed float32) (done <-chan struct{}) {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	shownDuring := time.Duration(len(text)/LettersPerSecond) * time.Second
-	if shownDuring < 2*time.Second {
-		shownDuring = 2 * time.Second
-	}
-	shownDuring /= time.Duration(speed)
-	expiresAt := time.Now().Add(shownDuring)
-	dchan := make(chan struct{})
-
-	dialog := Dialog{
-		text:      text,
-		x:         x,
-		y:         y,
-		color:     col,
-		speed:     speed,
-		expiresAt: expiresAt,
-		done:      dchan,
-	}
-	a.dialogs = append(a.dialogs, dialog)
-	return dchan
+	done      Promise
 }
 
 func (a *App) drawDialogs() {
 	dialogs := make([]Dialog, 0, len(a.dialogs))
 	for _, d := range a.dialogs {
 		if a.drawDialog(&d) {
-			time.AfterFunc(time.Duration(d.speed)*time.Second, func() {
-				close(d.done)
-			})
+			d.done.Complete()
 		} else {
 			dialogs = append(dialogs, d)
 		}
@@ -63,6 +36,37 @@ func (a *App) drawDialog(d *Dialog) (expired bool) {
 		return true
 	}
 
-	a.drawDialogText(d.text, d.x, d.y, d.color)
+	a.drawDialogText(d.text, d.pos, d.color)
 	return false
+}
+
+// ShowDialog is a command that will show a dialog with the given text.
+type ShowDialog struct {
+	Text     string
+	Position Position
+	Color    Color
+	Speed    float32
+}
+
+func (cmd ShowDialog) Execute(app *App, done Promise) {
+	if cmd.Speed == 0 {
+		cmd.Speed = 1
+	}
+
+	shownDuring := time.Duration(len(cmd.Text)/LettersPerSecond) * time.Second
+	if shownDuring < 2*time.Second {
+		shownDuring = 2 * time.Second
+	}
+	shownDuring /= time.Duration(cmd.Speed)
+	expiresAt := time.Now().Add(shownDuring)
+
+	dialog := Dialog{
+		text:      cmd.Text,
+		pos:       cmd.Position,
+		color:     cmd.Color,
+		speed:     cmd.Speed,
+		expiresAt: expiresAt,
+		done:      done,
+	}
+	app.dialogs = append(app.dialogs, dialog)
 }
