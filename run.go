@@ -13,7 +13,7 @@ func (a *App) Run() {
 }
 
 func (a *App) run() {
-	a.UpdateMusic()
+	a.updateMusic()
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.Black)
 	rl.BeginMode2D(a.cam)
@@ -24,4 +24,5 @@ func (a *App) run() {
 	a.drawMouseCursor()
 	rl.EndMode2D()
 	rl.EndDrawing()
+	a.commands.execute(a)
 }

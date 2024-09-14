@@ -1,24 +1,21 @@
 package pctk
 
 import (
-	"sync"
-
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 // App is the pctk application. It is the main struct that holds all the context necessary to run
 // the application.
 type App struct {
-	mutex sync.Mutex
-
 	res ResourceLoader
 
 	screenCaption string
 	screenZoom    int32
 
-	scene   *Scene
-	dialogs []Dialog
-	actors  []*Actor
+	scene    *Scene
+	dialogs  []Dialog
+	actors   map[string]*Actor
+	commands commandQueue
 
 	cam               rl.Camera2D
 	fontDefault       rl.Font
@@ -32,7 +29,8 @@ type App struct {
 // New creates a new pctk application.
 func New(resources ResourceLoader, opts ...AppOption) *App {
 	app := &App{
-		res: resources,
+		res:    resources,
+		actors: make(map[string]*Actor),
 	}
 
 	opts = append(defaultAppOptions, opts...)
@@ -56,7 +54,7 @@ func (a *App) init() {
 }
 
 func (a *App) Close() {
-	a.UnloadMusic()
+	a.unloadMusic()
 	rl.CloseAudioDevice()
 	rl.CloseWindow()
 }
