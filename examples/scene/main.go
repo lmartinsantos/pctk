@@ -55,8 +55,28 @@ func main() {
 			2*time.Second,
 		).Wait()
 		app.Do(pctk.MusicPlay{MusicResource: "/music/guitar_noodling"})
+		app.Do(pctk.ActorWalkToPosition{
+			ActorName: "guybrush",
+			Position:  pctk.NewPos(120, 80),
+		}).Wait()
+		app.Do(pctk.ActorSpeak{
+			ActorName: "guybrush",
+			Text:      "Where can I find the keys?",
+			Delay:     1 * time.Second,
+		}).Wait()
+		app.Do(pctk.ActorWalkToPosition{
+			ActorName: "guybrush",
+			Position:  pctk.NewPos(120, 90),
+		}).Wait()
 		pctk.WithDelay(
-			app.Do(pctk.ActorLookAtDirection{
+			app.Do(pctk.ActorSpeak{
+				ActorName: "guybrush",
+				Text:      "Ooooook...",
+			}),
+			2*time.Second,
+		).Wait()
+		pctk.WithDelay(
+			app.Do(pctk.ActorStand{
 				ActorName: "guybrush",
 				Direction: pctk.DirRight,
 			}),
@@ -66,7 +86,7 @@ func main() {
 			ActorName: "guybrush",
 			Text:      "Ok, I will try the Scumm bar.",
 		}).Wait()
-		app.Do(pctk.ActorLookAtDirection{
+		app.Do(pctk.ActorStand{
 			ActorName: "guybrush",
 			Direction: pctk.DirLeft,
 		}).Wait()
@@ -113,26 +133,43 @@ func makeScene(bundle *pctk.ResourceBundle) {
 	bundle.PutSpriteSheet("/guybrush/sprites", sprites)
 
 	actor := pctk.NewActor("Guybrush").
-		WithStandH(pctk.NewAnimation("/guybrush/sprites").WithFrame(0, 1, time.Second)).
-		WithWalkH(pctk.NewAnimation("/guybrush/sprites").
-			WithFrame(0, 0, 100*time.Millisecond).
-			WithFrame(1, 0, 100*time.Millisecond).
-			WithFrame(2, 0, 100*time.Millisecond).
-			WithFrame(1, 0, 100*time.Millisecond).
-			WithFrame(0, 0, 100*time.Millisecond).
-			WithFrame(3, 0, 100*time.Millisecond).
-			WithFrame(4, 0, 100*time.Millisecond).
-			WithFrame(5, 0, 100*time.Millisecond).
-			WithFrame(4, 0, 100*time.Millisecond).
-			WithFrame(3, 0, 100*time.Millisecond),
+		WithAnimationStand(pctk.DirRight, pctk.NewAnimation("/guybrush/sprites").
+			WithFrame(0, 1, time.Second),
 		).
-		WithSpeakH(pctk.NewAnimation("/guybrush/sprites").
-			WithFrame(0, 1, 100*time.Millisecond).
-			WithFrame(1, 1, 100*time.Millisecond).
-			WithFrame(2, 1, 100*time.Millisecond).
-			WithFrame(3, 1, 100*time.Millisecond).
-			WithFrame(4, 1, 100*time.Millisecond).
-			WithFrame(5, 1, 100*time.Millisecond),
+		WithAnimationStand(pctk.DirLeft, pctk.NewAnimation("/guybrush/sprites").
+			WithFrame(0, 1, time.Second).
+			Flip(true),
+		).
+		WithAnimationStand(pctk.DirUp, pctk.NewAnimation("/guybrush/sprites").
+			WithFrame(0, 5, time.Second),
+		).
+		WithAnimationStand(pctk.DirDown, pctk.NewAnimation("/guybrush/sprites").
+			WithFrame(0, 4, time.Second),
+		).
+		WithAnimationSpeak(pctk.DirRight, pctk.NewAnimation("/guybrush/sprites").
+			WithFramesInRow(1, 100*time.Millisecond, 0, 1, 2, 3, 4, 5),
+		).
+		WithAnimationSpeak(pctk.DirLeft, pctk.NewAnimation("/guybrush/sprites").
+			WithFramesInRow(1, 100*time.Millisecond, 0, 1, 2, 3, 4, 5).Flip(true),
+		).
+		WithAnimationSpeak(pctk.DirUp, pctk.NewAnimation("/guybrush/sprites").
+			WithFramesInRow(5, 100*time.Millisecond, 0, 1, 2),
+		).
+		WithAnimationSpeak(pctk.DirDown, pctk.NewAnimation("/guybrush/sprites").
+			WithFramesInRow(4, 100*time.Millisecond, 0, 1, 2, 3, 4, 5),
+		).
+		WithAnimationWalk(pctk.DirRight, pctk.NewAnimation("/guybrush/sprites").
+			WithFramesInRow(0, 100*time.Millisecond, 0, 1, 2, 1, 0, 3, 4, 5, 4, 3),
+		).
+		WithAnimationWalk(pctk.DirLeft, pctk.NewAnimation("/guybrush/sprites").
+			WithFramesInRow(0, 100*time.Millisecond, 0, 1, 2, 1, 0, 3, 4, 5, 4, 3).
+			Flip(true),
+		).
+		WithAnimationWalk(pctk.DirUp, pctk.NewAnimation("/guybrush/sprites").
+			WithFramesInRow(3, 100*time.Millisecond, 0, 1, 2, 1, 0, 3, 4, 5, 4, 3),
+		).
+		WithAnimationWalk(pctk.DirDown, pctk.NewAnimation("/guybrush/sprites").
+			WithFramesInRow(2, 100*time.Millisecond, 0, 1, 2, 1, 0, 3, 4, 5, 4, 3),
 		)
 	bundle.PutActor("/guybrush", actor)
 

@@ -12,6 +12,7 @@ const (
 type Animation struct {
 	sprites ResourceLocator
 	frames  []animationFrame
+	flip    bool
 
 	currentFrame int
 	lastFrame    time.Time
@@ -31,7 +32,23 @@ func (a *Animation) WithFrame(i, j uint, delay time.Duration) *Animation {
 	return a
 }
 
-func (a *Animation) draw(app *App, pos Position, flip bool) {
+// WithFramesInRow adds a sequence of frames to the animation. The frames are located at the row-th
+// row and fromCol-th to toCol-th columns of the sprite sheet. The delay is the time to wait before
+// moving to the next frame.
+func (a *Animation) WithFramesInRow(row uint, delay time.Duration, cols ...uint) *Animation {
+	for _, col := range cols {
+		a.WithFrame(col, row, delay)
+	}
+	return a
+}
+
+// Flip sets the flip flag for the animation.
+func (a *Animation) Flip(flip bool) *Animation {
+	a.flip = flip
+	return a
+}
+
+func (a *Animation) draw(app *App, pos Position) {
 	if a.frames[a.currentFrame].delay < time.Since(a.lastFrame) {
 		a.lastFrame = time.Now()
 		a.currentFrame++
@@ -45,7 +62,7 @@ func (a *Animation) draw(app *App, pos Position, flip bool) {
 		a.frames[a.currentFrame].i,
 		a.frames[a.currentFrame].j,
 		pos,
-		flip,
+		a.flip,
 	)
 }
 

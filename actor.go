@@ -13,9 +13,9 @@ const (
 type Actor struct {
 	name string
 
-	standH *Animation
-	speakH *Animation
-	walkH  *Animation
+	animStand map[Direction]*Animation
+	animSpeak map[Direction]*Animation
+	animWalk  map[Direction]*Animation
 
 	lookAt Direction
 	pos    Position
@@ -23,35 +23,34 @@ type Actor struct {
 }
 
 func NewActor(name string) *Actor {
-	return &Actor{name: name}
+	return &Actor{
+		name:      name,
+		animStand: make(map[Direction]*Animation),
+		animSpeak: make(map[Direction]*Animation),
+		animWalk:  make(map[Direction]*Animation),
+	}
 }
 
-func (a *Actor) WithStandH(anim *Animation) *Actor {
-	a.standH = anim
+func (a *Actor) WithAnimationStand(dir Direction, anim *Animation) *Actor {
+	a.animStand[dir] = anim
 	return a
 }
 
-func (a *Actor) WithSpeakH(anim *Animation) *Actor {
-	a.speakH = anim
+func (a *Actor) WithAnimationSpeak(dir Direction, anim *Animation) *Actor {
+	a.animSpeak[dir] = anim
 	return a
 }
 
-func (a *Actor) WithWalkH(anim *Animation) *Actor {
-	a.walkH = anim
+func (a *Actor) WithAnimationWalk(dir Direction, anim *Animation) *Actor {
+	a.animWalk[dir] = anim
 	return a
 }
 
-func (a *Actor) stand() *Actor {
+func (a *Actor) stand(dir Direction) *Actor {
+	a.lookAt = dir
 	a.act = func(app *App, c *Actor) (completed bool) {
-		switch c.lookAt {
-		case DirRight:
-			if a.standH != nil {
-				a.standH.draw(app, c.pos, false)
-			}
-		case DirLeft:
-			if a.standH != nil {
-				a.standH.draw(app, c.pos, true)
-			}
+		if anim := a.animStand[dir]; anim != nil {
+			anim.draw(app, c.pos)
 		}
 		return false
 	}
@@ -60,13 +59,10 @@ func (a *Actor) stand() *Actor {
 
 func (a *Actor) draw(app *App) {
 	if a.act == nil {
-		if a.standH != nil {
-			a.standH.draw(app, a.pos, false)
-		}
-		return
+		a.stand(a.lookAt)
 	}
 	if a.act(app, a) {
-		a.stand()
+		a.stand(a.lookAt)
 	}
 }
 
@@ -83,8 +79,7 @@ type ActorShow struct {
 func (cmd ActorShow) Execute(app *App, done Promise) {
 	actor := app.res.LoadActor(cmd.ActorResource)
 	actor.pos = cmd.Position
-	actor.lookAt = cmd.LookAt
-	actor.stand()
+	actor.stand(cmd.LookAt)
 	app.actors[cmd.ActorName] = actor
 	done.Complete()
 }
@@ -97,24 +92,20 @@ type ActorLookAtPos struct {
 
 func (cmd ActorLookAtPos) Execute(app *App, done Promise) {
 	app.withActor(cmd.ActorName, func(a *Actor) {
-		if a.pos.X < cmd.Position.X {
-			a.lookAt = DirRight
-		} else if a.pos.X > cmd.Position.X {
-			a.lookAt = DirLeft
-		}
+		a.stand(a.pos.DirectionTo(cmd.Position))
 	})
 	done.Complete()
 }
 
-// ActorLookAtDirection is a command that will make an actor look at a given direction.
-type ActorLookAtDirection struct {
+// ActorStand is a command that will make an actor stand in the given direction.
+type ActorStand struct {
 	ActorName string
 	Direction Direction
 }
 
-func (cmd ActorLookAtDirection) Execute(app *App, done Promise) {
+func (cmd ActorStand) Execute(app *App, done Promise) {
 	app.withActor(cmd.ActorName, func(a *Actor) {
-		a.lookAt = cmd.Direction
+		a.stand(cmd.Direction)
 	})
 	done.Complete()
 }
@@ -128,28 +119,30 @@ type ActorWalkToPosition struct {
 func (cmd ActorWalkToPosition) Execute(app *App, done Promise) {
 	app.withActor(cmd.ActorName, func(a *Actor) {
 		a.act = func(app *App, c *Actor) (completed bool) {
-			flip := false
-			if c.pos.X < cmd.Position.X {
-				c.pos.X++
-				a.lookAt = DirRight
-			} else if c.pos.X > cmd.Position.X {
-				flip = true
-				c.pos.X--
-				a.lookAt = DirLeft
-			}
-			if c.pos.Y < cmd.Position.Y {
-				c.pos.Y++
-			} else if c.pos.Y > cmd.Position.Y {
-				c.pos.Y--
+			if anim := a.animWalk[a.lookAt]; anim != nil {
+				anim.draw(app, c.pos)
 			}
 
-			if a.walkH != nil {
-				a.walkH.draw(app, c.pos, flip)
-			}
 			if c.pos == cmd.Position {
 				done.Complete()
+				return true
 			}
-			return c.pos == cmd.Position
+
+			// TODO: This implementation is totally naive. It doesn't take into account the
+			// diagonal movement, the obstacles, the speed of the actor, etc.
+			a.lookAt = c.pos.DirectionTo(cmd.Position)
+
+			switch a.lookAt {
+			case DirRight:
+				c.pos.X++
+			case DirLeft:
+				c.pos.X--
+			case DirUp:
+				c.pos.Y--
+			case DirDown:
+				c.pos.Y++
+			}
+			return false
 		}
 	})
 }
@@ -174,15 +167,8 @@ func (cmd ActorSpeak) Execute(app *App, done Promise) {
 			Speed:    1.0,
 		})
 		a.act = func(app *App, c *Actor) (completed bool) {
-			switch a.lookAt {
-			case DirRight:
-				if a.speakH != nil {
-					a.speakH.draw(app, c.pos, false)
-				}
-			case DirLeft:
-				if a.speakH != nil {
-					a.speakH.draw(app, c.pos, true)
-				}
+			if anim := a.animSpeak[a.lookAt]; anim != nil {
+				anim.draw(app, c.pos)
 			}
 			if dialogDone.IsCompleted() {
 				done.CompleteAfter(nil, cmd.Delay)
