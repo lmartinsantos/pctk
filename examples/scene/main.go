@@ -19,6 +19,7 @@ func main() {
 		LookAt:        pctk.DirLeft,
 	})
 	app.Do(pctk.MusicPlay{MusicResource: "/music/on-the-hill"})
+	app.Do(pctk.SoundPlay{SoundResource: "/sound/cricket"})
 	go func() {
 		app.Do(pctk.ActorWalkToPosition{
 			ActorName: "guybrush",
@@ -94,6 +95,7 @@ func main() {
 			ActorName: "guybrush",
 			Text:      "Thank you guys!",
 		}).Wait()
+		app.Do(pctk.SoundPlay{SoundResource: "/sound/cricket"})
 		app.Do(pctk.ActorWalkToPosition{
 			ActorName: "guybrush",
 			Position:  pctk.NewPos(360, 90),
@@ -175,4 +177,5 @@ func makeScene(bundle *pctk.ResourceBundle) {
 
 	bundle.PutMusic("/music/on-the-hill", pctk.LoadMusicFromFile("On_the_Hill.ogg"))
 	bundle.PutMusic("/music/guitar_noodling", pctk.LoadMusicFromFile("guitar_noodling.ogg"))
+	bundle.PutSound("/sound/cricket", pctk.LoadSoundFromFile("cricket.wav"))
 }

@@ -25,6 +25,9 @@ type ResourceLoader interface {
 
 	// LoadMusic loads a music song from the given locator. It returns nil if the music is not found.
 	LoadMusic(locator ResourceLocator) *Music
+
+	// LoadSound loads a sound effect from he given locator. It returns nil if the sound is not found.
+	LoadSound(locator ResourceLocator) *Sound
 }
 
 // ResourceBundle is a bundle of resources that are loaded in memory. This can be used for
@@ -34,6 +37,7 @@ type ResourceBundle struct {
 	spriteSheets map[ResourceLocator]*SpriteSheet
 	actors       map[ResourceLocator]*Actor
 	songs        map[ResourceLocator]*Music
+	sounds       map[ResourceLocator]*Sound
 }
 
 // NewResourceBundle creates a new resource bundle that can be used as resource loader.
@@ -43,6 +47,7 @@ func NewResourceBundle() *ResourceBundle {
 		spriteSheets: make(map[ResourceLocator]*SpriteSheet),
 		actors:       make(map[ResourceLocator]*Actor),
 		songs:        make(map[ResourceLocator]*Music),
+		sounds:       make(map[ResourceLocator]*Sound),
 	}
 }
 
@@ -66,6 +71,11 @@ func (c *ResourceBundle) PutMusic(loc ResourceLocator, m *Music) {
 	c.songs[loc] = m
 }
 
+// PutSound adds a sound to the catalog.
+func (c *ResourceBundle) PutSound(loc ResourceLocator, s *Sound) {
+	c.sounds[loc] = s
+}
+
 // LoadScene loads a scene from the given locator. It returns nil if the scene is not found.
 func (c *ResourceBundle) LoadScene(locator ResourceLocator) *Scene {
 	return c.scenes[locator]
@@ -85,4 +95,9 @@ func (c *ResourceBundle) LoadActor(locator ResourceLocator) *Actor {
 // LoadMusic loads a music song from the given locator. It returns nil if the music is not found.
 func (c *ResourceBundle) LoadMusic(locator ResourceLocator) *Music {
 	return c.songs[locator]
+}
+
+// LoadSound loads a sound effect from he given locator. It returns nil if the sound is not found.
+func (c *ResourceBundle) LoadSound(locator ResourceLocator) *Sound {
+	return c.sounds[locator]
 }
