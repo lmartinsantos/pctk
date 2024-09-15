@@ -152,18 +152,22 @@ type ActorSpeak struct {
 	ActorName string
 	Text      string
 	Delay     time.Duration
+	Color     Color
 }
 
 func (cmd ActorSpeak) Execute(app *App, done Promise) {
 	if cmd.Delay == 0 {
 		cmd.Delay = DefaultActorSpeakDelay
 	}
+	if cmd.Color == rl.Blank {
+		cmd.Color = rl.White
+	}
 
 	app.withActor(cmd.ActorName, func(a *Actor) {
 		dialogDone := app.doNow(ShowDialog{
 			Text:     cmd.Text,
 			Position: a.pos.Above(50),
-			Color:    rl.White,
+			Color:    cmd.Color,
 			Speed:    1.0,
 		})
 		a.act = func(app *App, c *Actor) (completed bool) {
