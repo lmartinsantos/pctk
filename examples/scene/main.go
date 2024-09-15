@@ -33,7 +33,7 @@ func main() {
 	app.Do(pctk.ActorShow{
 		ActorResource: "/pirate3",
 		ActorName:     "pirate3",
-		Position:      pctk.NewPos(5, 100), // TODO blink cause sprite collides without z-index / priority
+		Position:      pctk.NewPos(5, 100), // TODO  playing with position can reproduce blinking issue (no z-index solution yet)
 		LookAt:        pctk.DirRight,
 	})
 	app.Do(pctk.MusicPlay{MusicResource: "/music/on-the-hill"})
