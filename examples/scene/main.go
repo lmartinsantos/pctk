@@ -135,6 +135,54 @@ func main() {
 			Color:     pctk.Magenta,
 		}).Wait()
 	}()
+	// TODO: it would be interesting to allow define a bunch of actions and allow generate randomly
+	go func() {
+		pctk.WithDelay(
+			app.Do(pctk.ActorShow{
+				ActorResource: "/rat",
+				ActorName:     "rat",
+				Position:      pctk.NewPos(-10, 128),
+				LookAt:        pctk.DirRight,
+			}),
+			2*time.Second,
+		).Wait()
+
+		app.Do(pctk.ActorWalkToPosition{
+			ActorName: "rat",
+			Position:  pctk.NewPos(180, 125),
+		}).Wait()
+		pctk.WithDelay(
+			app.Do(pctk.ActorStand{
+				ActorName: "rat",
+				Direction: pctk.DirRight,
+			}),
+			1*time.Second,
+		).Wait()
+		app.Do(pctk.ActorWalkToPosition{
+			ActorName: "rat",
+			Position:  pctk.NewPos(180, 100),
+		}).Wait()
+		pctk.WithDelay(
+			app.Do(pctk.ActorStand{
+				ActorName: "rat",
+				Direction: pctk.DirRight,
+			}),
+			4*time.Second,
+		).Wait()
+
+		app.Do(pctk.ActorWalkToPosition{
+			ActorName: "rat",
+			Position:  pctk.NewPos(180, 128),
+		}).Wait()
+		app.Do(pctk.ActorStand{
+			ActorName: "rat",
+			Direction: pctk.DirRight,
+		}).Wait()
+		app.Do(pctk.ActorWalkToPosition{
+			ActorName: "rat",
+			Position:  pctk.NewPos(340, 128),
+		}).Wait()
+	}()
 	app.Run()
 }
 
@@ -220,6 +268,37 @@ func makeScene(bundle *pctk.ResourceBundle) {
 			WithFramesInRow(0, 5*time.Second, 0, 1),
 		)
 	bundle.PutActor("/pirate3", actor)
+
+	sprites = pctk.LoadSpriteSheetFromFile("rat.png", pctk.Size{W: 30, H: 20})
+	bundle.PutSpriteSheet("/rat/sprites", sprites)
+
+	actor = pctk.NewActor("Rat").
+		WithAnimationStand(pctk.DirRight, pctk.NewAnimation("/rat/sprites").
+			WithFramesInRow(0, 500*time.Millisecond, 0, 6),
+		).
+		WithAnimationStand(pctk.DirLeft, pctk.NewAnimation("/rat/sprites").
+			WithFramesInRow(0, 500*time.Millisecond, 0, 6).Flip(true),
+		).
+		WithAnimationStand(pctk.DirUp, pctk.NewAnimation("/rat/sprites").
+			WithFramesInRow(0, 500*time.Millisecond, 0, 6),
+		).
+		WithAnimationStand(pctk.DirDown, pctk.NewAnimation("/rat/sprites").
+			WithFramesInRow(0, 500*time.Millisecond, 0, 6),
+		).
+		WithAnimationWalk(pctk.DirRight, pctk.NewAnimation("/rat/sprites").
+			WithFramesInRow(3, 100*time.Millisecond, 0, 1, 2, 3, 4, 5, 6),
+		).
+		WithAnimationWalk(pctk.DirLeft, pctk.NewAnimation("/rat/sprites").
+			WithFramesInRow(3, 100*time.Millisecond, 0, 1, 2, 3, 4, 5, 6).
+			Flip(true),
+		).
+		WithAnimationWalk(pctk.DirUp, pctk.NewAnimation("/rat/sprites").
+			WithFramesInRow(2, 100*time.Millisecond, 0, 1, 2, 3, 4, 5, 6),
+		).
+		WithAnimationWalk(pctk.DirDown, pctk.NewAnimation("/rat/sprites").
+			WithFramesInRow(1, 100*time.Millisecond, 0, 1, 2, 4, 4, 5, 6),
+		)
+	bundle.PutActor("/rat", actor)
 
 	bundle.PutMusic("/music/on-the-hill", pctk.LoadMusicFromFile("On_the_Hill.ogg"))
 	bundle.PutMusic("/music/guitar_noodling", pctk.LoadMusicFromFile("guitar_noodling.ogg"))
