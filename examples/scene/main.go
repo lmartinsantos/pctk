@@ -121,6 +121,8 @@ func main() {
 			Position: pctk.NewPos(60, 20),
 			Color:    pctk.Magenta,
 		}).Wait()
+		// lets player move guybrush freely ;-)
+		app.Do(pctk.ActorSelectEgo{ActorName: "guybrush"})
 	}()
 	app.Run()
 }

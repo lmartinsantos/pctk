@@ -1,5 +1,9 @@
 package pctk
 
+import (
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
+
 var (
 	ControlVerbColor      = Green
 	ControlVerbHoverColor = BrigthGreen
@@ -43,4 +47,16 @@ func (a *App) drawActionVerb(verb string, col, row int) {
 func (a *App) drawFullAction(action string) {
 	pos := NewPos(ScreenWidth/2, ScreenHeightScene)
 	a.drawDefaultText(action, pos, AlignCenter, ControlActionColor)
+}
+
+func (a *App) processControlInputs() {
+	if rl.IsMouseButtonPressed(rl.MouseButtonLeft) { // TODO missing check action / control selected
+		if a.MouseIsInto(a.scene.sceneViewPort) {
+			mouseClick := a.MousePosition()
+			a.Do(ActorWalkToPosition{
+				ActorName: a.egoSelected,
+				Position:  NewPos(mouseClick.X, 90), // TODO Y-coord
+			})
+		}
+	}
 }

@@ -8,8 +8,9 @@ import (
 
 // Scene represents a scene in the game.
 type Scene struct {
-	bg      *Image
-	dialogs []Dialog
+	bg            *Image
+	dialogs       []Dialog
+	sceneViewPort Rectangle
 }
 
 // NewScene creates a new scene with the given background image.
@@ -18,7 +19,8 @@ func NewScene(bg *Image) *Scene {
 		log.Fatal("Background image is too small")
 	}
 	return &Scene{
-		bg: bg,
+		bg:            bg,
+		sceneViewPort: NewRect(0, 0, int(bg.Width()), int(bg.Height())),
 	}
 }
 

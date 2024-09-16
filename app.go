@@ -25,6 +25,7 @@ type App struct {
 	cursorColor       Color
 	music             *Music
 	sound             *Sound
+	egoSelected       string
 }
 
 // New creates a new pctk application.
