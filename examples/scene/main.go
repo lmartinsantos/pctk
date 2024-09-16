@@ -122,7 +122,10 @@ func main() {
 			Color:    pctk.Magenta,
 		}).Wait()
 		// lets player move guybrush freely ;-)
-		app.Do(pctk.ActorSelectEgo{ActorName: "guybrush"})
+		pctk.WithDelay(
+			app.Do(pctk.ActorSelectEgo{ActorName: "guybrush"}), 5*time.Second).Wait()
+		app.Do(pctk.EnableControlPanel{Enable: true})
+
 	}()
 	app.Run()
 }
@@ -136,7 +139,7 @@ func makeScene(bundle *pctk.ResourceBundle) {
 	sprites := pctk.LoadSpriteSheetFromFile("guybrush.png", pctk.Size{W: 32, H: 48})
 	bundle.PutSpriteSheet("/guybrush/sprites", sprites)
 
-	actor := pctk.NewActor("Guybrush").
+	actor := pctk.NewActor("guybrush").
 		WithAnimationStand(pctk.DirRight, pctk.NewAnimation("/guybrush/sprites").
 			WithFrame(0, 1, time.Second),
 		).

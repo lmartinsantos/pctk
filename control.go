@@ -11,23 +11,24 @@ var (
 )
 
 func (a *App) drawControlPanel() {
+	if a.controlPanelEnabled {
+		a.drawActionVerb("Open", 0, 0)
+		a.drawActionVerb("Close", 0, 1)
+		a.drawActionVerb("Push", 0, 2)
+		a.drawActionVerb("Pull", 0, 3)
 
-	a.drawActionVerb("Open", 0, 0)
-	a.drawActionVerb("Close", 0, 1)
-	a.drawActionVerb("Push", 0, 2)
-	a.drawActionVerb("Pull", 0, 3)
+		a.drawActionVerb("Walk to", 1, 0)
+		a.drawActionVerb("Pick up", 1, 1)
+		a.drawActionVerb("Talk to", 1, 2)
+		a.drawActionVerb("Give", 1, 3)
 
-	a.drawActionVerb("Walk to", 1, 0)
-	a.drawActionVerb("Pick up", 1, 1)
-	a.drawActionVerb("Talk to", 1, 2)
-	a.drawActionVerb("Give", 1, 3)
+		a.drawActionVerb("Use", 2, 0)
+		a.drawActionVerb("Look at", 2, 1)
+		a.drawActionVerb("Turn on", 2, 2)
+		a.drawActionVerb("Turn off", 2, 3)
 
-	a.drawActionVerb("Use", 2, 0)
-	a.drawActionVerb("Look at", 2, 1)
-	a.drawActionVerb("Turn on", 2, 2)
-	a.drawActionVerb("Turn off", 2, 3)
-
-	a.drawFullAction("Walk to") // TODO: do not hardcode this
+		a.drawFullAction("Walk to") // TODO: do not hardcode this
+	}
 }
 
 func (a *App) drawActionVerb(verb string, col, row int) {
@@ -50,13 +51,25 @@ func (a *App) drawFullAction(action string) {
 }
 
 func (a *App) processControlInputs() {
-	if rl.IsMouseButtonPressed(rl.MouseButtonLeft) { // TODO missing check action / control selected
-		if a.MouseIsInto(a.scene.sceneViewPort) {
+	if a.ego != nil {
+		if rl.IsMouseButtonPressed(rl.MouseButtonLeft) { // TODO missing check action / control selected
 			mouseClick := a.MousePosition()
-			a.Do(ActorWalkToPosition{
-				ActorName: a.egoSelected,
-				Position:  NewPos(mouseClick.X, 90), // TODO Y-coord
-			})
+			if SceneViewport.Contains(mouseClick) {
+				a.Do(ActorWalkToPosition{
+					ActorName: a.ego.name,
+					Position:  NewPos(mouseClick.X, a.ego.pos.Y),
+				})
+			}
 		}
 	}
+}
+
+// EnableControlPanel is a command that will enable or disable the control panel.
+type EnableControlPanel struct {
+	Enable bool
+}
+
+func (cmd EnableControlPanel) Execute(app *App, done Promise) {
+	app.controlPanelEnabled = cmd.Enable
+	done.Complete()
 }

@@ -131,6 +131,11 @@ func (r Rectangle) toRaylib() rl.Rectangle {
 	)
 }
 
+// Contains returns true if the mouse is into the given rectangle.
+func (r Rectangle) Contains(pos Position) bool {
+	return rl.CheckCollisionPointRec(pos.toRaylib(), r.toRaylib())
+}
+
 // Direction represents a direction in 2D space.
 type Direction int
 
