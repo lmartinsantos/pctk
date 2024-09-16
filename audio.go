@@ -56,22 +56,6 @@ func (cmd MusicResume) Execute(app *App, done Promise) {
 	done.Complete()
 }
 
-// SetMusicVolume - Set volume for music (1.0 is max level)
-func (a *App) SetMusicVolume(volume float32) {
-	if a.isMusicReady() {
-		rl.SetMusicVolume(*a.music, volume)
-	}
-}
-
-// SetMasterVolume sets the global volume for the application.
-func (a *App) SetMasterVolume(volume float32) {
-	rl.SetMasterVolume(volume)
-}
-
-// GetMasterVolume returns the global master volume for the application.
-func (a *App) GetMasterVolume() float32 {
-	return rl.GetMasterVolume()
-}
 func (a *App) isMusicReady() bool {
 	return a.music != nil && rl.IsMusicReady(*a.music)
 }
@@ -118,13 +102,6 @@ func LoadSoundFromFile(path string) *Sound {
 	return &sound
 }
 
-// SetSoundVolume - Set volume for sound (1.0 is max level)
-func (a *App) SetSoundVolume(volume float32) {
-	if a.isSoundReady() {
-		rl.SetSoundVolume(*a.sound, volume)
-	}
-}
-
 func (a *App) isSoundReady() bool {
 	return a.sound != nil && rl.IsSoundReady(*a.sound)
 }
@@ -150,38 +127,6 @@ type SoundStop struct {
 func (cmd SoundStop) Execute(app *App, done Promise) {
 	app.stopSound()
 	done.Complete()
-}
-
-// SoundPause is a command that will pause the sound with the given resource locator.
-type SoundPause struct {
-	SoundResource ResourceLocator
-}
-
-func (cmd SoundPause) Execute(app *App, done Promise) {
-	app.pauseSound()
-	done.Complete()
-}
-
-// SoundResume is a command that will resume the sound with the given resource locator.
-type SoundResume struct {
-	SoundResource ResourceLocator
-}
-
-func (cmd SoundResume) Execute(app *App, done Promise) {
-	app.resumeSound()
-	done.Complete()
-}
-
-func (a *App) pauseSound() {
-	if a.isSoundReady() {
-		rl.PauseSound(*a.sound)
-	}
-}
-
-func (a *App) resumeSound() {
-	if a.isSoundReady() {
-		rl.ResumeSound(*a.sound)
-	}
 }
 
 func (a *App) stopSound() {
