@@ -51,15 +51,14 @@ func (a *App) drawFullAction(action string) {
 }
 
 func (a *App) processControlInputs() {
-	if a.ego != nil {
-		if rl.IsMouseButtonPressed(rl.MouseButtonLeft) { // TODO missing check action / control selected
-			mouseClick := a.MousePosition()
-			if SceneViewport.Contains(mouseClick) {
-				a.Do(ActorWalkToPosition{
-					ActorName: a.ego.name,
-					Position:  NewPos(mouseClick.X, a.ego.pos.Y),
-				})
-			}
+	if a.ego != nil && rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
+		mouseClick := a.MousePosition()
+		if SceneViewport.Contains(mouseClick) {
+			// TODO missing check action / control selected
+			a.Do(ActorWalkToPosition{
+				ActorName: a.ego.name,
+				Position:  NewPos(mouseClick.X, a.ego.pos.Y),
+			})
 		}
 	}
 }
