@@ -9,6 +9,14 @@ const (
 	LettersPerSecond = 10
 )
 
+var (
+	// DefaultDialogColor is the default color of a dialog.
+	DefaultDialogColor = Magenta
+
+	// DefaultDialogPosition is the default position of a dialog.
+	DefaultDialogPosition = Position{X: 160, Y: 20}
+)
+
 type Dialog struct {
 	text  string
 	pos   Position

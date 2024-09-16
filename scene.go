@@ -22,12 +22,12 @@ func NewScene(bg *Image) *Scene {
 	}
 }
 
-// PlayScene is a command that will play the scene with the given resource locator.
-type PlayScene struct {
+// ScenePlay is a command that will play the scene with the given resource locator.
+type ScenePlay struct {
 	SceneResource ResourceLocator
 }
 
-func (cmd PlayScene) Execute(app *App, done Promise) {
+func (cmd ScenePlay) Execute(app *App, done Promise) {
 	// TODO: dispose the previous scene if any
 	app.scene = app.res.LoadScene(cmd.SceneResource)
 	done.Complete()
