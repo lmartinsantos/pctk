@@ -168,7 +168,7 @@ func (cmd ActorSpeak) Execute(app *App, done Promise) {
 		dialogDone := app.doNow(ShowDialog{
 			Text:     cmd.Text,
 			Position: a.pos.Above(50),
-			Color:    rl.White,
+			Color:    cmd.Color,
 			Speed:    1.0,
 		})
 		a.act = func(app *App, c *Actor) (completed bool) {
