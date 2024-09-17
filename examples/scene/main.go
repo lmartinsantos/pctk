@@ -11,117 +11,7 @@ func main() {
 	app := pctk.New(bundle)
 
 	makeScene(bundle)
-	app.Do(pctk.PlayScene{SceneResource: "/main"})
-	app.Do(pctk.ActorShow{
-		ActorResource: "/guybrush",
-		ActorName:     "guybrush",
-		Position:      pctk.NewPos(340, 90),
-		LookAt:        pctk.DirLeft,
-	})
-	app.Do(pctk.MusicPlay{MusicResource: "/music/on-the-hill"})
-	app.Do(pctk.SoundPlay{SoundResource: "/sound/cricket"})
-	go func() {
-		app.Do(pctk.ActorWalkToPosition{
-			ActorName: "guybrush",
-			Position:  pctk.NewPos(290, 90),
-		}).Wait()
-		app.Do(pctk.ActorSpeak{
-			ActorName: "guybrush",
-			Text:      "Hello, I'm Guybrush Threepwood,\nmighty pirate!",
-		}).Wait()
-		app.Do(pctk.ShowDialog{
-			Text:     "**Oh no! This guy again!**",
-			Position: pctk.NewPos(60, 20),
-			Color:    pctk.Magenta,
-		})
-		app.Do(pctk.ActorWalkToPosition{
-			ActorName: "guybrush",
-			Position:  pctk.NewPos(120, 90),
-		}).Wait()
-		app.Do(pctk.ActorSpeak{
-			ActorName: "guybrush",
-			Text:      "I think I've lost my boat keys.",
-		}).Wait()
-		app.Do(pctk.ActorSpeak{
-			ActorName: "guybrush",
-			Text:      "Have you seen any keys?",
-			Delay:     2 * time.Second,
-		}).Wait()
-		pctk.WithDelay(
-			app.Do(pctk.ShowDialog{
-				Text:     "Eeerrrr... Nope!",
-				Position: pctk.NewPos(60, 20),
-				Color:    pctk.Magenta,
-			}),
-			2*time.Second,
-		).Wait()
-		app.Do(pctk.MusicPlay{MusicResource: "/music/guitar_noodling"})
-		app.Do(pctk.ActorWalkToPosition{
-			ActorName: "guybrush",
-			Position:  pctk.NewPos(120, 80),
-		}).Wait()
-		app.Do(pctk.ActorSpeak{
-			ActorName: "guybrush",
-			Text:      "Where can I find the keys?",
-			Delay:     1 * time.Second,
-		}).Wait()
-		app.Do(pctk.ActorWalkToPosition{
-			ActorName: "guybrush",
-			Position:  pctk.NewPos(120, 90),
-		}).Wait()
-		pctk.WithDelay(
-			app.Do(pctk.ActorSpeak{
-				ActorName: "guybrush",
-				Text:      "Ooooook...",
-			}),
-			2*time.Second,
-		).Wait()
-		pctk.WithDelay(
-			app.Do(pctk.ActorStand{
-				ActorName: "guybrush",
-				Direction: pctk.DirRight,
-			}),
-			2*time.Second,
-		).Wait()
-		app.Do(pctk.ActorSpeak{
-			ActorName: "guybrush",
-			Text:      "Ok, I will try the Scumm bar.",
-		}).Wait()
-		app.Do(pctk.ActorStand{
-			ActorName: "guybrush",
-			Direction: pctk.DirLeft,
-		}).Wait()
-		app.Do(pctk.ActorSpeak{
-			ActorName: "guybrush",
-			Text:      "Thank you guys!",
-		}).Wait()
-		app.Do(pctk.SoundPlay{SoundResource: "/sound/cricket"})
-		app.Do(pctk.ActorWalkToPosition{
-			ActorName: "guybrush",
-			Position:  pctk.NewPos(360, 90),
-		}).Wait()
-		pctk.WithDelay(
-			app.Do(pctk.ShowDialog{
-				Text:     "Oh, Jesus! I though we would\ntell again that stupid\ntale about LeChuck!",
-				Position: pctk.NewPos(60, 20),
-				Color:    pctk.Magenta,
-			}),
-			5*time.Second,
-		).Wait()
-		pctk.WithDelay(
-			app.Do(pctk.ShowDialog{
-				Text:     "Who has the keys?",
-				Position: pctk.NewPos(60, 20),
-				Color:    pctk.BrigthYellow,
-			}),
-			1*time.Second,
-		).Wait()
-		app.Do(pctk.ShowDialog{
-			Text:     "Me!",
-			Position: pctk.NewPos(60, 20),
-			Color:    pctk.Magenta,
-		}).Wait()
-	}()
+	app.Do(pctk.ScriptRun{ScriptResource: "/scripts/LostMyKeys"})
 	app.Run()
 }
 
@@ -178,4 +68,48 @@ func makeScene(bundle *pctk.ResourceBundle) {
 	bundle.PutMusic("/music/on-the-hill", pctk.LoadMusicFromFile("On_the_Hill.ogg"))
 	bundle.PutMusic("/music/guitar_noodling", pctk.LoadMusicFromFile("guitar_noodling.ogg"))
 	bundle.PutSound("/sound/cricket", pctk.LoadSoundFromFile("cricket.wav"))
+
+	bundle.PutScript("/scripts/LostMyKeys", &pctk.Script{
+		Language: pctk.ScriptLua,
+		Code: []byte(`
+			local pirate1_dialog_props = { pos = {x=60, y=20}, color = ColorMagenta }
+			local pirate2_dialog_props = { pos = {x=60, y=50}, color = ColorYellow }
+
+			ScenePlay("/main")
+			ActorShow("/guybrush", "guybrush", {
+				pos={x=340, y=90}, 
+				dir=DirLeft
+			})
+			MusicPlay("/music/on-the-hill")
+			SoundPlay("/sound/cricket")
+			ActorWalkToPosition("guybrush", {x=290, y=90}).Wait()
+			ActorSpeak("guybrush", "Hello, I'm Guybrush Threepwood,\nmighty pirate!").Wait()
+			DialogShow("**Oh no! This guy again!**", pirate1_dialog_props)
+			ActorWalkToPosition("guybrush", {x=120, y=90}).Wait()
+			ActorSpeak("guybrush", "I think I've lost the keys to my boat.").Wait()
+			ActorSpeak("guybrush", "Have you seen any keys?", {delay=2000}).Wait()
+			DialogShow("Eeerrrr... Nope!", pirate1_dialog_props)
+			SleepMillis(2000)
+
+			MusicPlay("/music/guitar_noodling")
+			ActorWalkToPosition("guybrush", {x=120, y=80}).Wait()
+			ActorSpeak("guybrush", "Where can I find the keys?", {delay=1000}).Wait()
+			ActorWalkToPosition("guybrush", {x=120, y=90}).Wait()
+			ActorSpeak("guybrush", "Ooooook...").Wait()
+			SleepMillis(2000)
+			ActorStand("guybrush", {dir = DirRight}).Wait()
+			SleepMillis(2000)
+			ActorSpeak("guybrush", "Ok, I will try the Scumm bar.").Wait()
+			ActorStand("guybrush", {dir = DirLeft}).Wait()
+			ActorSpeak("guybrush", "Thank you guys!").Wait()
+			SoundPlay("/sound/cricket")
+			ActorWalkToPosition("guybrush", {x=360, y=90}).Wait()
+
+			DialogShow("Oh, Jesus! I though he would\ntell again that stupid\ntale about LeChuck!", pirate1_dialog_props).Wait()
+			SleepMillis(5000)
+			DialogShow("Who has the keys?", pirate2_dialog_props).Wait()
+			SleepMillis(1000)
+			DialogShow("Me!", pirate1_dialog_props)
+		`),
+	})
 }

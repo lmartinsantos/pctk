@@ -10,6 +10,11 @@ const (
 	DefaultActorSpeakDelay = 500 * time.Millisecond
 )
 
+var (
+	DefaultActorPosition  = NewPos(160, 90)
+	DefaultActorDirection = DirRight
+)
+
 type Actor struct {
 	name string
 
