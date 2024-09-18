@@ -39,12 +39,12 @@ func (a *App) drawMouseCursor() {
 func mouseCursorData() []byte {
 	img := image.NewRGBA(image.Rect(0, 0, 15, 15))
 	for i := 0; i <= 5; i++ {
-		img.Set(i, 7, BrigthWhite)
-		img.Set(7, i, BrigthWhite)
+		img.Set(i, 7, White)
+		img.Set(7, i, White)
 	}
 	for i := 9; i <= 15; i++ {
-		img.Set(i, 7, BrigthWhite)
-		img.Set(7, i, BrigthWhite)
+		img.Set(i, 7, White)
+		img.Set(7, i, White)
 	}
 	return img.Pix
 }
