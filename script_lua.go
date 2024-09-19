@@ -82,6 +82,16 @@ func luaApiFunctions(app *App) []lua.RegistryFunction {
 			luaPushFuture(l, done)
 			return 1
 		}},
+		{Name: "ObjectShow", Function: func(l *lua.State) int {
+			cmd := ObjectShow{
+				ObjectResource: ResourceLocator(lua.CheckString(l, 1)),
+				ObjectName:     lua.CheckString(l, 2),
+				Position:       luaCheckOption(l, 3, "pos", DefaultObjectPosition, luaCheckPosition),
+			}
+			done := app.Do(cmd)
+			luaPushFuture(l, done)
+			return 1
+		}},
 		{Name: "ScenePlay", Function: func(l *lua.State) int {
 			done := app.Do(ScenePlay{SceneResource: ResourceLocator(lua.CheckString(l, 1))})
 			luaPushFuture(l, done)

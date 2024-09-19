@@ -1,46 +1,100 @@
 package pctk
 
+import "fmt"
+
+type ActionName int
+
+// ActionName represents a verb or command that the player can perform in the game.
+const (
+	Open ActionName = iota
+	Close
+	Push
+	Pull
+	WalkTo
+	PickUp
+	TalkTo
+	Give
+	Use
+	LookAt
+	TurnOn
+	TurnOff
+)
+
+// Action represents an interactive action in the game including where is rendered.
+type Action struct {
+	ActionName  ActionName
+	Description string
+	Col         int
+	Row         int
+}
+
 var (
-	ControlVerbColor      = Green
-	ControlVerbHoverColor = BrigthGreen
-	ControlActionColor    = Cyan
+	ControlVerbColor                 = Green
+	ControlVerbHoverOrSuggestedColor = BrigthGreen
+	ControlActionColor               = Cyan
+
+	// Actions
+	ActionOpen  = &Action{ActionName: Open, Description: "Open", Col: 0, Row: 0}
+	ActionClose = &Action{ActionName: Close, Description: "Close", Col: 0, Row: 1}
+	ActionPush  = &Action{ActionName: Push, Description: "Push", Col: 0, Row: 2}
+	ActionPull  = &Action{ActionName: Pull, Description: "Pull", Col: 0, Row: 3}
+
+	ActionWalkTo = &Action{ActionName: WalkTo, Description: "Walk to", Col: 1, Row: 0}
+	ActionPickUp = &Action{ActionName: PickUp, Description: "Pick up", Col: 1, Row: 1}
+	ActionTalkTo = &Action{ActionName: TalkTo, Description: "Talk to", Col: 1, Row: 2}
+	ActionGive   = &Action{ActionName: Give, Description: "Give", Col: 1, Row: 3}
+
+	ActionUse     = &Action{ActionName: Use, Description: "Use", Col: 2, Row: 0}
+	ActionLookAt  = &Action{ActionName: LookAt, Description: "Look at", Col: 2, Row: 1}
+	ActionTurnOn  = &Action{ActionName: TurnOn, Description: "Turn on", Col: 2, Row: 2}
+	ActionTurnOff = &Action{ActionName: TurnOff, Description: "Turn off", Col: 2, Row: 3}
+
+	DefaultAction = ActionWalkTo
 )
 
 func (a *App) drawControlPanel() {
 
-	a.drawActionVerb("Open", 0, 0)
-	a.drawActionVerb("Close", 0, 1)
-	a.drawActionVerb("Push", 0, 2)
-	a.drawActionVerb("Pull", 0, 3)
+	actions := []*Action{
+		ActionOpen, ActionClose, ActionPush, ActionPull,
+		ActionWalkTo, ActionPickUp, ActionTalkTo, ActionGive,
+		ActionUse, ActionLookAt, ActionTurnOn, ActionTurnOff,
+	}
 
-	a.drawActionVerb("Walk to", 1, 0)
-	a.drawActionVerb("Pick up", 1, 1)
-	a.drawActionVerb("Talk to", 1, 2)
-	a.drawActionVerb("Give", 1, 3)
-
-	a.drawActionVerb("Use", 2, 0)
-	a.drawActionVerb("Look at", 2, 1)
-	a.drawActionVerb("Turn on", 2, 2)
-	a.drawActionVerb("Turn off", 2, 3)
-
-	a.drawFullAction("Walk to") // TODO: do not hardcode this
+	for _, action := range actions {
+		a.drawAction(action, ControlVerbColor)
+	}
 }
 
-func (a *App) drawActionVerb(verb string, col, row int) {
-	x := 2 + col*ScreenWidth/6
-	y := ScreenHeightScene + (row+1)*FontDefaultSize
+func (a *App) drawAction(action *Action, color Color) {
+	x := 2 + action.Col*ScreenWidth/6
+	y := ScreenHeightScene + (action.Row+1)*FontDefaultSize
 	w := ScreenWidth / 6
 	h := FontDefaultSize
 
-	color := ControlVerbColor
 	if a.MouseIsInto(NewRect(x, y, w, h)) {
-		color = ControlVerbHoverColor
+		color = ControlVerbHoverOrSuggestedColor
 	}
 
-	a.drawDefaultText(verb, NewPos(x, y), AlignLeft, color)
+	a.drawDefaultText(action.Description, NewPos(x, y), AlignLeft, color)
 }
 
-func (a *App) drawFullAction(action string) {
+func (a *App) drawEgoAction() {
+	action := DefaultAction.Description
+	if a.egoActionSelected != nil {
+		action = a.egoActionSelected.Description
+	}
+	// check if mouse is hovering an object
+	for _, o := range a.objects {
+		size := o.anim.getAnimationSize(a)
+		if a.MouseIsInto(NewRect(o.pos.X, o.pos.Y, size.W, size.H)) {
+			action = fmt.Sprintf("%s %s", action, o.name)
+			a.drawAction(ActionLookAt, ControlVerbHoverOrSuggestedColor)
+			break
+		}
+	}
+
+	// TODO  hovering actors (discarding ego)
+
 	pos := NewPos(ScreenWidth/2, ScreenHeightScene)
-	a.drawDefaultText(action, pos, AlignCenter, ControlActionColor)
+	a.drawDefaultText(action, pos, AlignCenter, ControlVerbColor)
 }

@@ -19,6 +19,9 @@ type ResourceLoader interface {
 	// LoadMusic loads a music song from the given locator. It returns nil if the music is not found.
 	LoadMusic(locator ResourceLocator) *Music
 
+	// LoadObject loads an object from the given locator. It returns nil if the object is not found.
+	LoadObject(locator ResourceLocator) *Object
+
 	// LoadScene loads a scene from the given locator. It returns nil if the scene is not found.
 	LoadScene(locator ResourceLocator) *Scene
 
@@ -38,6 +41,7 @@ type ResourceLoader interface {
 type ResourceBundle struct {
 	actors       map[ResourceLocator]*Actor
 	music        map[ResourceLocator]*Music
+	objects      map[ResourceLocator]*Object
 	scenes       map[ResourceLocator]*Scene
 	scripts      map[ResourceLocator]*Script
 	sounds       map[ResourceLocator]*Sound
@@ -49,6 +53,7 @@ func NewResourceBundle() *ResourceBundle {
 	return &ResourceBundle{
 		actors:       make(map[ResourceLocator]*Actor),
 		music:        make(map[ResourceLocator]*Music),
+		objects:      make(map[ResourceLocator]*Object),
 		scenes:       make(map[ResourceLocator]*Scene),
 		scripts:      make(map[ResourceLocator]*Script),
 		sounds:       make(map[ResourceLocator]*Sound),
@@ -64,6 +69,11 @@ func (c *ResourceBundle) PutActor(loc ResourceLocator, a *Actor) {
 // PutMusic adds a music song to the catalog.
 func (c *ResourceBundle) PutMusic(loc ResourceLocator, m *Music) {
 	c.music[loc] = m
+}
+
+// PutObject adds an object to the catalog.
+func (c *ResourceBundle) PutObject(loc ResourceLocator, o *Object) {
+	c.objects[loc] = o
 }
 
 // PutScene adds a scene to the catalog.
@@ -94,6 +104,11 @@ func (c *ResourceBundle) LoadActor(locator ResourceLocator) *Actor {
 // LoadMusic loads a music song from the given locator. It returns nil if the music is not found.
 func (c *ResourceBundle) LoadMusic(locator ResourceLocator) *Music {
 	return c.music[locator]
+}
+
+// LoadObject loads an object from the given locator. It returns nil if the object is not found.
+func (c *ResourceBundle) LoadObject(locator ResourceLocator) *Object {
+	return c.objects[locator]
 }
 
 // LoadScene loads a scene from the given locator. It returns nil if the scene is not found.

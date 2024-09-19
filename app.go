@@ -15,6 +15,7 @@ type App struct {
 	scene    *Scene
 	dialogs  []Dialog
 	actors   map[string]*Actor
+	objects  map[string]*Object
 	commands commandQueue
 
 	cam               rl.Camera2D
@@ -25,13 +26,15 @@ type App struct {
 	cursorColor       Color
 	music             *Music
 	sound             *Sound
+	egoActionSelected *Action // TODO set and unset egoActionSelected
 }
 
 // New creates a new pctk application.
 func New(resources ResourceLoader, opts ...AppOption) *App {
 	app := &App{
-		res:    resources,
-		actors: make(map[string]*Actor),
+		res:     resources,
+		actors:  make(map[string]*Actor),
+		objects: make(map[string]*Object),
 	}
 
 	opts = append(defaultAppOptions, opts...)

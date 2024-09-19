@@ -66,6 +66,12 @@ func (a *Animation) draw(app *App, pos Position) {
 	)
 }
 
+// getAnimationSize gets the annimation frame size
+func (a *Animation) getAnimationSize(app *App) Size {
+	sprites := app.res.LoadSpriteSheet(a.sprites)
+	return sprites.frameSize
+}
+
 type animationFrame struct {
 	i, j  uint
 	delay time.Duration
