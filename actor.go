@@ -59,7 +59,7 @@ func (a *Actor) draw(app *App) {
 
 type action func(*App, *Actor) (completed bool)
 
-// ActorShow is a command that will show an actor in the scene at the given position.
+// ActorShow is a command that will show an actor in the room at the given position.
 type ActorShow struct {
 	ActorResource   ResourceRef
 	CostumeResource ResourceRef

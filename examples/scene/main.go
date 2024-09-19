@@ -10,16 +10,16 @@ func main() {
 	bundle := pctk.NewResourceBundle()
 	app := pctk.New(bundle)
 
-	makeScene(bundle)
+	buildResources(bundle)
 	app.Do(pctk.ScriptRun{ScriptResource: "/scripts/LostMyKeys"})
 	app.Run()
 }
 
-func makeScene(bundle *pctk.ResourceBundle) {
+func buildResources(bundle *pctk.ResourceBundle) {
 
 	bg := pctk.LoadImageFromFile("background.jpg")
-	scene := pctk.NewScene(bg)
-	bundle.PutScene("/main", scene)
+	room := pctk.NewRoom(bg)
+	bundle.PutRoom("/main", room)
 
 	sprites := pctk.LoadSpriteSheetFromFile("guybrush.png", pctk.Size{W: 32, H: 48})
 	costume := pctk.NewCostume(sprites).
@@ -73,7 +73,7 @@ func makeScene(bundle *pctk.ResourceBundle) {
 			local pirate1_dialog_props = { pos = {x=60, y=20}, color = ColorMagenta }
 			local pirate2_dialog_props = { pos = {x=60, y=50}, color = ColorYellow }
 
-			ScenePlay("/main")
+			RoomShow("/main")
 			ActorShow("/guybrush", "guybrush", {
 				pos={x=340, y=90}, 
 				dir=DirLeft,

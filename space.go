@@ -13,11 +13,11 @@ const (
 	// ScreenHeight is the height of the screen (ignoring zoom).
 	ScreenHeight = 200
 
-	// ScreenHeightScene is the width of the scene section of the screen.
-	ScreenHeightScene = 144
+	// ViewportHeight is the width of the room section of the screen.
+	ViewportHeight = 144
 
-	// ScreenHeightControl is the width of the control box section of the screen.
-	ScreenHeightControl = 56
+	// ControlBoxHeight is the width of the control box section of the screen.
+	ControlBoxHeight = 56
 )
 
 // Position represents a 2D position.

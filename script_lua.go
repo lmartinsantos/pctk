@@ -83,8 +83,8 @@ func luaApiFunctions(app *App) []lua.RegistryFunction {
 			luaPushFuture(l, done)
 			return 1
 		}},
-		{Name: "ScenePlay", Function: func(l *lua.State) int {
-			done := app.Do(ScenePlay{SceneResource: ResourceRef(lua.CheckString(l, 1))})
+		{Name: "RoomShow", Function: func(l *lua.State) int {
+			done := app.Do(RoomShow{RoomRef: ResourceRef(lua.CheckString(l, 1))})
 			luaPushFuture(l, done)
 			return 1
 		}},

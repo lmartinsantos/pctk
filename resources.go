@@ -25,8 +25,8 @@ type ResourceLoader interface {
 	// found.
 	LoadMusic(ref ResourceRef) *Music
 
-	// LoadScene loads a scene from the given ref. It returns nil if the scene is not found.
-	LoadScene(ref ResourceRef) *Scene
+	// LoadRoom loads a room from the given ref. It returns nil if the room is not found.
+	LoadRoom(ref ResourceRef) *Room
 
 	// LoadScript loads a script from the given ref. It returns nil if the script is not found.
 	LoadScript(ref ResourceRef) *Script
@@ -41,7 +41,7 @@ type ResourceLoader interface {
 type ResourceBundle struct {
 	costumes map[ResourceRef]*Costume
 	music    map[ResourceRef]*Music
-	scenes   map[ResourceRef]*Scene
+	rooms    map[ResourceRef]*Room
 	scripts  map[ResourceRef]*Script
 	sounds   map[ResourceRef]*Sound
 }
@@ -51,7 +51,7 @@ func NewResourceBundle() *ResourceBundle {
 	return &ResourceBundle{
 		costumes: make(map[ResourceRef]*Costume),
 		music:    make(map[ResourceRef]*Music),
-		scenes:   make(map[ResourceRef]*Scene),
+		rooms:    make(map[ResourceRef]*Room),
 		scripts:  make(map[ResourceRef]*Script),
 		sounds:   make(map[ResourceRef]*Sound),
 	}
@@ -67,9 +67,9 @@ func (c *ResourceBundle) PutMusic(ref ResourceRef, m *Music) {
 	c.music[ref] = m
 }
 
-// PutScene adds a scene to the bundle.
-func (c *ResourceBundle) PutScene(ref ResourceRef, sc *Scene) {
-	c.scenes[ref] = sc
+// PutRoom adds a room to the bundle.
+func (c *ResourceBundle) PutRoom(ref ResourceRef, sc *Room) {
+	c.rooms[ref] = sc
 }
 
 // PutScript adds a script to the bundle.
@@ -92,9 +92,9 @@ func (c *ResourceBundle) LoadMusic(ref ResourceRef) *Music {
 	return c.music[ref]
 }
 
-// LoadScene loads a scene from the given ref. It returns nil if the scene is not found.
-func (c *ResourceBundle) LoadScene(ref ResourceRef) *Scene {
-	return c.scenes[ref]
+// LoadRoom loads a room from the given ref. It returns nil if the room is not found.
+func (c *ResourceBundle) LoadRoom(ref ResourceRef) *Room {
+	return c.rooms[ref]
 }
 
 // LoadScript loads a script from the given ref. It returns nil if the script is not found.

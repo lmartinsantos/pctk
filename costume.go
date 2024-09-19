@@ -2,7 +2,7 @@ package pctk
 
 import "io"
 
-// Costume is a struct that represents a costume for an actor or a scene animation.
+// Costume is a struct that represents a costume for an actor or a room animation.
 type Costume struct {
 	sprites    *SpriteSheet
 	animStand  map[Direction]*Animation

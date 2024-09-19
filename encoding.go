@@ -89,10 +89,10 @@ func (e *ResourceEncoder) EncodeMusic(ref ResourceRef, m *Music, comp ResourceCo
 	})
 }
 
-// EncodeScene encodes a scene using the resource encoder.
-func (e *ResourceEncoder) EncodeScene(ref ResourceRef, s *Scene, comp ResourceCompression) error {
+// EncodeRoom encodes a room using the resource encoder.
+func (e *ResourceEncoder) EncodeRoom(ref ResourceRef, s *Room, comp ResourceCompression) error {
 	return e.encodeResource(ref, s, resourceHeader{
-		Type:        ResourceTypeScene,
+		Type:        ResourceTypeRoom,
 		Compression: comp,
 	})
 }
@@ -199,7 +199,7 @@ const (
 	ResourceTypeUndefined ResourceType = iota
 	ResourceTypeCostume
 	ResourceTypeMusic
-	ResourceTypeScene
+	ResourceTypeRoom
 	ResourceTypeScript
 	ResourceTypeSound
 )

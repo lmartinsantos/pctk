@@ -28,7 +28,7 @@ func (a *App) drawControlPanel() {
 
 func (a *App) drawActionVerb(verb string, col, row int) {
 	x := 2 + col*ScreenWidth/6
-	y := ScreenHeightScene + (row+1)*FontDefaultSize
+	y := ViewportHeight + (row+1)*FontDefaultSize
 	w := ScreenWidth / 6
 	h := FontDefaultSize
 
@@ -41,6 +41,6 @@ func (a *App) drawActionVerb(verb string, col, row int) {
 }
 
 func (a *App) drawFullAction(action string) {
-	pos := NewPos(ScreenWidth/2, ScreenHeightScene)
+	pos := NewPos(ScreenWidth/2, ViewportHeight)
 	a.drawDefaultText(action, pos, AlignCenter, ControlActionColor)
 }
