@@ -15,16 +15,7 @@ const (
 
 // ScriptData is the data for a script resource.
 type ScriptData struct {
-	Language pctk.ScriptLanguage
-	Code     []byte
-}
-
-// AsResource converts the script data to a script resource.
-func (d *ScriptData) AsResource() *pctk.Script {
-	return &pctk.Script{
-		Language: d.Language,
-		Code:     d.Code,
-	}
+	Resource *pctk.Script
 }
 
 func (d *ScriptData) UnmarshalYAML(n *yaml.Node) error {
@@ -38,11 +29,10 @@ func (d *ScriptData) UnmarshalYAML(n *yaml.Node) error {
 
 	switch data.Language {
 	case "", "lua", "Lua", "LUA":
-		d.Language = pctk.ScriptLua
+		d.Resource = pctk.NewScript(pctk.ScriptLua, []byte(data.Code))
 	default:
 		return fmt.Errorf("unknown script language: %s", data.Language)
 	}
-	d.Code = []byte(data.Code)
 
 	return nil
 }

@@ -9,7 +9,7 @@ import (
 
 // RoomData is the data for a room resource.
 type RoomData struct {
-	Background *pctk.Image
+	Resource *pctk.Room
 
 	workingDir string
 }
@@ -27,11 +27,7 @@ func (d *RoomData) UnmarshalYAML(n *yaml.Node) error {
 		return err
 	}
 
-	d.Background = pctk.LoadImageFromFile(filepath.Join(d.workingDir, data.Background))
+	d.Resource = pctk.NewRoom(pctk.LoadImageFromFile(filepath.Join(d.workingDir, data.Background)))
 
 	return nil
-}
-
-func (d *RoomData) AsResource() *pctk.Room {
-	return pctk.NewRoom(d.Background)
 }

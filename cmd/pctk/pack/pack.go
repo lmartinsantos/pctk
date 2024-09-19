@@ -43,9 +43,9 @@ func do(src string, output string) error {
 		case *MusicData:
 			enc.EncodeMusic(ref, data.Resource, man.Compression)
 		case *RoomData:
-			enc.EncodeRoom(ref, data.AsResource(), man.Compression)
+			enc.EncodeRoom(ref, data.Resource, man.Compression)
 		case *ScriptData:
-			enc.EncodeScript(ref, data.AsResource(), man.Compression)
+			enc.EncodeScript(ref, data.Resource, man.Compression)
 		case *SoundData:
 			enc.EncodeSound(ref, data.Resource, man.Compression)
 		}

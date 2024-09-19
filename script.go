@@ -22,6 +22,14 @@ type Script struct {
 	Code     []byte
 }
 
+// NewScript creates a new script.
+func NewScript(lang ScriptLanguage, code []byte) *Script {
+	return &Script{
+		Language: lang,
+		Code:     code,
+	}
+}
+
 func (s *Script) BinaryEncode(w io.Writer) (int, error) {
 	return BinaryEncode(w, uint16(s.Language), uint32(len(s.Code)), s.Code)
 }
