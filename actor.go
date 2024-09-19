@@ -18,9 +18,7 @@ var (
 type Actor struct {
 	name string
 
-	animStand map[Direction]*Animation
-	animSpeak map[Direction]*Animation
-	animWalk  map[Direction]*Animation
+	costume *Costume
 
 	lookAt Direction
 	pos    Position
@@ -29,33 +27,21 @@ type Actor struct {
 
 func NewActor(name string) *Actor {
 	return &Actor{
-		name:      name,
-		animStand: make(map[Direction]*Animation),
-		animSpeak: make(map[Direction]*Animation),
-		animWalk:  make(map[Direction]*Animation),
+		name: name,
 	}
 }
 
-func (a *Actor) WithAnimationStand(dir Direction, anim *Animation) *Actor {
-	a.animStand[dir] = anim
-	return a
-}
-
-func (a *Actor) WithAnimationSpeak(dir Direction, anim *Animation) *Actor {
-	a.animSpeak[dir] = anim
-	return a
-}
-
-func (a *Actor) WithAnimationWalk(dir Direction, anim *Animation) *Actor {
-	a.animWalk[dir] = anim
+// SetCostume sets the costume for the actor.
+func (a *Actor) SetCostume(costume *Costume) *Actor {
+	a.costume = costume
 	return a
 }
 
 func (a *Actor) stand(dir Direction) *Actor {
 	a.lookAt = dir
 	a.act = func(app *App, c *Actor) (completed bool) {
-		if anim := a.animStand[dir]; anim != nil {
-			anim.draw(app, c.pos)
+		if cos := a.costume; cos != nil {
+			cos.drawStand(c.pos, dir)
 		}
 		return false
 	}
@@ -75,16 +61,18 @@ type action func(*App, *Actor) (completed bool)
 
 // ActorShow is a command that will show an actor in the scene at the given position.
 type ActorShow struct {
-	ActorResource ResourceLocator
-	ActorName     string
-	Position      Position
-	LookAt        Direction
+	ActorResource   ResourceLocator
+	CostumeResource ResourceLocator
+	ActorName       string
+	Position        Position
+	LookAt          Direction
 }
 
 func (cmd ActorShow) Execute(app *App, done Promise) {
-	actor := app.res.LoadActor(cmd.ActorResource)
+	actor := app.ensureActor(cmd.ActorName)
 	actor.pos = cmd.Position
 	actor.stand(cmd.LookAt)
+	actor.SetCostume(app.res.LoadCostume(cmd.CostumeResource))
 	app.actors[cmd.ActorName] = actor
 	done.Complete()
 }
@@ -124,8 +112,8 @@ type ActorWalkToPosition struct {
 func (cmd ActorWalkToPosition) Execute(app *App, done Promise) {
 	app.withActor(cmd.ActorName, func(a *Actor) {
 		a.act = func(app *App, c *Actor) (completed bool) {
-			if anim := a.animWalk[a.lookAt]; anim != nil {
-				anim.draw(app, c.pos)
+			if cos := a.costume; cos != nil {
+				cos.drawWalk(c.pos, a.lookAt)
 			}
 
 			if c.pos == cmd.Position {
@@ -177,8 +165,8 @@ func (cmd ActorSpeak) Execute(app *App, done Promise) {
 			Speed:    1.0,
 		})
 		a.act = func(app *App, c *Actor) (completed bool) {
-			if anim := a.animSpeak[a.lookAt]; anim != nil {
-				anim.draw(app, c.pos)
+			if cos := a.costume; cos != nil {
+				cos.drawSpeak(c.pos, a.lookAt)
 			}
 			if dialogDone.IsCompleted() {
 				done.CompleteAfter(nil, cmd.Delay)
@@ -195,6 +183,15 @@ func (a *App) withActor(name string, f func(*Actor)) {
 		return
 	}
 	f(actor)
+}
+
+func (a *App) ensureActor(name string) *Actor {
+	actor, ok := a.actors[name]
+	if !ok {
+		actor = NewActor(name)
+		a.actors[name] = actor
+	}
+	return actor
 }
 
 func (a *App) drawActors() {

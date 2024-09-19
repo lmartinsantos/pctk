@@ -22,9 +22,7 @@ func makeScene(bundle *pctk.ResourceBundle) {
 	bundle.PutScene("/main", scene)
 
 	sprites := pctk.LoadSpriteSheetFromFile("guybrush.png", pctk.Size{W: 32, H: 48})
-	bundle.PutSpriteSheet("/guybrush/sprites", sprites)
-
-	actor := pctk.NewActor("Guybrush").
+	costume := pctk.NewCostume(sprites).
 		WithAnimationStand(pctk.DirRight, pctk.NewAnimation("/guybrush/sprites").
 			WithFrame(0, 1, time.Second),
 		).
@@ -63,7 +61,7 @@ func makeScene(bundle *pctk.ResourceBundle) {
 		WithAnimationWalk(pctk.DirDown, pctk.NewAnimation("/guybrush/sprites").
 			WithFramesInRow(2, 100*time.Millisecond, 0, 1, 2, 1, 0, 3, 4, 5, 4, 3),
 		)
-	bundle.PutActor("/guybrush", actor)
+	bundle.PutCostume("/costumes/guybrush", costume)
 
 	bundle.PutMusic("/music/on-the-hill", pctk.LoadMusicFromFile("On_the_Hill.ogg"))
 	bundle.PutMusic("/music/guitar_noodling", pctk.LoadMusicFromFile("guitar_noodling.ogg"))
@@ -78,7 +76,8 @@ func makeScene(bundle *pctk.ResourceBundle) {
 			ScenePlay("/main")
 			ActorShow("/guybrush", "guybrush", {
 				pos={x=340, y=90}, 
-				dir=DirLeft
+				dir=DirLeft,
+				costume="/costumes/guybrush"
 			})
 			MusicPlay("/music/on-the-hill")
 			SoundPlay("/sound/cricket")

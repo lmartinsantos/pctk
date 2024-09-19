@@ -30,10 +30,11 @@ func luaApiFunctions(app *App) []lua.RegistryFunction {
 	return []lua.RegistryFunction{
 		{Name: "ActorShow", Function: func(l *lua.State) int {
 			cmd := ActorShow{
-				ActorResource: ResourceLocator(lua.CheckString(l, 1)),
-				ActorName:     lua.CheckString(l, 2),
-				Position:      luaCheckOption(l, 3, "pos", DefaultActorPosition, luaCheckPosition),
-				LookAt:        luaCheckOption(l, 3, "dir", DefaultActorDirection, luaCheckDirection),
+				ActorResource:   ResourceLocator(lua.CheckString(l, 1)),
+				ActorName:       lua.CheckString(l, 2),
+				Position:        luaCheckOption(l, 3, "pos", DefaultActorPosition, luaCheckPosition),
+				LookAt:          luaCheckOption(l, 3, "dir", DefaultActorDirection, luaCheckDirection),
+				CostumeResource: luaCheckOption(l, 3, "costume", "", luaCheckResourceLocator),
 			}
 			done := app.Do(cmd)
 			luaPushFuture(l, done)
@@ -172,6 +173,10 @@ func luaCheckPosition(l *lua.State, index int) Position {
 		X: luaCheckFieldInt(l, index, "x"),
 		Y: luaCheckFieldInt(l, index, "y"),
 	}
+}
+
+func luaCheckResourceLocator(l *lua.State, index int) ResourceLocator {
+	return ResourceLocator(lua.CheckString(l, index))
 }
 
 func luaPushColor(l *lua.State, c Color) {

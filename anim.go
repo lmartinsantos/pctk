@@ -48,7 +48,7 @@ func (a *Animation) Flip(flip bool) *Animation {
 	return a
 }
 
-func (a *Animation) draw(app *App, pos Position) {
+func (a *Animation) draw(sprites *SpriteSheet, pos Position) {
 	if a.frames[a.currentFrame].delay < time.Since(a.lastFrame) {
 		a.lastFrame = time.Now()
 		a.currentFrame++
@@ -57,7 +57,6 @@ func (a *Animation) draw(app *App, pos Position) {
 		}
 	}
 
-	sprites := app.res.LoadSpriteSheet(a.sprites)
 	sprites.DrawSprite(
 		a.frames[a.currentFrame].i,
 		a.frames[a.currentFrame].j,
