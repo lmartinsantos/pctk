@@ -10,19 +10,16 @@ const (
 
 // Animation represents a sequence of images that can be played.
 type Animation struct {
-	sprites ResourceRef
-	frames  []animationFrame
-	flip    bool
+	frames []animationFrame
+	flip   bool
 
 	currentFrame int
 	lastFrame    time.Time
 }
 
 // NewAnimation creates a new animation.
-func NewAnimation(sprites ResourceRef) *Animation {
-	return &Animation{
-		sprites: sprites,
-	}
+func NewAnimation() *Animation {
+	return &Animation{}
 }
 
 // WithFrame adds a frame to the animation. The frame is located at the i-th row and j-th column of
