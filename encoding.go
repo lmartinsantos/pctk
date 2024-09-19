@@ -73,6 +73,11 @@ func NewResourceEncoder(index, data io.Writer) (*ResourceEncoder, error) {
 	return enc, err
 }
 
+// DataBytesWritten returns the number of bytes written to the data writer.
+func (e *ResourceEncoder) DataBytesWritten() int {
+	return e.next
+}
+
 // EncodeCostume encodes a costume using the resource encoder.
 func (e *ResourceEncoder) EncodeCostume(ref ResourceRef, c *Costume, comp ResourceCompression) error {
 	return e.encodeResource(ref, c, resourceHeader{
