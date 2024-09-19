@@ -1,6 +1,7 @@
 package pctk
 
 import (
+	"io"
 	"log"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -18,11 +19,15 @@ func LoadImageFromFile(path string) *Image {
 	if !rl.IsImageReady(raw) {
 		log.Fatalf("Failed to load image from file %s", path)
 	}
-	tex := rl.LoadTextureFromImage(raw)
-	if !rl.IsTextureReady(tex) {
-		log.Fatalf("Failed to load texture from image %s", path)
+	return &Image{raw: raw}
+}
+
+// Texture returns the texture of the image. If the texture is not ready, it will be loaded.
+func (i *Image) Texture() rl.Texture2D {
+	if !rl.IsTextureReady(i.tex) {
+		i.tex = rl.LoadTextureFromImage(i.raw)
 	}
-	return &Image{raw, tex}
+	return i.tex
 }
 
 // Release the resources used by the image.
@@ -39,4 +44,9 @@ func (i *Image) Width() int32 {
 // Height returns the height of the image.
 func (i *Image) Height() int32 {
 	return i.raw.Height
+}
+
+func (i *Image) BinaryEncode(w io.Writer) (int, error) {
+	bytes := rl.ExportImageToMemory(*i.raw, ".png")
+	return w.Write(bytes)
 }

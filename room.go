@@ -23,7 +23,7 @@ func NewRoom(bg *Image) *Room {
 }
 
 func (r *Room) BinaryEncode(w io.Writer) (int, error) {
-	panic("not implemented")
+	return BinaryEncode(w, r.bg)
 }
 
 // RoomShow is a command that will show the room with the given resource.
@@ -39,6 +39,6 @@ func (cmd RoomShow) Execute(app *App, done Promise) {
 
 func (a *App) drawBackgroud() {
 	if a.room != nil {
-		rl.DrawTexture(a.room.bg.tex, 0, 0, rl.White)
+		rl.DrawTexture(a.room.bg.Texture(), 0, 0, rl.White)
 	}
 }

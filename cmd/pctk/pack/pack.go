@@ -7,9 +7,12 @@ import (
 	"strings"
 
 	"github.com/apoloval/pctk"
+	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 func do(src string, output string) error {
+	rl.SetTraceLogLevel(rl.LogNone)
+
 	idxFile, datFile, err := createOutputFiles(output)
 	if err != nil {
 		return err
@@ -35,6 +38,8 @@ func do(src string, output string) error {
 		}
 
 		switch data := man.Data.(type) {
+		case *RoomData:
+			enc.EncodeRoom(ref, data.AsResource(), man.Compression)
 		case *ScriptData:
 			enc.EncodeScript(ref, data.AsResource(), man.Compression)
 		}

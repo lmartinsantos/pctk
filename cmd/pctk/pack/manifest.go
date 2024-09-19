@@ -3,6 +3,7 @@ package pack
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/apoloval/pctk"
 	"gopkg.in/yaml.v3"
@@ -12,6 +13,9 @@ import (
 type ResourceType string
 
 const (
+	// ManifestTypeRoom is a room resource.
+	ManifestTypeRoom ResourceType = "room"
+
 	// ManifestTypeScript is a script resource.
 	ManifestTypeScript ResourceType = "script"
 )
@@ -21,6 +25,8 @@ type Manifest struct {
 	Type        ResourceType
 	Compression pctk.ResourceCompression
 	Data        any
+
+	workingDir string
 }
 
 // LoadManifestFromFile loads a manifest from a file.
@@ -32,6 +38,7 @@ func LoadManifestFromFile(path string) (*Manifest, error) {
 	defer data.Close()
 
 	var man Manifest
+	man.workingDir = filepath.Dir(path)
 	if err := yaml.NewDecoder(data).Decode(&man); err != nil {
 		return nil, err
 	}
@@ -49,6 +56,8 @@ func (m *Manifest) UnmarshalYAML(n *yaml.Node) error {
 	}
 	m.Type = header.Type
 	switch m.Type {
+	case ManifestTypeRoom:
+		m.Data = NewRoomData(m.workingDir)
 	case ManifestTypeScript:
 		m.Data = new(ScriptData)
 	default:
