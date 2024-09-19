@@ -27,9 +27,9 @@ func (s *Scene) BinaryEncode(w io.Writer) (int, error) {
 	panic("not implemented")
 }
 
-// ScenePlay is a command that will play the scene with the given resource locator.
+// ScenePlay is a command that will play the scene with the given resource reference.
 type ScenePlay struct {
-	SceneResource ResourceLocator
+	SceneResource ResourceRef
 }
 
 func (cmd ScenePlay) Execute(app *App, done Promise) {

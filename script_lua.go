@@ -30,11 +30,11 @@ func luaApiFunctions(app *App) []lua.RegistryFunction {
 	return []lua.RegistryFunction{
 		{Name: "ActorShow", Function: func(l *lua.State) int {
 			cmd := ActorShow{
-				ActorResource:   ResourceLocator(lua.CheckString(l, 1)),
+				ActorResource:   ResourceRef(lua.CheckString(l, 1)),
 				ActorName:       lua.CheckString(l, 2),
 				Position:        luaCheckOption(l, 3, "pos", DefaultActorPosition, luaCheckPosition),
 				LookAt:          luaCheckOption(l, 3, "dir", DefaultActorDirection, luaCheckDirection),
-				CostumeResource: luaCheckOption(l, 3, "costume", "", luaCheckResourceLocator),
+				CostumeResource: luaCheckOption(l, 3, "costume", "", luaCheckResourceRef),
 			}
 			done := app.Do(cmd)
 			luaPushFuture(l, done)
@@ -79,12 +79,12 @@ func luaApiFunctions(app *App) []lua.RegistryFunction {
 			return 1
 		}},
 		{Name: "MusicPlay", Function: func(l *lua.State) int {
-			done := app.Do(MusicPlay{MusicResource: ResourceLocator(lua.CheckString(l, 1))})
+			done := app.Do(MusicPlay{MusicResource: ResourceRef(lua.CheckString(l, 1))})
 			luaPushFuture(l, done)
 			return 1
 		}},
 		{Name: "ScenePlay", Function: func(l *lua.State) int {
-			done := app.Do(ScenePlay{SceneResource: ResourceLocator(lua.CheckString(l, 1))})
+			done := app.Do(ScenePlay{SceneResource: ResourceRef(lua.CheckString(l, 1))})
 			luaPushFuture(l, done)
 			return 1
 		}},
@@ -93,7 +93,7 @@ func luaApiFunctions(app *App) []lua.RegistryFunction {
 			return 0
 		}},
 		{Name: "SoundPlay", Function: func(l *lua.State) int {
-			done := app.Do(SoundPlay{SoundResource: ResourceLocator(lua.CheckString(l, 1))})
+			done := app.Do(SoundPlay{SoundResource: ResourceRef(lua.CheckString(l, 1))})
 			luaPushFuture(l, done)
 			return 1
 		}},
@@ -175,8 +175,8 @@ func luaCheckPosition(l *lua.State, index int) Position {
 	}
 }
 
-func luaCheckResourceLocator(l *lua.State, index int) ResourceLocator {
-	return ResourceLocator(lua.CheckString(l, index))
+func luaCheckResourceRef(l *lua.State, index int) ResourceRef {
+	return ResourceRef(lua.CheckString(l, index))
 }
 
 func luaPushColor(l *lua.State, c Color) {

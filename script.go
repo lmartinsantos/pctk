@@ -37,7 +37,7 @@ func (s *Script) run(app *App, prom Promise) {
 
 // ScriptRun is a command to run a script.
 type ScriptRun struct {
-	ScriptResource ResourceLocator
+	ScriptResource ResourceRef
 }
 
 func (c ScriptRun) Execute(app *App, prom Promise) {

@@ -74,46 +74,46 @@ func NewResourceEncoder(index, data io.Writer) (*ResourceEncoder, error) {
 }
 
 // EncodeCostume encodes a costume using the resource encoder.
-func (e *ResourceEncoder) EncodeCostume(loc ResourceLocator, c *Costume, comp ResourceCompression) error {
-	return e.encodeResource(loc, c, resourceHeader{
+func (e *ResourceEncoder) EncodeCostume(ref ResourceRef, c *Costume, comp ResourceCompression) error {
+	return e.encodeResource(ref, c, resourceHeader{
 		Type:        ResourceTypeCostume,
 		Compression: comp,
 	})
 }
 
 // EncodeMusic encodes a music using the resource encoder.
-func (e *ResourceEncoder) EncodeMusic(loc ResourceLocator, m *Music, comp ResourceCompression) error {
-	return e.encodeResource(loc, m, resourceHeader{
+func (e *ResourceEncoder) EncodeMusic(ref ResourceRef, m *Music, comp ResourceCompression) error {
+	return e.encodeResource(ref, m, resourceHeader{
 		Type:        ResourceTypeMusic,
 		Compression: comp,
 	})
 }
 
 // EncodeScene encodes a scene using the resource encoder.
-func (e *ResourceEncoder) EncodeScene(loc ResourceLocator, s *Scene, comp ResourceCompression) error {
-	return e.encodeResource(loc, s, resourceHeader{
+func (e *ResourceEncoder) EncodeScene(ref ResourceRef, s *Scene, comp ResourceCompression) error {
+	return e.encodeResource(ref, s, resourceHeader{
 		Type:        ResourceTypeScene,
 		Compression: comp,
 	})
 }
 
 // EncodeScript encodes a script using the resource encoder.
-func (e *ResourceEncoder) EncodeScript(loc ResourceLocator, s *Script, comp ResourceCompression) error {
-	return e.encodeResource(loc, s, resourceHeader{
+func (e *ResourceEncoder) EncodeScript(ref ResourceRef, s *Script, comp ResourceCompression) error {
+	return e.encodeResource(ref, s, resourceHeader{
 		Type:        ResourceTypeScript,
 		Compression: comp,
 	})
 }
 
 // EncodeSound encodes a sound using the resource encoder.
-func (e *ResourceEncoder) EncodeSound(loc ResourceLocator, s *Sound, comp ResourceCompression) error {
-	return e.encodeResource(loc, s, resourceHeader{
+func (e *ResourceEncoder) EncodeSound(ref ResourceRef, s *Sound, comp ResourceCompression) error {
+	return e.encodeResource(ref, s, resourceHeader{
 		Type:        ResourceTypeSound,
 		Compression: comp,
 	})
 }
 
-func (e *ResourceEncoder) encodeResource(loc ResourceLocator, res BinaryEncoder, h resourceHeader) error {
+func (e *ResourceEncoder) encodeResource(ref ResourceRef, res BinaryEncoder, h resourceHeader) error {
 	var n int
 	var err error
 
@@ -144,7 +144,7 @@ func (e *ResourceEncoder) encodeResource(loc ResourceLocator, res BinaryEncoder,
 		n += nn
 	}
 
-	if err := e.encodeIndexEntry(loc, e.next, n); err != nil {
+	if err := e.encodeIndexEntry(ref, e.next, n); err != nil {
 		return err
 	}
 	e.next += n
@@ -178,8 +178,8 @@ func (e *ResourceEncoder) encodeDataHeader() error {
 	return err
 }
 
-func (e *ResourceEncoder) encodeIndexEntry(loc ResourceLocator, offset, size int) error {
-	_, err := BinaryEncode(e.index, loc, uint32(offset), uint32(size))
+func (e *ResourceEncoder) encodeIndexEntry(ref ResourceRef, offset, size int) error {
+	_, err := BinaryEncode(e.index, ref, uint32(offset), uint32(size))
 	return err
 }
 

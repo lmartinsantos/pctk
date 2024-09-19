@@ -25,9 +25,9 @@ func LoadMusicFromFile(path string) *Music {
 	return &Music{raw: music}
 }
 
-// MusicPlay is a command that will play the music with the given resource locator.
+// MusicPlay is a command that will play the music with the given resource reference.
 type MusicPlay struct {
-	MusicResource ResourceLocator
+	MusicResource ResourceRef
 }
 
 func (cmd MusicPlay) Execute(app *App, done Promise) {
@@ -119,9 +119,9 @@ func (a *App) isSoundReady() bool {
 	return a.sound != nil && rl.IsSoundReady(a.sound.raw)
 }
 
-// SoundPlay is a command that will play the sound with the given resource locator.
+// SoundPlay is a command that will play the sound with the given resource reference.
 type SoundPlay struct {
-	SoundResource ResourceLocator
+	SoundResource ResourceRef
 }
 
 func (cmd SoundPlay) Execute(app *App, done Promise) {
@@ -132,9 +132,9 @@ func (cmd SoundPlay) Execute(app *App, done Promise) {
 	done.Complete()
 }
 
-// SoundStop is a command that will stop the sound with the given resource locator.
+// SoundStop is a command that will stop the sound with the given resource reference.
 type SoundStop struct {
-	SoundResource ResourceLocator
+	SoundResource ResourceRef
 }
 
 func (cmd SoundStop) Execute(app *App, done Promise) {

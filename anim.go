@@ -10,7 +10,7 @@ const (
 
 // Animation represents a sequence of images that can be played.
 type Animation struct {
-	sprites ResourceLocator
+	sprites ResourceRef
 	frames  []animationFrame
 	flip    bool
 
@@ -19,7 +19,7 @@ type Animation struct {
 }
 
 // NewAnimation creates a new animation.
-func NewAnimation(sprites ResourceLocator) *Animation {
+func NewAnimation(sprites ResourceRef) *Animation {
 	return &Animation{
 		sprites: sprites,
 	}

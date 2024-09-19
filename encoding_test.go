@@ -12,7 +12,7 @@ import (
 
 func TestBinaryEncode(t *testing.T) {
 	var buf bytes.Buffer
-	n, err := pctk.BinaryEncode(&buf, pctk.ResourceLocator("test"), uint64(42))
+	n, err := pctk.BinaryEncode(&buf, pctk.ResourceRef("test"), uint64(42))
 	require.NoError(t, err)
 	assert.Equal(t, int(14), n)
 }
@@ -43,7 +43,7 @@ func TestResourceEncoder_EncodeResource(t *testing.T) {
 	require.NoError(t, err)
 
 	err = enc.EncodeScript(
-		pctk.ResourceLocator("hello"),
+		pctk.ResourceRef("hello"),
 		&pctk.Script{
 			Language: pctk.ScriptLua,
 			Code:     []byte("print('Hello, world!')"),
@@ -54,7 +54,7 @@ func TestResourceEncoder_EncodeResource(t *testing.T) {
 	dat := datBuf.Bytes()
 
 	require.NoError(t, err)
-	assert.Equal(t, []byte("\x05\x00hello"), idx[0x0A:0x11])                  // idx entry locator
+	assert.Equal(t, []byte("\x05\x00hello"), idx[0x0A:0x11])                  // idx entry ref
 	assert.Equal(t, uint32(0x0A), binary.LittleEndian.Uint32(idx[0x11:0x15])) // idx entry offset
 	assert.Equal(t, uint32(44), binary.LittleEndian.Uint32(idx[0x15:0x19]))   // idx entry size
 
@@ -72,7 +72,7 @@ func TestResourceEncoder_EncodeResourceWithGZip(t *testing.T) {
 	require.NoError(t, err)
 
 	err = enc.EncodeScript(
-		pctk.ResourceLocator("hello"),
+		pctk.ResourceRef("hello"),
 		&pctk.Script{
 			Language: pctk.ScriptLua,
 			Code:     []byte("print('Hello, world!')"),
@@ -83,7 +83,7 @@ func TestResourceEncoder_EncodeResourceWithGZip(t *testing.T) {
 	dat := datBuf.Bytes()
 
 	require.NoError(t, err)
-	assert.Equal(t, []byte("\x05\x00hello"), idx[0x0A:0x11])                  // idx entry locator
+	assert.Equal(t, []byte("\x05\x00hello"), idx[0x0A:0x11])                  // idx entry ref
 	assert.Equal(t, uint32(0x0A), binary.LittleEndian.Uint32(idx[0x11:0x15])) // idx entry offset
 	assert.Equal(t, uint32(68), binary.LittleEndian.Uint32(idx[0x15:0x19]))   // idx entry size
 
