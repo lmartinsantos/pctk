@@ -1,5 +1,7 @@
 package pctk
 
+import "io"
+
 // Costume is a struct that represents a costume for an actor or a scene animation.
 type Costume struct {
 	sprites    *SpriteSheet
@@ -42,6 +44,11 @@ func (c *Costume) WithAnimationWalk(dir Direction, anim *Animation) *Costume {
 func (c *Costume) WithAnimationCustom(name string, anim *Animation) *Costume {
 	c.animCustom[name] = anim
 	return c
+}
+
+// BinaryEncode encodes the costume to a binary format.
+func (c *Costume) BinaryEncode(w io.Writer) (int, error) {
+	panic("not implemented")
 }
 
 func (c *Costume) drawStand(pos Position, dir Direction) {

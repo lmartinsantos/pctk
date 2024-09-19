@@ -1,6 +1,7 @@
 package pctk
 
 import (
+	"io"
 	"log"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -20,6 +21,10 @@ func NewScene(bg *Image) *Scene {
 	return &Scene{
 		bg: bg,
 	}
+}
+
+func (s *Scene) BinaryEncode(w io.Writer) (int, error) {
+	panic("not implemented")
 }
 
 // ScenePlay is a command that will play the scene with the given resource locator.

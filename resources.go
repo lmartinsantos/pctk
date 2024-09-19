@@ -1,10 +1,16 @@
 package pctk
 
+import "io"
+
 // ResourceLocator is the name of a resource.
 type ResourceLocator string
 
 // RootLocator is the locator of the root of the resources.
 const RootLocator ResourceLocator = ""
+
+func (l ResourceLocator) BinaryEncode(w io.Writer) (int, error) {
+	return BinaryEncode(w, string(l))
+}
 
 // Append appends the other locator to the locator l.
 func (l ResourceLocator) Append(other ResourceLocator) ResourceLocator {
