@@ -1,6 +1,7 @@
 package pctk
 
 import (
+	"io"
 	"time"
 )
 
@@ -30,8 +31,8 @@ func (a *Animation) WithFrame(i, j uint, delay time.Duration) *Animation {
 }
 
 // WithFramesInRow adds a sequence of frames to the animation. The frames are located at the row-th
-// row and fromCol-th to toCol-th columns of the sprite sheet. The delay is the time to wait before
-// moving to the next frame.
+// row and the indicated cols of the sprite sheet. The delay is the time to wait before moving to
+// the next frame.
 func (a *Animation) WithFramesInRow(row uint, delay time.Duration, cols ...uint) *Animation {
 	for _, col := range cols {
 		a.WithFrame(col, row, delay)
@@ -43,6 +44,25 @@ func (a *Animation) WithFramesInRow(row uint, delay time.Duration, cols ...uint)
 func (a *Animation) Flip(flip bool) *Animation {
 	a.flip = flip
 	return a
+}
+
+// BinaryEncode encodes the animation to a binary format. The format is as follows:
+// - byte: the flip flag.
+// - uint32: the number of frames.
+// - for each frame:
+//   - byte: the i-th row.
+//   - byte: the j-th column.
+//   - uint64: the delay.
+func (a *Animation) BinaryEncode(w io.Writer) (n int, err error) {
+	n, err = BinaryEncode(w, a.flip, uint32(len(a.frames)))
+	for _, frame := range a.frames {
+		nn, err := BinaryEncode(w, byte(frame.i), byte(frame.j), uint64(frame.delay))
+		n += nn
+		if err != nil {
+			return n, err
+		}
+	}
+	return n, nil
 }
 
 func (a *Animation) draw(sprites *SpriteSheet, pos Position) {

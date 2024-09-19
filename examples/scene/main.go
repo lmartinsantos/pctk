@@ -23,42 +23,42 @@ func buildResources(bundle *pctk.ResourceBundle) {
 
 	sprites := pctk.LoadSpriteSheetFromFile("guybrush.png", pctk.Size{W: 32, H: 48})
 	costume := pctk.NewCostume(sprites).
-		WithAnimationStand(pctk.DirRight, pctk.NewAnimation().
+		WithAnimation(pctk.CostumeIdle(pctk.DirRight), pctk.NewAnimation().
 			WithFrame(0, 1, time.Second),
 		).
-		WithAnimationStand(pctk.DirLeft, pctk.NewAnimation().
+		WithAnimation(pctk.CostumeIdle(pctk.DirLeft), pctk.NewAnimation().
 			WithFrame(0, 1, time.Second).
 			Flip(true),
 		).
-		WithAnimationStand(pctk.DirUp, pctk.NewAnimation().
+		WithAnimation(pctk.CostumeIdle(pctk.DirUp), pctk.NewAnimation().
 			WithFrame(0, 5, time.Second),
 		).
-		WithAnimationStand(pctk.DirDown, pctk.NewAnimation().
+		WithAnimation(pctk.CostumeIdle(pctk.DirDown), pctk.NewAnimation().
 			WithFrame(0, 4, time.Second),
 		).
-		WithAnimationSpeak(pctk.DirRight, pctk.NewAnimation().
+		WithAnimation(pctk.CostumeSpeak(pctk.DirRight), pctk.NewAnimation().
 			WithFramesInRow(1, 100*time.Millisecond, 0, 1, 2, 3, 4, 5),
 		).
-		WithAnimationSpeak(pctk.DirLeft, pctk.NewAnimation().
+		WithAnimation(pctk.CostumeSpeak(pctk.DirLeft), pctk.NewAnimation().
 			WithFramesInRow(1, 100*time.Millisecond, 0, 1, 2, 3, 4, 5).Flip(true),
 		).
-		WithAnimationSpeak(pctk.DirUp, pctk.NewAnimation().
+		WithAnimation(pctk.CostumeSpeak(pctk.DirUp), pctk.NewAnimation().
 			WithFramesInRow(5, 100*time.Millisecond, 0, 1, 2),
 		).
-		WithAnimationSpeak(pctk.DirDown, pctk.NewAnimation().
+		WithAnimation(pctk.CostumeSpeak(pctk.DirDown), pctk.NewAnimation().
 			WithFramesInRow(4, 100*time.Millisecond, 0, 1, 2, 3, 4, 5),
 		).
-		WithAnimationWalk(pctk.DirRight, pctk.NewAnimation().
+		WithAnimation(pctk.CostumeWalk(pctk.DirRight), pctk.NewAnimation().
 			WithFramesInRow(0, 100*time.Millisecond, 0, 1, 2, 1, 0, 3, 4, 5, 4, 3),
 		).
-		WithAnimationWalk(pctk.DirLeft, pctk.NewAnimation().
+		WithAnimation(pctk.CostumeWalk(pctk.DirLeft), pctk.NewAnimation().
 			WithFramesInRow(0, 100*time.Millisecond, 0, 1, 2, 1, 0, 3, 4, 5, 4, 3).
 			Flip(true),
 		).
-		WithAnimationWalk(pctk.DirUp, pctk.NewAnimation().
+		WithAnimation(pctk.CostumeWalk(pctk.DirUp), pctk.NewAnimation().
 			WithFramesInRow(3, 100*time.Millisecond, 0, 1, 2, 1, 0, 3, 4, 5, 4, 3),
 		).
-		WithAnimationWalk(pctk.DirDown, pctk.NewAnimation().
+		WithAnimation(pctk.CostumeWalk(pctk.DirDown), pctk.NewAnimation().
 			WithFramesInRow(2, 100*time.Millisecond, 0, 1, 2, 1, 0, 3, 4, 5, 4, 3),
 		)
 	bundle.PutCostume("/costumes/guybrush", costume)

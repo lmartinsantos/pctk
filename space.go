@@ -132,7 +132,7 @@ func (r Rectangle) toRaylib() rl.Rectangle {
 }
 
 // Direction represents a direction in 2D space.
-type Direction int
+type Direction byte
 
 func (d Direction) String() string {
 	switch d {
@@ -150,8 +150,8 @@ func (d Direction) String() string {
 }
 
 const (
-	DirUp Direction = iota
-	DirDown
+	DirRight Direction = iota
 	DirLeft
-	DirRight
+	DirUp
+	DirDown
 )

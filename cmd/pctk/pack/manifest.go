@@ -13,6 +13,9 @@ import (
 type ResourceType string
 
 const (
+	// ManifestTypeCostume is a costume resource.
+	ManifestTypeCostume ResourceType = "costume"
+
 	// ManifestTypeRoom is a room resource.
 	ManifestTypeRoom ResourceType = "room"
 
@@ -56,6 +59,8 @@ func (m *Manifest) UnmarshalYAML(n *yaml.Node) error {
 	}
 	m.Type = header.Type
 	switch m.Type {
+	case ManifestTypeCostume:
+		m.Data = NewCostumeData(m.workingDir)
 	case ManifestTypeRoom:
 		m.Data = NewRoomData(m.workingDir)
 	case ManifestTypeScript:

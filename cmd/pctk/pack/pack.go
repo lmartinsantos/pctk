@@ -38,6 +38,8 @@ func do(src string, output string) error {
 		}
 
 		switch data := man.Data.(type) {
+		case *CostumeData:
+			enc.EncodeCostume(ref, data.Resource, man.Compression)
 		case *RoomData:
 			enc.EncodeRoom(ref, data.AsResource(), man.Compression)
 		case *ScriptData:

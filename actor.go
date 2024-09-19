@@ -41,7 +41,7 @@ func (a *Actor) stand(dir Direction) *Actor {
 	a.lookAt = dir
 	a.act = func(app *App, c *Actor) (completed bool) {
 		if cos := a.costume; cos != nil {
-			cos.drawStand(c.pos, dir)
+			cos.draw(CostumeIdle(dir), c.pos)
 		}
 		return false
 	}
@@ -113,7 +113,7 @@ func (cmd ActorWalkToPosition) Execute(app *App, done Promise) {
 	app.withActor(cmd.ActorName, func(a *Actor) {
 		a.act = func(app *App, c *Actor) (completed bool) {
 			if cos := a.costume; cos != nil {
-				cos.drawWalk(c.pos, a.lookAt)
+				cos.draw(CostumeWalk(a.lookAt), c.pos)
 			}
 
 			if c.pos == cmd.Position {
@@ -166,7 +166,7 @@ func (cmd ActorSpeak) Execute(app *App, done Promise) {
 		})
 		a.act = func(app *App, c *Actor) (completed bool) {
 			if cos := a.costume; cos != nil {
-				cos.drawSpeak(c.pos, a.lookAt)
+				cos.draw(CostumeSpeak(a.lookAt), c.pos)
 			}
 			if dialogDone.IsCompleted() {
 				done.CompleteAfter(nil, cmd.Delay)

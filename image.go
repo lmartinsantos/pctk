@@ -46,7 +46,10 @@ func (i *Image) Height() int32 {
 	return i.raw.Height
 }
 
+// BinaryEncode encodes the image to a binary format. The encoded format is:
+// - [0..3] uint32: the length of the image bytes.
+// - [4..n] []byte: the image bytes in PNG format.
 func (i *Image) BinaryEncode(w io.Writer) (int, error) {
 	bytes := rl.ExportImageToMemory(*i.raw, ".png")
-	return w.Write(bytes)
+	return BinaryEncode(w, uint32(len(bytes)), bytes)
 }
