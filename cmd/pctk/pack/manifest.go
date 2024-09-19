@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/apoloval/pctk"
 	"gopkg.in/yaml.v3"
@@ -16,11 +17,17 @@ const (
 	// ManifestTypeCostume is a costume resource.
 	ManifestTypeCostume ResourceType = "costume"
 
+	// ManifestTypeMusic is a music resource.
+	ManifestTypeMusic ResourceType = "music"
+
 	// ManifestTypeRoom is a room resource.
 	ManifestTypeRoom ResourceType = "room"
 
 	// ManifestTypeScript is a script resource.
 	ManifestTypeScript ResourceType = "script"
+
+	// ManifestTypeSound is a sound resource.
+	ManifestTypeSound ResourceType = "sound"
 )
 
 // Manifest is the description of a resource.
@@ -61,10 +68,14 @@ func (m *Manifest) UnmarshalYAML(n *yaml.Node) error {
 	switch m.Type {
 	case ManifestTypeCostume:
 		m.Data = NewCostumeData(m.workingDir)
+	case ManifestTypeMusic:
+		m.Data = NewMusicData(m.workingDir)
 	case ManifestTypeRoom:
 		m.Data = NewRoomData(m.workingDir)
 	case ManifestTypeScript:
 		m.Data = new(ScriptData)
+	case ManifestTypeSound:
+		m.Data = NewSoundData(m.workingDir)
 	default:
 		return fmt.Errorf("unknown manifest type: %s", m.Type)
 	}
@@ -72,10 +83,10 @@ func (m *Manifest) UnmarshalYAML(n *yaml.Node) error {
 		return err
 	}
 
-	switch header.Compression {
-	case "", "none", "None", "NONE":
+	switch strings.ToLower(header.Compression) {
+	case "", "none":
 		m.Compression = pctk.CompressionNone
-	case "gzip", "Gzip", "GZIP":
+	case "gzip":
 		m.Compression = pctk.CompressionGzip
 	default:
 		return fmt.Errorf("unknown compression type: %s", header.Compression)

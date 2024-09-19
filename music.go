@@ -3,26 +3,39 @@ package pctk
 import (
 	"io"
 	"log"
+	"os"
+	"path/filepath"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 // Music is music and we love it!
 type Music struct {
-	raw rl.Music
+	data   []byte
+	format [4]byte
+	raw    rl.Music
 }
 
+// BinaryEncode encodes the music data to a binary stream. The format is:
+//   - [4]byte: data format
+//   - uint32: data length
+//   - []byte: data
 func (m *Music) BinaryEncode(w io.Writer) (int, error) {
-	panic("not implemented")
+	return BinaryEncode(w, m.format[:], uint32(len(m.data)), m.data)
 }
 
 // LoadMusicFromFile - Load music stream from a file path
 func LoadMusicFromFile(path string) *Music {
-	music := rl.LoadMusicStream(path)
-	if !rl.IsMusicReady(rl.Music(music)) {
-		log.Fatalf("Failed to load music from file %s", path)
+	var err error
+	music := new(Music)
+	music.data, err = os.ReadFile(path)
+	if err != nil {
+		log.Fatalf("failed to read music file: %v", err)
 	}
-	return &Music{raw: music}
+
+	music.raw = rl.LoadMusicStreamFromMemory(filepath.Ext(path), music.data, int32(len(music.data)))
+	copy(music.format[:], filepath.Ext(path))
+	return music
 }
 
 // MusicPlay is a command that will play the music with the given resource reference.
@@ -94,56 +107,5 @@ func (a *App) stopMusic() {
 func (a *App) unloadMusic() {
 	if a.isMusicReady() {
 		rl.UnloadMusicStream(a.music.raw)
-	}
-}
-
-// Sound source type
-type Sound struct {
-	raw rl.Sound
-}
-
-// LoadSoundFromFile - Load sound stream from a file path
-func LoadSoundFromFile(path string) *Sound {
-	sound := rl.LoadSound(path)
-	if !rl.IsSoundReady(sound) {
-		log.Fatalf("Failed to load sound from file %s", path)
-	}
-	return &Sound{raw: sound}
-}
-
-func (s *Sound) BinaryEncode(w io.Writer) (int, error) {
-	panic("not implemented")
-}
-
-func (a *App) isSoundReady() bool {
-	return a.sound != nil && rl.IsSoundReady(a.sound.raw)
-}
-
-// SoundPlay is a command that will play the sound with the given resource reference.
-type SoundPlay struct {
-	SoundResource ResourceRef
-}
-
-func (cmd SoundPlay) Execute(app *App, done Promise) {
-	app.sound = app.res.LoadSound(cmd.SoundResource)
-	if app.isSoundReady() {
-		rl.PlaySound(app.sound.raw)
-	}
-	done.Complete()
-}
-
-// SoundStop is a command that will stop the sound with the given resource reference.
-type SoundStop struct {
-	SoundResource ResourceRef
-}
-
-func (cmd SoundStop) Execute(app *App, done Promise) {
-	app.stopSound()
-	done.Complete()
-}
-
-func (a *App) stopSound() {
-	if a.isSoundReady() {
-		rl.StopSound(a.sound.raw)
 	}
 }
