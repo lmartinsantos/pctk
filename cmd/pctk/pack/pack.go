@@ -39,15 +39,19 @@ func do(src string, output string) error {
 
 		switch data := man.Data.(type) {
 		case *CostumeData:
-			enc.EncodeCostume(id, data.Resource, man.Compression)
+			err = enc.EncodeCostume(id, data.Resource, man.Compression)
 		case *MusicData:
-			enc.EncodeMusic(id, data.Resource, man.Compression)
+			err = enc.EncodeMusic(id, data.Resource, man.Compression)
 		case *RoomData:
-			enc.EncodeRoom(id, data.Resource, man.Compression)
+			err = enc.EncodeRoom(id, data.Resource, man.Compression)
 		case *ScriptData:
-			enc.EncodeScript(id, data.Resource, man.Compression)
+			err = enc.EncodeScript(id, data.Resource, man.Compression)
 		case *SoundData:
-			enc.EncodeSound(id, data.Resource, man.Compression)
+			err = enc.EncodeSound(id, data.Resource, man.Compression)
+		}
+		if err != nil {
+			fmt.Printf(" Failed!\n")
+			return err
 		}
 		fmt.Printf(" Done\n")
 	}

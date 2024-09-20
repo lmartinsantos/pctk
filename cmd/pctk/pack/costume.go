@@ -69,7 +69,7 @@ func (d *CostumeData) UnmarshalYAML(n *yaml.Node) error {
 
 		a := pctk.NewAnimation().Flip(anim.Flip)
 		for _, frame := range anim.Frames {
-			a.WithFramesInRow(
+			a.WithFrames(
 				frame.Row,
 				time.Duration(frame.Duration)*time.Millisecond,
 				frame.Columns...,

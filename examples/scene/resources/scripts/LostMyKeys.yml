@@ -6,14 +6,14 @@ data:
     local pirate1_dialog_props = { pos = {x=60, y=20}, color = ColorMagenta }
     local pirate2_dialog_props = { pos = {x=60, y=50}, color = ColorYellow }
 
-    RoomShow("/main")
-    ActorShow("/guybrush", "guybrush", {
+    RoomShow("resources:rooms/Melee")
+    ActorShow("guybrush", {
       pos={x=340, y=90}, 
       dir=DirLeft,
-      costume="/costumes/guybrush"
+      costume="resources:costumes/Guybrush"
     })
-    MusicPlay("/music/on-the-hill")
-    SoundPlay("/sound/cricket")
+    MusicPlay("resources:audio/OnTheHill")
+    SoundPlay("resources:audio/Cricket")
     ActorWalkToPosition("guybrush", {x=290, y=90}).Wait()
     ActorSpeak("guybrush", "Hello, I'm Guybrush Threepwood,\nmighty pirate!").Wait()
     DialogShow("**Oh no! This guy again!**", pirate1_dialog_props)
@@ -23,7 +23,7 @@ data:
     DialogShow("Eeerrrr... Nope!", pirate1_dialog_props)
     SleepMillis(2000)
 
-    MusicPlay("/music/guitar_noodling")
+    MusicPlay("resources:audio/GuitarNoodling")
     ActorWalkToPosition("guybrush", {x=120, y=80}).Wait()
     ActorSpeak("guybrush", "Where can I find the keys?", {delay=1000}).Wait()
     ActorWalkToPosition("guybrush", {x=120, y=90}).Wait()
@@ -34,7 +34,7 @@ data:
     ActorSpeak("guybrush", "Ok, I will try the Scumm bar.").Wait()
     ActorStand("guybrush", {dir = DirLeft}).Wait()
     ActorSpeak("guybrush", "Thank you guys!").Wait()
-    SoundPlay("/sound/cricket")
+    SoundPlay("resources:audio/Cricket")
     ActorWalkToPosition("guybrush", {x=360, y=90}).Wait()
 
     DialogShow("Oh, Jesus! I though he would\ntell again that stupid\ntale about LeChuck!", pirate1_dialog_props).Wait()

@@ -22,8 +22,16 @@ func NewRoom(bg *Image) *Room {
 	}
 }
 
+// BinaryEncode encodes the room data to a binary stream. The format is:
+//   - the background image.
 func (r *Room) BinaryEncode(w io.Writer) (int, error) {
 	return BinaryEncode(w, r.bg)
+}
+
+// BinaryDecode decodes the room data from a binary stream. See Room.BinaryEncode for the format.
+func (r *Room) BinaryDecode(rd io.Reader) error {
+	r.bg = new(Image)
+	return BinaryDecode(rd, r.bg)
 }
 
 // RoomShow is a command that will show the room with the given resource.

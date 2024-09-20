@@ -1,6 +1,8 @@
 package pctk
 
-import "io"
+import (
+	"io"
+)
 
 // CostumeAction is a value that represents an action for a costume. For predefined actions idle,
 // speak, and walk, use the CustomIdle, CustomSpeak, and CustomWalk functions respectively to refer
@@ -44,12 +46,13 @@ func (c *Costume) WithAnimation(act CostumeAction, anim *Animation) *Costume {
 }
 
 // BinaryEncode encodes the costume to a binary format. The format is as follows:
+// - sprite sheet.
 // - uint32: the number of animations.
 // - for each animation:
 //   - byte: the action.
 //   - the animation.
 func (c *Costume) BinaryEncode(w io.Writer) (n int, err error) {
-	n, err = BinaryEncode(w, uint32(len(c.anims)))
+	n, err = BinaryEncode(w, c.sprites, uint32(len(c.anims)))
 	for act, anim := range c.anims {
 		nn, err := BinaryEncode(w, byte(act), anim)
 		n += nn
@@ -58,6 +61,26 @@ func (c *Costume) BinaryEncode(w io.Writer) (n int, err error) {
 		}
 	}
 	return n, nil
+}
+
+// BinaryDecode decodes the costume from a binary format. See BinaryEncode for the format.
+func (c *Costume) BinaryDecode(r io.Reader) error {
+	c.sprites = new(SpriteSheet)
+	c.anims = make(map[CostumeAction]*Animation)
+
+	var count uint32
+	if err := BinaryDecode(r, c.sprites, &count); err != nil {
+		return err
+	}
+	for i := uint32(0); i < count; i++ {
+		var act byte
+		anim := new(Animation)
+		if err := BinaryDecode(r, &act, anim); err != nil {
+			return err
+		}
+		c.anims[CostumeAction(act)] = anim
+	}
+	return nil
 }
 
 func (c *Costume) draw(act CostumeAction, pos Position) {

@@ -5,15 +5,12 @@ import (
 	"compress/gzip"
 	"encoding/binary"
 	"io"
+	"log"
+	"os"
+	"path/filepath"
 )
 
 const (
-	// ResourceIndexMagic is the magic number for the resource index.
-	ResourceIndexMagic = "PCTK:IDX"
-
-	// ResourceDataMagic is the magic number for the resource data.
-	ResourceDataMagic = "PCTK:DAT"
-
 	// ResourceFormatVersion
 	ResourceFormatVersion uint16 = 0x0001
 )
@@ -49,9 +46,45 @@ func binaryEncode(w io.Writer, obj any) (n int, err error) {
 	return
 }
 
+// BinaryDecode decodes objects from a reader using the binary format. If the object implements the
+// BinaryDecoder interface, it will be used to decode the object. If the object is a string, it will
+// be decoded from a word indicating its size followed by the string bytes. Otherwise, the object
+// will be decoded using the binary package assuming it has a fixed size.
+func BinaryDecode(r io.Reader, o ...any) error {
+	for _, obj := range o {
+		if dec, ok := obj.(BinaryDecoder); ok {
+			if err := dec.BinaryDecode(r); err != nil {
+				return err
+			}
+			continue
+		}
+		if str, ok := obj.(*string); ok {
+			var size uint16
+			if err := BinaryDecode(r, &size); err != nil {
+				return err
+			}
+			buf := make([]byte, size)
+			if _, err := r.Read(buf); err != nil {
+				return err
+			}
+			*str = string(buf)
+			continue
+		}
+		if err := binary.Read(r, binary.LittleEndian, obj); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // BinaryEncoder is a value that can encode itself to a binary format.
 type BinaryEncoder interface {
 	BinaryEncode(w io.Writer) (int, error)
+}
+
+// BinaryDecoder is a value that can decode itself from a binary format.
+type BinaryDecoder interface {
+	BinaryDecode(r io.Reader) error
 }
 
 // ResourceCompression is the type of compression used for resources while encoding.
@@ -178,18 +211,18 @@ func (e *ResourceEncoder) encodeHeaders() error {
 }
 
 func (e *ResourceEncoder) encodeIndexHeader() error {
-	_, err := BinaryEncode(e.index,
-		[]byte(ResourceIndexMagic),
-		ResourceFormatVersion,
-	)
+	_, err := BinaryEncode(e.index, resourceFileHeader{
+		Magic:   resourceIndexMagic,
+		Version: ResourceFormatVersion,
+	})
 	return err
 }
 
 func (e *ResourceEncoder) encodeDataHeader() error {
-	n, err := BinaryEncode(e.data,
-		[]byte(ResourceDataMagic),
-		ResourceFormatVersion,
-	)
+	n, err := BinaryEncode(e.data, resourceFileHeader{
+		Magic:   resourceDataMagic,
+		Version: ResourceFormatVersion,
+	})
 	e.next += n
 	return err
 }
@@ -202,40 +235,166 @@ func (e *ResourceEncoder) encodeIndexEntry(id ResourceID, offset, size int) erro
 // ResourceFileLoader is a value that can load resources from files.
 type ResourceFileLoader struct {
 	path    string
-	indexes map[string]index
+	indexes map[ResourcePackage]index
 }
 
 // NewResourceFileLoader creates a new resource file loader that loads resources from the
 // filesystem.
 func NewResourceFileLoader(path string) *ResourceFileLoader {
-	return &ResourceFileLoader{path: path}
+	return &ResourceFileLoader{
+		path:    path,
+		indexes: make(map[ResourcePackage]index),
+	}
 }
 
 func (l *ResourceFileLoader) LoadCostume(ref ResourceRef) *Costume {
-	panic("not implemented")
+	c := new(Costume)
+	l.decodeResource(ref, resourceTypeCostume, c)
+	return c
 }
 
 func (l *ResourceFileLoader) LoadMusic(ref ResourceRef) *Music {
-	panic("not implemented")
+	m := new(Music)
+	l.decodeResource(ref, resourceTypeMusic, m)
+	return m
 }
 
 func (l *ResourceFileLoader) LoadRoom(ref ResourceRef) *Room {
-	panic("not implemented")
+	room := new(Room)
+	l.decodeResource(ref, resourceTypeRoom, room)
+	return room
 }
 
 func (l *ResourceFileLoader) LoadScript(ref ResourceRef) *Script {
-	panic("not implemented")
+	script := new(Script)
+	l.decodeResource(ref, resourceTypeScript, script)
+	return script
 }
 
 func (l *ResourceFileLoader) LoadSound(ref ResourceRef) *Sound {
-	panic("not implemented")
+	sound := new(Sound)
+	l.decodeResource(ref, resourceTypeSound, sound)
+	return sound
+}
+
+func (l *ResourceFileLoader) decodeResource(ref ResourceRef, t resourceType, res BinaryDecoder) {
+	data := bytes.NewReader(l.getResource(ref, t))
+	if err := BinaryDecode(data, res); err != nil {
+		log.Fatalf("error decoding resource: %v", err)
+	}
+}
+
+func (l *ResourceFileLoader) getResource(ref ResourceRef, t resourceType) []byte {
+	entry := l.getIndexEntry(ref)
+	data := make([]byte, int(entry.Size)-resourceHeaderSize)
+
+	file, err := os.Open(filepath.Join(l.path, ref.Package().String()+".dat"))
+	if err != nil {
+		log.Fatalf("error opening data file: %v", err)
+	}
+	defer file.Close()
+
+	if _, err := file.Seek(int64(entry.Offset), io.SeekStart); err != nil {
+		log.Fatalf("error seeking data file: %v", err)
+	}
+
+	var h resourceHeader
+	if err := BinaryDecode(file, &h); err != nil {
+		log.Fatalf("error decoding resource header: %v", err)
+	}
+	if h.Type != t {
+		log.Fatalf("wrong resource type: %v != %v", h.Type, t)
+	}
+
+	if n, err := file.Read(data); err != nil {
+		log.Fatalf("error reading data file: %v", err)
+	} else if n != len(data) {
+		log.Fatalf("short read: %d != %d", n, len(data))
+	}
+
+	switch h.Compression {
+	case CompressionNone:
+		return data
+	case CompressionGzip:
+		r, err := gzip.NewReader(bytes.NewReader(data))
+		if err != nil {
+			log.Fatalf("error creating gzip reader: %v", err)
+		}
+		defer r.Close()
+
+		data, err := io.ReadAll(r)
+		if err != nil {
+			log.Fatalf("error reading gzip data: %v", err)
+		}
+		return data
+	default:
+		log.Fatalf("unsupported compression: %v", h.Compression)
+		return nil
+	}
+}
+
+func (l *ResourceFileLoader) getIndexEntry(ref ResourceRef) indexEntry {
+	idx, ok := l.indexes[ref.Package()]
+	if !ok {
+		idx = l.loadIndex(ref)
+		l.indexes[ref.Package()] = idx
+	}
+	entry, ok := idx[ref.ID()]
+	if !ok {
+		log.Fatalf("resource not found: %s", ref)
+	}
+	return entry
 }
 
 func (l *ResourceFileLoader) loadIndex(ref ResourceRef) index {
-	panic("not implemented")
+	idxPath := filepath.Join(l.path, ref.Package().String()+".idx")
+	idxFile, err := os.Open(idxPath)
+	if err != nil {
+		log.Fatalf("error opening index file for ref %s: %v", ref, err)
+	}
+	defer idxFile.Close()
+
+	var h resourceFileHeader
+	if err := BinaryDecode(idxFile, &h); err != nil {
+		log.Fatalf("error decoding index header: %v", err)
+	}
+	if !bytes.Equal(h.Magic[:], resourceIndexMagic[:]) {
+		log.Fatalf("wrong magic number in index file %s: %v", idxPath, h.Magic)
+	}
+
+	idx := make(index)
+	for {
+		var entry indexEntry
+		if err := BinaryDecode(idxFile, &entry); err != nil {
+			if err == io.EOF {
+				break
+			}
+			log.Fatalf("error decoding index entry: %v", err)
+		}
+		idx[entry.ID] = entry
+	}
+	return idx
 }
 
-type index map[ResourceRef]indexEntry
+var (
+	resourceIndexMagic = [8]byte{'P', 'C', 'T', 'K', ':', 'I', 'D', 'X'}
+	resourceDataMagic  = [8]byte{'P', 'C', 'T', 'K', ':', 'D', 'A', 'T'}
+)
+
+type resourceFileHeader struct {
+	Magic   [8]byte
+	Version uint16
+}
+
+func (h resourceFileHeader) BinaryEncode(w io.Writer) (int, error) {
+	return BinaryEncode(w, h.Magic, h.Version)
+}
+
+func (h *resourceFileHeader) BinaryDecode(r io.Reader) error {
+	return BinaryDecode(r, &h.Magic, &h.Version)
+}
+
+type index map[ResourceID]indexEntry
 
 type indexEntry struct {
 	ID     ResourceID
@@ -247,6 +406,12 @@ func (e indexEntry) BinaryEncode(w io.Writer) (int, error) {
 	return BinaryEncode(w, e.ID, e.Offset, e.Size)
 }
 
+func (e *indexEntry) BinaryDecode(r io.Reader) error {
+	return BinaryDecode(r, &e.ID, &e.Offset, &e.Size)
+}
+
+const resourceHeaderSize = 16
+
 type resourceHeader struct {
 	Type        resourceType
 	Compression ResourceCompression
@@ -254,6 +419,11 @@ type resourceHeader struct {
 
 func (h resourceHeader) BinaryEncode(w io.Writer) (int, error) {
 	return BinaryEncode(w, h.Type, h.Compression, [14]byte{})
+}
+
+func (h *resourceHeader) BinaryDecode(r io.Reader) error {
+	var unused [14]byte
+	return BinaryDecode(r, &h.Type, &h.Compression, &unused)
 }
 
 type resourceType byte

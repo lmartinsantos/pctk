@@ -53,3 +53,19 @@ func (i *Image) BinaryEncode(w io.Writer) (int, error) {
 	bytes := rl.ExportImageToMemory(*i.raw, ".png")
 	return BinaryEncode(w, uint32(len(bytes)), bytes)
 }
+
+// BinaryDecode decodes the image from a binary format. See Image.BinaryEncode for the format.
+func (i *Image) BinaryDecode(r io.Reader) error {
+	var length uint32
+	if err := BinaryDecode(r, &length); err != nil {
+		return err
+	}
+
+	bytes := make([]byte, length)
+	if err := BinaryDecode(r, &bytes); err != nil {
+		return err
+	}
+
+	i.raw = rl.LoadImageFromMemory(".png", bytes, int32(len(bytes)))
+	return nil
+}

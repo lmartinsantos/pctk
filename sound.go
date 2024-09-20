@@ -39,6 +39,26 @@ func (s *Sound) BinaryEncode(w io.Writer) (int, error) {
 	return BinaryEncode(w, s.format[:], uint32(len(s.data)), s.data)
 }
 
+// BinaryDecode decodes the sound data from a binary stream. See Sound.BinaryEncode for the format.
+func (s *Sound) BinaryDecode(r io.Reader) error {
+	var format [4]byte
+	var length uint32
+	if err := BinaryDecode(r, &format, &length); err != nil {
+		return err
+	}
+
+	data := make([]byte, length)
+	if err := BinaryDecode(r, &data); err != nil {
+		return err
+	}
+
+	s.format = format
+	s.data = data
+	wav := rl.LoadWaveFromMemory(string(format[:]), data, int32(length))
+	s.raw = rl.LoadSoundFromWave(wav)
+	return nil
+}
+
 func (a *App) isSoundReady() bool {
 	return a.sound != nil && rl.IsSoundReady(a.sound.raw)
 }

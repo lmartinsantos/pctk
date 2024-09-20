@@ -23,13 +23,23 @@ func (r ResourcePackage) BinaryEncode(w io.Writer) (int, error) {
 type ResourceID string
 
 // String returns the string representation of the resource ID.
-func (r ResourceID) String() string {
-	return string(r)
+func (i ResourceID) String() string {
+	return string(i)
 }
 
 // BinaryEncode encodes the resource ID to a binary format.
-func (r ResourceID) BinaryEncode(w io.Writer) (int, error) {
-	return BinaryEncode(w, r.String())
+func (i ResourceID) BinaryEncode(w io.Writer) (int, error) {
+	return BinaryEncode(w, i.String())
+}
+
+// BinaryDecode decodes the resource ID from a binary format.
+func (i *ResourceID) BinaryDecode(r io.Reader) error {
+	var id string
+	if err := BinaryDecode(r, &id); err != nil {
+		return err
+	}
+	*i = ResourceID(id)
+	return nil
 }
 
 // ResourceRef is a reference to a resource. This is typically used from resources to refer to other
@@ -52,8 +62,6 @@ func NewResourceRef(pkg ResourcePackage, id ResourceID) ResourceRef {
 func ParseResourceRef(s string) (ResourceRef, error) {
 	parts := strings.Split(s, ":")
 	switch len(parts) {
-	case 1:
-		return ResourceRef{"", ResourceID(parts[0])}, nil
 	case 2:
 		return ResourceRef{ResourcePackage(parts[0]), ResourceID(parts[1])}, nil
 	default:

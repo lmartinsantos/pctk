@@ -4,32 +4,32 @@ data:
   sprites: 
     sheet: Guybrush.png
     width: 32
-    height: 32
+    height: 48
   animations:
     - action: idle
       dir: right
       frames:
-      - row: 0
-        columns: [1]
+      - row: 1
+        columns: [0]
         duration: 1000
     - action: idle
       dir: left
       flip: true
       frames:
-      - row: 0
-        columns: [1]
+      - row: 1
+        columns: [0]
         duration: 1000
     - action: idle
       dir: up
       frames:
-      - row: 0
-        columns: [5]
+      - row: 5
+        columns: [0]
         duration: 1000
     - action: idle
       dir: down
       frames:
-      - row: 0
-        columns: [4]
+      - row: 4
+        columns: [0]
         duration: 1000
     - action: speak
       dir: right

@@ -27,11 +27,11 @@ func (s *SpriteSheet) Release() {
 }
 
 // DrawSprite draws a sprite from the sprite sheet at the given position.
-func (s *SpriteSheet) DrawSprite(i, j uint, pos Position, flip bool) {
+func (s *SpriteSheet) DrawSprite(col, row uint, pos Position, flip bool) {
 	src := Rectangle{
 		Pos: Position{
-			int(s.frameSize.W) * int(i),
-			int(s.frameSize.H) * int(j),
+			int(s.frameSize.W) * int(col),
+			int(s.frameSize.H) * int(row),
 		},
 		Size: s.frameSize,
 	}
@@ -42,11 +42,30 @@ func (s *SpriteSheet) DrawSprite(i, j uint, pos Position, flip bool) {
 }
 
 // BinaryEncode encodes the sprite sheet to a binary format. The encoded format is:
-// - [0..3] uint32: the length of the image bytes.
-// - [4..n] []byte: the image bytes in PNG format.
+// - uint16: the width of each sprite.
+// - uint16: the height of each sprite.
+// - uint32: the length of the image bytes.
+// - []byte: the image bytes in PNG format.
 func (s *SpriteSheet) BinaryEncode(w io.Writer) (int, error) {
 	bytes := rl.ExportImageToMemory(*s.raw, ".png")
-	return BinaryEncode(w, uint32(len(bytes)), bytes)
+	return BinaryEncode(w, uint16(s.frameSize.W), uint16(s.frameSize.H), uint32(len(bytes)), bytes)
+}
+
+// BinaryDecode decodes the sprite sheet from a binary format. See SpriteSheet.BinaryEncode for the
+// format.
+func (s *SpriteSheet) BinaryDecode(r io.Reader) error {
+	var w, h uint16
+	var size uint32
+	if err := BinaryDecode(r, &w, &h, &size); err != nil {
+		return err
+	}
+	bytes := make([]byte, size)
+	if err := BinaryDecode(r, bytes); err != nil {
+		return err
+	}
+	s.frameSize = Size{int(w), int(h)}
+	s.raw = rl.LoadImageFromMemory(".png", bytes, int32(len(bytes)))
+	return nil
 }
 
 func (s *SpriteSheet) texture() rl.Texture2D {

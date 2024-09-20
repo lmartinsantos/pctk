@@ -5,9 +5,13 @@ import (
 
 	"github.com/apoloval/pctk"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestResourceRefPackage(t *testing.T) {
-	ref := pctk.NewResourceRef("001", "foo/bar")
-	assert.Equal(t, "001", ref.Package())
+func TestResourceRefParse(t *testing.T) {
+	ref, err := pctk.ParseResourceRef("pkg:foo/bar")
+	require.NoError(t, err)
+
+	assert.Equal(t, pctk.ResourcePackage("pkg"), ref.Package())
+	assert.Equal(t, pctk.ResourceID("foo/bar"), ref.ID())
 }
