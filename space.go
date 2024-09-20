@@ -20,6 +20,9 @@ const (
 	ControlBoxHeight = 56
 )
 
+// SceneViewport is the rectangle that represents the viewport of the scene.
+var SceneViewport = NewRect(0, 0, ScreenWidth, ViewportHeight)
+
 // Position represents a 2D position.
 type Position struct {
 	X, Y int
@@ -129,6 +132,11 @@ func (r Rectangle) toRaylib() rl.Rectangle {
 	return rl.NewRectangle(
 		float32(r.Pos.X), float32(r.Pos.Y), float32(r.Size.W), float32(r.Size.H),
 	)
+}
+
+// Contains returns true if the mouse is into the given rectangle.
+func (r Rectangle) Contains(pos Position) bool {
+	return rl.CheckCollisionPointRec(pos.toRaylib(), r.toRaylib())
 }
 
 // Direction represents a direction in 2D space.

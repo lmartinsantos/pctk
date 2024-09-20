@@ -58,6 +58,14 @@ func luaApiFunctions(app *App) []lua.RegistryFunction {
 			luaPushFuture(l, done)
 			return 1
 		}},
+		{Name: "ActorSelectEgo", Function: func(l *lua.State) int {
+			cmd := ActorSelectEgo{
+				ActorName: lua.CheckString(l, 1),
+			}
+			done := app.Do(cmd)
+			luaPushFuture(l, done)
+			return 1
+		}},
 		{Name: "ActorWalkToPosition", Function: func(l *lua.State) int {
 			cmd := ActorWalkToPosition{
 				ActorName: lua.CheckString(l, 1),
@@ -93,6 +101,11 @@ func luaApiFunctions(app *App) []lua.RegistryFunction {
 		}},
 		{Name: "SoundPlay", Function: func(l *lua.State) int {
 			done := app.Do(SoundPlay{SoundResource: luaCheckResourceRef(l, 1)})
+			luaPushFuture(l, done)
+			return 1
+		}},
+		{Name: "EnableControlPanel", Function: func(l *lua.State) int {
+			done := app.Do(EnableControlPanel{Enable: l.ToBoolean(1)})
 			luaPushFuture(l, done)
 			return 1
 		}},

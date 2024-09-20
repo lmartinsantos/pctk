@@ -200,3 +200,20 @@ func (a *App) drawActors() {
 		actor.draw(a)
 	}
 }
+
+// ActorSelectEgo is a command that will make an actor be the actor under player's control.
+type ActorSelectEgo struct {
+	// Using an empty ActorName allows deselecting the previous ego
+	ActorName string
+}
+
+func (cmd ActorSelectEgo) Execute(app *App, done Promise) {
+	actor, ok := app.actors[cmd.ActorName]
+	if ok {
+		app.ego = actor
+	} else {
+		app.ego = nil
+	}
+
+	done.Complete()
+}

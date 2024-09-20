@@ -42,3 +42,6 @@ data:
     DialogShow("Who has the keys?", pirate2_dialog_props).Wait()
     SleepMillis(1000)
     DialogShow("Me!", pirate1_dialog_props)
+
+    ActorSelectEgo("guybrush").Wait()
+    EnableControlPanel(true)

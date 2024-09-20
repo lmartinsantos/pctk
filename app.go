@@ -17,14 +17,16 @@ type App struct {
 	actors   map[string]*Actor
 	commands commandQueue
 
-	cam               rl.Camera2D
-	fontDefault       rl.Font
-	fontDialogSolid   rl.Font
-	fontDialogOutline rl.Font
-	cursorTx          rl.Texture2D
-	cursorColor       Color
-	music             *Music
-	sound             *Sound
+	cam                 rl.Camera2D
+	fontDefault         rl.Font
+	fontDialogSolid     rl.Font
+	fontDialogOutline   rl.Font
+	cursorTx            rl.Texture2D
+	cursorColor         Color
+	music               *Music
+	sound               *Sound
+	ego                 *Actor
+	controlPanelEnabled bool
 }
 
 // New creates a new pctk application.
