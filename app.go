@@ -12,7 +12,7 @@ type App struct {
 	screenCaption string
 	screenZoom    int32
 
-	scene    *Scene
+	room     *Room
 	dialogs  []Dialog
 	actors   map[string]*Actor
 	commands commandQueue

@@ -1,118 +1,189 @@
 package pctk
 
-// ResourceLocator is the name of a resource.
-type ResourceLocator string
+import (
+	"fmt"
+	"io"
+	"strings"
+)
 
-// RootLocator is the locator of the root of the resources.
-const RootLocator ResourceLocator = ""
+// ResourcePackage is the package of a resource. This is used to group resources together.
+type ResourcePackage string
 
-// Append appends the other locator to the locator l.
-func (l ResourceLocator) Append(other ResourceLocator) ResourceLocator {
-	return l + "/" + other
+// String returns the string representation of the resource package.
+func (r ResourcePackage) String() string {
+	return string(r)
+}
+
+// BinaryEncode encodes the resource package to a binary format.
+func (r ResourcePackage) BinaryEncode(w io.Writer) (int, error) {
+	return BinaryEncode(w, r.String())
+}
+
+// ResourceID is the identifier of a resource in a package.
+type ResourceID string
+
+// String returns the string representation of the resource ID.
+func (i ResourceID) String() string {
+	return string(i)
+}
+
+// BinaryEncode encodes the resource ID to a binary format.
+func (i ResourceID) BinaryEncode(w io.Writer) (int, error) {
+	return BinaryEncode(w, i.String())
+}
+
+// BinaryDecode decodes the resource ID from a binary format.
+func (i *ResourceID) BinaryDecode(r io.Reader) error {
+	var id string
+	if err := BinaryDecode(r, &id); err != nil {
+		return err
+	}
+	*i = ResourceID(id)
+	return nil
+}
+
+// ResourceRef is a reference to a resource. This is typically used from resources to refer to other
+// resources.
+type ResourceRef struct {
+	pkg ResourcePackage
+	id  ResourceID
+}
+
+// ResourceRefNull is a null resource reference.
+var ResourceRefNull = ResourceRef{}
+
+// NewResourceRef creates a new resource reference.
+func NewResourceRef(pkg ResourcePackage, id ResourceID) ResourceRef {
+	return ResourceRef{pkg, id}
+}
+
+// ParseResourceRef parses a resource reference from a string. The string must be in the format
+// "pkg:id".
+func ParseResourceRef(s string) (ResourceRef, error) {
+	parts := strings.Split(s, ":")
+	switch len(parts) {
+	case 2:
+		return ResourceRef{ResourcePackage(parts[0]), ResourceID(parts[1])}, nil
+	default:
+		return ResourceRef{}, fmt.Errorf("invalid resource reference: %s", s)
+	}
+}
+
+// String returns the string representation of the resource reference.
+func (r ResourceRef) String() string {
+	if r.pkg == "" {
+		return r.id.String()
+	}
+	return r.pkg.String() + ":" + r.id.String()
+}
+
+func (r ResourceRef) BinaryEncode(w io.Writer) (int, error) {
+	return BinaryEncode(w, r.String())
+}
+
+// IsNull returns true if the reference is null.
+func (r ResourceRef) IsNull() bool {
+	return len(r.pkg) == 0 && len(r.id) == 0
+}
+
+// Package returns the part of the reference that indicates the resource package.
+func (r ResourceRef) Package() ResourcePackage {
+	return r.pkg
+}
+
+// ID returns the part of the reference that indicates the resource ID in its package.
+func (r ResourceRef) ID() ResourceID {
+	return r.id
 }
 
 // ResourceLoader is a value that can load game resources.
 type ResourceLoader interface {
-	// LoadActor loads an actor from the given locator. It returns nil if the actor is not found.
-	LoadActor(locator ResourceLocator) *Actor
+	// LoadCostume loads a costume from the given ref. It returns nil if the costume is not
+	// found.
+	LoadCostume(ref ResourceRef) *Costume
 
-	// LoadMusic loads a music song from the given locator. It returns nil if the music is not found.
-	LoadMusic(locator ResourceLocator) *Music
+	// LoadMusic loads a music song from the given ref. It returns nil if the music is not
+	// found.
+	LoadMusic(ref ResourceRef) *Music
 
-	// LoadScene loads a scene from the given locator. It returns nil if the scene is not found.
-	LoadScene(locator ResourceLocator) *Scene
+	// LoadRoom loads a room from the given ref. It returns nil if the room is not found.
+	LoadRoom(ref ResourceRef) *Room
 
-	// LoadScript loads a script from the given locator. It returns nil if the script is not found.
-	LoadScript(locator ResourceLocator) *Script
+	// LoadScript loads a script from the given ref. It returns nil if the script is not found.
+	LoadScript(ref ResourceRef) *Script
 
-	// LoadSound loads a sound effect from he given locator. It returns nil if the sound is not found.
-	LoadSound(locator ResourceLocator) *Sound
-
-	// LoadSpriteSheet loads a sprite sheet from the given locator. It returns nil if the sprite
-	// sheet is not found.
-	LoadSpriteSheet(locator ResourceLocator) *SpriteSheet
+	// LoadSound loads a sound effect from he given ref. It returns nil if the sound is not
+	// found.
+	LoadSound(ref ResourceRef) *Sound
 }
 
 // ResourceBundle is a bundle of resources that are loaded in memory. This can be used for
 // testing purposes mainly.
 type ResourceBundle struct {
-	actors       map[ResourceLocator]*Actor
-	music        map[ResourceLocator]*Music
-	scenes       map[ResourceLocator]*Scene
-	scripts      map[ResourceLocator]*Script
-	sounds       map[ResourceLocator]*Sound
-	spriteSheets map[ResourceLocator]*SpriteSheet
+	costumes map[ResourceRef]*Costume
+	music    map[ResourceRef]*Music
+	rooms    map[ResourceRef]*Room
+	scripts  map[ResourceRef]*Script
+	sounds   map[ResourceRef]*Sound
 }
 
 // NewResourceBundle creates a new resource bundle that can be used as resource loader.
 func NewResourceBundle() *ResourceBundle {
 	return &ResourceBundle{
-		actors:       make(map[ResourceLocator]*Actor),
-		music:        make(map[ResourceLocator]*Music),
-		scenes:       make(map[ResourceLocator]*Scene),
-		scripts:      make(map[ResourceLocator]*Script),
-		sounds:       make(map[ResourceLocator]*Sound),
-		spriteSheets: make(map[ResourceLocator]*SpriteSheet),
+		costumes: make(map[ResourceRef]*Costume),
+		music:    make(map[ResourceRef]*Music),
+		rooms:    make(map[ResourceRef]*Room),
+		scripts:  make(map[ResourceRef]*Script),
+		sounds:   make(map[ResourceRef]*Sound),
 	}
 }
 
-// PutActor adds an actor to the catalog.
-func (c *ResourceBundle) PutActor(loc ResourceLocator, a *Actor) {
-	c.actors[loc] = a
+// PutCostume adds a costume to the bundle.
+func (c *ResourceBundle) PutCostume(ref ResourceRef, cos *Costume) {
+	c.costumes[ref] = cos
 }
 
-// PutMusic adds a music song to the catalog.
-func (c *ResourceBundle) PutMusic(loc ResourceLocator, m *Music) {
-	c.music[loc] = m
+// PutMusic adds a music song to the bundle.
+func (c *ResourceBundle) PutMusic(ref ResourceRef, m *Music) {
+	c.music[ref] = m
 }
 
-// PutScene adds a scene to the catalog.
-func (c *ResourceBundle) PutScene(loc ResourceLocator, sc *Scene) {
-	c.scenes[loc] = sc
+// PutRoom adds a room to the bundle.
+func (c *ResourceBundle) PutRoom(ref ResourceRef, sc *Room) {
+	c.rooms[ref] = sc
 }
 
-// PutScript adds a script to the catalog.
-func (c *ResourceBundle) PutScript(loc ResourceLocator, s *Script) {
-	c.scripts[loc] = s
+// PutScript adds a script to the bundle.
+func (c *ResourceBundle) PutScript(ref ResourceRef, s *Script) {
+	c.scripts[ref] = s
 }
 
-// PutSound adds a sound to the catalog.
-func (c *ResourceBundle) PutSound(loc ResourceLocator, s *Sound) {
-	c.sounds[loc] = s
+// PutSound adds a sound to the bundle.
+func (c *ResourceBundle) PutSound(ref ResourceRef, s *Sound) {
+	c.sounds[ref] = s
 }
 
-// PutSpriteSheet adds a sprite sheet to the catalog.
-func (c *ResourceBundle) PutSpriteSheet(loc ResourceLocator, ss *SpriteSheet) {
-	c.spriteSheets[loc] = ss
+// LoadCostume loads a costume from the given ref. It returns nil if the costume is not found.
+func (c *ResourceBundle) LoadCostume(ref ResourceRef) *Costume {
+	return c.costumes[ref]
 }
 
-// LoadActor loads an actor from the given locator. It returns nil if the actor is not found.
-func (c *ResourceBundle) LoadActor(locator ResourceLocator) *Actor {
-	return c.actors[locator]
+// LoadMusic loads a music song from the given ref. It returns nil if the music is not found.
+func (c *ResourceBundle) LoadMusic(ref ResourceRef) *Music {
+	return c.music[ref]
 }
 
-// LoadMusic loads a music song from the given locator. It returns nil if the music is not found.
-func (c *ResourceBundle) LoadMusic(locator ResourceLocator) *Music {
-	return c.music[locator]
+// LoadRoom loads a room from the given ref. It returns nil if the room is not found.
+func (c *ResourceBundle) LoadRoom(ref ResourceRef) *Room {
+	return c.rooms[ref]
 }
 
-// LoadScene loads a scene from the given locator. It returns nil if the scene is not found.
-func (c *ResourceBundle) LoadScene(locator ResourceLocator) *Scene {
-	return c.scenes[locator]
+// LoadScript loads a script from the given ref. It returns nil if the script is not found.
+func (c *ResourceBundle) LoadScript(ref ResourceRef) *Script {
+	return c.scripts[ref]
 }
 
-// LoadScript loads a script from the given locator. It returns nil if the script is not found.
-func (c *ResourceBundle) LoadScript(locator ResourceLocator) *Script {
-	return c.scripts[locator]
-}
-
-// LoadSpriteSheet loads a sprite sheet from the given locator. It returns nil if the sprite sheet
-// is not found.
-func (c *ResourceBundle) LoadSpriteSheet(locator ResourceLocator) *SpriteSheet {
-	return c.spriteSheets[locator]
-}
-
-// LoadSound loads a sound effect from he given locator. It returns nil if the sound is not found.
-func (c *ResourceBundle) LoadSound(locator ResourceLocator) *Sound {
-	return c.sounds[locator]
+// LoadSound loads a sound effect from he given ref. It returns nil if the sound is not found.
+func (c *ResourceBundle) LoadSound(ref ResourceRef) *Sound {
+	return c.sounds[ref]
 }

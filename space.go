@@ -13,11 +13,11 @@ const (
 	// ScreenHeight is the height of the screen (ignoring zoom).
 	ScreenHeight = 200
 
-	// ScreenHeightScene is the width of the scene section of the screen.
-	ScreenHeightScene = 144
+	// ViewportHeight is the width of the room section of the screen.
+	ViewportHeight = 144
 
-	// ScreenHeightControl is the width of the control box section of the screen.
-	ScreenHeightControl = 56
+	// ControlBoxHeight is the width of the control box section of the screen.
+	ControlBoxHeight = 56
 )
 
 // Position represents a 2D position.
@@ -132,7 +132,7 @@ func (r Rectangle) toRaylib() rl.Rectangle {
 }
 
 // Direction represents a direction in 2D space.
-type Direction int
+type Direction byte
 
 func (d Direction) String() string {
 	switch d {
@@ -150,8 +150,8 @@ func (d Direction) String() string {
 }
 
 const (
-	DirUp Direction = iota
-	DirDown
+	DirRight Direction = iota
 	DirLeft
-	DirRight
+	DirUp
+	DirDown
 )
