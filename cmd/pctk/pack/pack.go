@@ -30,8 +30,8 @@ func do(src string, output string) error {
 		return err
 	}
 	for _, manifest := range manifests {
-		ref := pctk.ResourceRef(strings.TrimSuffix(manifest, filepath.Ext(manifest)))
-		fmt.Printf("Packing %s...", ref)
+		id := pctk.ResourceID(strings.TrimSuffix(manifest, filepath.Ext(manifest)))
+		fmt.Printf("Packing %s...", id)
 		man, err := LoadManifestFromFile(filepath.Join(src, manifest))
 		if err != nil {
 			return err
@@ -39,15 +39,15 @@ func do(src string, output string) error {
 
 		switch data := man.Data.(type) {
 		case *CostumeData:
-			enc.EncodeCostume(ref, data.Resource, man.Compression)
+			enc.EncodeCostume(id, data.Resource, man.Compression)
 		case *MusicData:
-			enc.EncodeMusic(ref, data.Resource, man.Compression)
+			enc.EncodeMusic(id, data.Resource, man.Compression)
 		case *RoomData:
-			enc.EncodeRoom(ref, data.Resource, man.Compression)
+			enc.EncodeRoom(id, data.Resource, man.Compression)
 		case *ScriptData:
-			enc.EncodeScript(ref, data.Resource, man.Compression)
+			enc.EncodeScript(id, data.Resource, man.Compression)
 		case *SoundData:
-			enc.EncodeSound(ref, data.Resource, man.Compression)
+			enc.EncodeSound(id, data.Resource, man.Compression)
 		}
 		fmt.Printf(" Done\n")
 	}

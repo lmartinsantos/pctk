@@ -12,7 +12,7 @@ import (
 
 func TestBinaryEncode(t *testing.T) {
 	var buf bytes.Buffer
-	n, err := pctk.BinaryEncode(&buf, pctk.ResourceRef("test"), uint64(42))
+	n, err := pctk.BinaryEncode(&buf, pctk.NewResourceRef("test", "foo/bar"), uint64(42))
 	require.NoError(t, err)
 	assert.Equal(t, int(14), n)
 }
@@ -43,7 +43,7 @@ func TestResourceEncoder_EncodeResource(t *testing.T) {
 	require.NoError(t, err)
 
 	err = enc.EncodeScript(
-		pctk.ResourceRef("hello"),
+		pctk.ResourceID("hello"),
 		&pctk.Script{
 			Language: pctk.ScriptLua,
 			Code:     []byte("print('Hello, world!')"),
@@ -72,7 +72,7 @@ func TestResourceEncoder_EncodeResourceWithGZip(t *testing.T) {
 	require.NoError(t, err)
 
 	err = enc.EncodeScript(
-		pctk.ResourceRef("hello"),
+		pctk.ResourceID("hello"),
 		&pctk.Script{
 			Language: pctk.ScriptLua,
 			Code:     []byte("print('Hello, world!')"),

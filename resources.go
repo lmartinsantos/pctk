@@ -1,18 +1,91 @@
 package pctk
 
-import "io"
+import (
+	"fmt"
+	"io"
+	"strings"
+)
+
+// ResourcePackage is the package of a resource. This is used to group resources together.
+type ResourcePackage string
+
+// String returns the string representation of the resource package.
+func (r ResourcePackage) String() string {
+	return string(r)
+}
+
+// BinaryEncode encodes the resource package to a binary format.
+func (r ResourcePackage) BinaryEncode(w io.Writer) (int, error) {
+	return BinaryEncode(w, r.String())
+}
+
+// ResourceID is the identifier of a resource in a package.
+type ResourceID string
+
+// String returns the string representation of the resource ID.
+func (r ResourceID) String() string {
+	return string(r)
+}
+
+// BinaryEncode encodes the resource ID to a binary format.
+func (r ResourceID) BinaryEncode(w io.Writer) (int, error) {
+	return BinaryEncode(w, r.String())
+}
 
 // ResourceRef is a reference to a resource. This is typically used from resources to refer to other
 // resources.
-type ResourceRef string
-
-func (r ResourceRef) BinaryEncode(w io.Writer) (int, error) {
-	return BinaryEncode(w, string(r))
+type ResourceRef struct {
+	pkg ResourcePackage
+	id  ResourceID
 }
 
-// Append appends other to reference r.
-func (r ResourceRef) Append(other ResourceRef) ResourceRef {
-	return r + "/" + other
+// ResourceRefNull is a null resource reference.
+var ResourceRefNull = ResourceRef{}
+
+// NewResourceRef creates a new resource reference.
+func NewResourceRef(pkg ResourcePackage, id ResourceID) ResourceRef {
+	return ResourceRef{pkg, id}
+}
+
+// ParseResourceRef parses a resource reference from a string. The string must be in the format
+// "pkg:id".
+func ParseResourceRef(s string) (ResourceRef, error) {
+	parts := strings.Split(s, ":")
+	switch len(parts) {
+	case 1:
+		return ResourceRef{"", ResourceID(parts[0])}, nil
+	case 2:
+		return ResourceRef{ResourcePackage(parts[0]), ResourceID(parts[1])}, nil
+	default:
+		return ResourceRef{}, fmt.Errorf("invalid resource reference: %s", s)
+	}
+}
+
+// String returns the string representation of the resource reference.
+func (r ResourceRef) String() string {
+	if r.pkg == "" {
+		return r.id.String()
+	}
+	return r.pkg.String() + ":" + r.id.String()
+}
+
+func (r ResourceRef) BinaryEncode(w io.Writer) (int, error) {
+	return BinaryEncode(w, r.String())
+}
+
+// IsNull returns true if the reference is null.
+func (r ResourceRef) IsNull() bool {
+	return len(r.pkg) == 0 && len(r.id) == 0
+}
+
+// Package returns the part of the reference that indicates the resource package.
+func (r ResourceRef) Package() ResourcePackage {
+	return r.pkg
+}
+
+// ID returns the part of the reference that indicates the resource ID in its package.
+func (r ResourceRef) ID() ResourceID {
+	return r.id
 }
 
 // ResourceLoader is a value that can load game resources.

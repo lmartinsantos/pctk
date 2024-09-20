@@ -61,7 +61,6 @@ type action func(*App, *Actor) (completed bool)
 
 // ActorShow is a command that will show an actor in the room at the given position.
 type ActorShow struct {
-	ActorResource   ResourceRef
 	CostumeResource ResourceRef
 	ActorName       string
 	Position        Position
@@ -72,7 +71,9 @@ func (cmd ActorShow) Execute(app *App, done Promise) {
 	actor := app.ensureActor(cmd.ActorName)
 	actor.pos = cmd.Position
 	actor.stand(cmd.LookAt)
-	actor.SetCostume(app.res.LoadCostume(cmd.CostumeResource))
+	if cmd.CostumeResource != ResourceRefNull {
+		actor.SetCostume(app.res.LoadCostume(cmd.CostumeResource))
+	}
 	app.actors[cmd.ActorName] = actor
 	done.Complete()
 }

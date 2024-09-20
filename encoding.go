@@ -54,6 +54,17 @@ type BinaryEncoder interface {
 	BinaryEncode(w io.Writer) (int, error)
 }
 
+// ResourceCompression is the type of compression used for resources while encoding.
+type ResourceCompression byte
+
+const (
+	// CompressionNone is the no compression.
+	CompressionNone ResourceCompression = iota
+
+	// CompressionGzip is the gzip compression.
+	CompressionGzip
+)
+
 // ResourceEncoder is a value that can encode resources to a writer.
 type ResourceEncoder struct {
 	index io.Writer
@@ -79,46 +90,46 @@ func (e *ResourceEncoder) DataBytesWritten() int {
 }
 
 // EncodeCostume encodes a costume using the resource encoder.
-func (e *ResourceEncoder) EncodeCostume(ref ResourceRef, c *Costume, comp ResourceCompression) error {
-	return e.encodeResource(ref, c, resourceHeader{
-		Type:        ResourceTypeCostume,
+func (e *ResourceEncoder) EncodeCostume(id ResourceID, c *Costume, comp ResourceCompression) error {
+	return e.encodeResource(id, c, resourceHeader{
+		Type:        resourceTypeCostume,
 		Compression: comp,
 	})
 }
 
 // EncodeMusic encodes a music using the resource encoder.
-func (e *ResourceEncoder) EncodeMusic(ref ResourceRef, m *Music, comp ResourceCompression) error {
-	return e.encodeResource(ref, m, resourceHeader{
-		Type:        ResourceTypeMusic,
+func (e *ResourceEncoder) EncodeMusic(id ResourceID, m *Music, comp ResourceCompression) error {
+	return e.encodeResource(id, m, resourceHeader{
+		Type:        resourceTypeMusic,
 		Compression: comp,
 	})
 }
 
 // EncodeRoom encodes a room using the resource encoder.
-func (e *ResourceEncoder) EncodeRoom(ref ResourceRef, s *Room, comp ResourceCompression) error {
-	return e.encodeResource(ref, s, resourceHeader{
-		Type:        ResourceTypeRoom,
+func (e *ResourceEncoder) EncodeRoom(id ResourceID, s *Room, comp ResourceCompression) error {
+	return e.encodeResource(id, s, resourceHeader{
+		Type:        resourceTypeRoom,
 		Compression: comp,
 	})
 }
 
 // EncodeScript encodes a script using the resource encoder.
-func (e *ResourceEncoder) EncodeScript(ref ResourceRef, s *Script, comp ResourceCompression) error {
-	return e.encodeResource(ref, s, resourceHeader{
-		Type:        ResourceTypeScript,
+func (e *ResourceEncoder) EncodeScript(id ResourceID, s *Script, comp ResourceCompression) error {
+	return e.encodeResource(id, s, resourceHeader{
+		Type:        resourceTypeScript,
 		Compression: comp,
 	})
 }
 
 // EncodeSound encodes a sound using the resource encoder.
-func (e *ResourceEncoder) EncodeSound(ref ResourceRef, s *Sound, comp ResourceCompression) error {
-	return e.encodeResource(ref, s, resourceHeader{
-		Type:        ResourceTypeSound,
+func (e *ResourceEncoder) EncodeSound(id ResourceID, s *Sound, comp ResourceCompression) error {
+	return e.encodeResource(id, s, resourceHeader{
+		Type:        resourceTypeSound,
 		Compression: comp,
 	})
 }
 
-func (e *ResourceEncoder) encodeResource(ref ResourceRef, res BinaryEncoder, h resourceHeader) error {
+func (e *ResourceEncoder) encodeResource(id ResourceID, res BinaryEncoder, h resourceHeader) error {
 	var n int
 	var err error
 
@@ -149,7 +160,7 @@ func (e *ResourceEncoder) encodeResource(ref ResourceRef, res BinaryEncoder, h r
 		n += nn
 	}
 
-	if err := e.encodeIndexEntry(ref, e.next, n); err != nil {
+	if err := e.encodeIndexEntry(id, e.next, n); err != nil {
 		return err
 	}
 	e.next += n
@@ -183,13 +194,61 @@ func (e *ResourceEncoder) encodeDataHeader() error {
 	return err
 }
 
-func (e *ResourceEncoder) encodeIndexEntry(ref ResourceRef, offset, size int) error {
-	_, err := BinaryEncode(e.index, ref, uint32(offset), uint32(size))
+func (e *ResourceEncoder) encodeIndexEntry(id ResourceID, offset, size int) error {
+	_, err := BinaryEncode(e.index, indexEntry{id, uint32(offset), uint32(size)})
 	return err
 }
 
+// ResourceFileLoader is a value that can load resources from files.
+type ResourceFileLoader struct {
+	path    string
+	indexes map[string]index
+}
+
+// NewResourceFileLoader creates a new resource file loader that loads resources from the
+// filesystem.
+func NewResourceFileLoader(path string) *ResourceFileLoader {
+	return &ResourceFileLoader{path: path}
+}
+
+func (l *ResourceFileLoader) LoadCostume(ref ResourceRef) *Costume {
+	panic("not implemented")
+}
+
+func (l *ResourceFileLoader) LoadMusic(ref ResourceRef) *Music {
+	panic("not implemented")
+}
+
+func (l *ResourceFileLoader) LoadRoom(ref ResourceRef) *Room {
+	panic("not implemented")
+}
+
+func (l *ResourceFileLoader) LoadScript(ref ResourceRef) *Script {
+	panic("not implemented")
+}
+
+func (l *ResourceFileLoader) LoadSound(ref ResourceRef) *Sound {
+	panic("not implemented")
+}
+
+func (l *ResourceFileLoader) loadIndex(ref ResourceRef) index {
+	panic("not implemented")
+}
+
+type index map[ResourceRef]indexEntry
+
+type indexEntry struct {
+	ID     ResourceID
+	Offset uint32
+	Size   uint32
+}
+
+func (e indexEntry) BinaryEncode(w io.Writer) (int, error) {
+	return BinaryEncode(w, e.ID, e.Offset, e.Size)
+}
+
 type resourceHeader struct {
-	Type        ResourceType
+	Type        resourceType
 	Compression ResourceCompression
 }
 
@@ -197,25 +256,13 @@ func (h resourceHeader) BinaryEncode(w io.Writer) (int, error) {
 	return BinaryEncode(w, h.Type, h.Compression, [14]byte{})
 }
 
-// ResourceType is the type of a resource.
-type ResourceType byte
+type resourceType byte
 
 const (
-	ResourceTypeUndefined ResourceType = iota
-	ResourceTypeCostume
-	ResourceTypeMusic
-	ResourceTypeRoom
-	ResourceTypeScript
-	ResourceTypeSound
-)
-
-// ResourceCompression is the type of compression used for resources while encoding.
-type ResourceCompression byte
-
-const (
-	// CompressionNone is the no compression.
-	CompressionNone ResourceCompression = iota
-
-	// CompressionGzip is the gzip compression.
-	CompressionGzip
+	resourceTypeUndefined resourceType = iota
+	resourceTypeCostume
+	resourceTypeMusic
+	resourceTypeRoom
+	resourceTypeScript
+	resourceTypeSound
 )

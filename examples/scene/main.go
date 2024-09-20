@@ -11,7 +11,7 @@ func main() {
 	app := pctk.New(bundle)
 
 	buildResources(bundle)
-	app.Do(pctk.ScriptRun{ScriptResource: "/scripts/LostMyKeys"})
+	app.Do(pctk.ScriptRun{ScriptResource: pctk.NewResourceRef("resources", "scripts/LostMyKeys")})
 	app.Run()
 }
 
@@ -19,7 +19,7 @@ func buildResources(bundle *pctk.ResourceBundle) {
 
 	bg := pctk.LoadImageFromFile("background.jpg")
 	room := pctk.NewRoom(bg)
-	bundle.PutRoom("/main", room)
+	bundle.PutRoom(pctk.NewResourceRef("resources", "rooms/Melee"), room)
 
 	sprites := pctk.LoadSpriteSheetFromFile("guybrush.png", pctk.Size{W: 32, H: 48})
 	costume := pctk.NewCostume(sprites).
@@ -61,26 +61,35 @@ func buildResources(bundle *pctk.ResourceBundle) {
 		WithAnimation(pctk.CostumeWalk(pctk.DirDown), pctk.NewAnimation().
 			WithFramesInRow(2, 100*time.Millisecond, 0, 1, 2, 1, 0, 3, 4, 5, 4, 3),
 		)
-	bundle.PutCostume("/costumes/guybrush", costume)
+	bundle.PutCostume(pctk.NewResourceRef("resources", "costumes/Guybrush"), costume)
 
-	bundle.PutMusic("/music/on-the-hill", pctk.LoadMusicFromFile("On_the_Hill.ogg"))
-	bundle.PutMusic("/music/guitar_noodling", pctk.LoadMusicFromFile("guitar_noodling.ogg"))
-	bundle.PutSound("/sound/cricket", pctk.LoadSoundFromFile("cricket.wav"))
+	bundle.PutMusic(
+		pctk.NewResourceRef("resources", "audio/OnTheHill"),
+		pctk.LoadMusicFromFile("On_the_Hill.ogg"),
+	)
+	bundle.PutMusic(
+		pctk.NewResourceRef("resources", "audio/GuitarNoodling"),
+		pctk.LoadMusicFromFile("guitar_noodling.ogg"),
+	)
+	bundle.PutSound(
+		pctk.NewResourceRef("resources", "audio/Cricket"),
+		pctk.LoadSoundFromFile("cricket.wav"),
+	)
 
-	bundle.PutScript("/scripts/LostMyKeys", &pctk.Script{
+	bundle.PutScript(pctk.NewResourceRef("resources", "scripts/LostMyKeys"), &pctk.Script{
 		Language: pctk.ScriptLua,
 		Code: []byte(`
 			local pirate1_dialog_props = { pos = {x=60, y=20}, color = ColorMagenta }
 			local pirate2_dialog_props = { pos = {x=60, y=50}, color = ColorYellow }
 
-			RoomShow("/main")
-			ActorShow("/guybrush", "guybrush", {
+			RoomShow("resources:rooms/Melee")
+			ActorShow("guybrush", {
 				pos={x=340, y=90}, 
 				dir=DirLeft,
-				costume="/costumes/guybrush"
+				costume="resources:costumes/Guybrush"
 			})
-			MusicPlay("/music/on-the-hill")
-			SoundPlay("/sound/cricket")
+			MusicPlay("resources:audio/OnTheHill")
+			SoundPlay("resources:audio/Cricket")
 			ActorWalkToPosition("guybrush", {x=290, y=90}).Wait()
 			ActorSpeak("guybrush", "Hello, I'm Guybrush Threepwood,\nmighty pirate!").Wait()
 			DialogShow("**Oh no! This guy again!**", pirate1_dialog_props)
@@ -90,7 +99,7 @@ func buildResources(bundle *pctk.ResourceBundle) {
 			DialogShow("Eeerrrr... Nope!", pirate1_dialog_props)
 			SleepMillis(2000)
 
-			MusicPlay("/music/guitar_noodling")
+			MusicPlay("resources:audio/GuitarNoodling")
 			ActorWalkToPosition("guybrush", {x=120, y=80}).Wait()
 			ActorSpeak("guybrush", "Where can I find the keys?", {delay=1000}).Wait()
 			ActorWalkToPosition("guybrush", {x=120, y=90}).Wait()
@@ -101,7 +110,7 @@ func buildResources(bundle *pctk.ResourceBundle) {
 			ActorSpeak("guybrush", "Ok, I will try the Scumm bar.").Wait()
 			ActorStand("guybrush", {dir = DirLeft}).Wait()
 			ActorSpeak("guybrush", "Thank you guys!").Wait()
-			SoundPlay("/sound/cricket")
+			SoundPlay("resources:audio/Cricket")
 			ActorWalkToPosition("guybrush", {x=360, y=90}).Wait()
 
 			DialogShow("Oh, Jesus! I though he would\ntell again that stupid\ntale about LeChuck!", pirate1_dialog_props).Wait()
