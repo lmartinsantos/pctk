@@ -23,6 +23,7 @@ type Actor struct {
 
 	lookAt Direction
 	pos    Position
+	elev   int
 	act    action
 }
 
@@ -42,7 +43,7 @@ func (a *Actor) stand(dir Direction) *Actor {
 	a.lookAt = dir
 	a.act = func() (completed bool) {
 		if cos := a.costume; cos != nil {
-			cos.draw(CostumeIdle(dir), a.pos)
+			cos.draw(CostumeIdle(dir), a.pos.Above(a.elev))
 		}
 		return false
 	}
@@ -115,7 +116,7 @@ func (cmd ActorWalkToPosition) Execute(app *App, done Promise) {
 	app.withActor(cmd.ActorName, func(a *Actor) {
 		a.act = func() (completed bool) {
 			if cos := a.costume; cos != nil {
-				cos.draw(CostumeWalk(a.lookAt), a.pos)
+				cos.draw(CostumeWalk(a.lookAt), a.pos.Above(a.elev))
 			}
 
 			if a.pos == cmd.Position {
@@ -168,7 +169,7 @@ func (cmd ActorSpeak) Execute(app *App, done Promise) {
 		})
 		a.act = func() (completed bool) {
 			if cos := a.costume; cos != nil {
-				cos.draw(CostumeSpeak(a.lookAt), a.pos)
+				cos.draw(CostumeSpeak(a.lookAt), a.pos.Above(a.elev))
 			}
 			if dialogDone.IsCompleted() {
 				done.CompleteAfter(nil, cmd.Delay)
