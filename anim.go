@@ -1,6 +1,7 @@
 package pctk
 
 import (
+	"io"
 	"time"
 )
 
@@ -10,34 +11,24 @@ const (
 
 // Animation represents a sequence of images that can be played.
 type Animation struct {
-	sprites ResourceLocator
-	frames  []animationFrame
-	flip    bool
+	frames []animationFrame
+	flip   bool
 
 	currentFrame int
 	lastFrame    time.Time
 }
 
 // NewAnimation creates a new animation.
-func NewAnimation(sprites ResourceLocator) *Animation {
-	return &Animation{
-		sprites: sprites,
-	}
+func NewAnimation() *Animation {
+	return &Animation{}
 }
 
-// WithFrame adds a frame to the animation. The frame is located at the i-th row and j-th column of
-// the sprite sheet. The delay is the time to wait before moving to the next frame.
-func (a *Animation) WithFrame(i, j uint, delay time.Duration) *Animation {
-	a.frames = append(a.frames, animationFrame{i, j, delay})
-	return a
-}
-
-// WithFramesInRow adds a sequence of frames to the animation. The frames are located at the row-th
-// row and fromCol-th to toCol-th columns of the sprite sheet. The delay is the time to wait before
-// moving to the next frame.
-func (a *Animation) WithFramesInRow(row uint, delay time.Duration, cols ...uint) *Animation {
+// WithFrames adds a sequence of frames to the animation. The frames are located at the row-th
+// row and the indicated cols of the sprite sheet. The delay is the time to wait before moving to
+// the next frame.
+func (a *Animation) WithFrames(row uint, delay time.Duration, cols ...uint) *Animation {
 	for _, col := range cols {
-		a.WithFrame(col, row, delay)
+		a.frames = append(a.frames, animationFrame{col, row, delay})
 	}
 	return a
 }
@@ -48,7 +39,48 @@ func (a *Animation) Flip(flip bool) *Animation {
 	return a
 }
 
-func (a *Animation) draw(app *App, pos Position) {
+// BinaryEncode encodes the animation to a binary format. The format is as follows:
+// - byte: the flip flag.
+// - uint32: the number of frames.
+// - for each frame:
+//   - byte: the sprite column.
+//   - byte: the sprite row.
+//   - uint64: the delay.
+func (a *Animation) BinaryEncode(w io.Writer) (n int, err error) {
+	n, err = BinaryEncode(w, a.flip, uint32(len(a.frames)))
+	for _, frame := range a.frames {
+		nn, err := BinaryEncode(w, byte(frame.col), byte(frame.row), uint64(frame.delay))
+		n += nn
+		if err != nil {
+			return n, err
+		}
+	}
+	return n, nil
+}
+
+// BinaryDecode decodes the animation from a binary format. See BinaryEncode for the format.
+func (a *Animation) BinaryDecode(r io.Reader) error {
+	var count uint32
+	if err := BinaryDecode(r, &a.flip, &count); err != nil {
+		return err
+	}
+	a.frames = make([]animationFrame, count)
+	for i := uint32(0); i < count; i++ {
+		var col, row byte
+		var delay uint64
+		if err := BinaryDecode(r, &col, &row, &delay); err != nil {
+			return err
+		}
+		a.frames[i] = animationFrame{
+			col:   uint(col),
+			row:   uint(row),
+			delay: time.Duration(delay),
+		}
+	}
+	return nil
+}
+
+func (a *Animation) draw(sprites *SpriteSheet, pos Position) {
 	if a.frames[a.currentFrame].delay < time.Since(a.lastFrame) {
 		a.lastFrame = time.Now()
 		a.currentFrame++
@@ -57,22 +89,15 @@ func (a *Animation) draw(app *App, pos Position) {
 		}
 	}
 
-	sprites := app.res.LoadSpriteSheet(a.sprites)
 	sprites.DrawSprite(
-		a.frames[a.currentFrame].i,
-		a.frames[a.currentFrame].j,
+		a.frames[a.currentFrame].col,
+		a.frames[a.currentFrame].row,
 		pos,
 		a.flip,
 	)
 }
 
-// getAnimationSize gets the annimation frame size
-func (a *Animation) getAnimationSize(app *App) Size {
-	sprites := app.res.LoadSpriteSheet(a.sprites)
-	return sprites.frameSize
-}
-
 type animationFrame struct {
-	i, j  uint
-	delay time.Duration
+	col, row uint
+	delay    time.Duration
 }

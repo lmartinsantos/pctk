@@ -23,8 +23,8 @@ func (a *App) run() {
 	a.drawObjects()
 	a.drawActors()
 	a.drawMouseCursor()
-	a.drawEgoAction()
 	rl.EndMode2D()
 	rl.EndDrawing()
+	a.processControlInputs()
 	a.commands.execute(a)
 }

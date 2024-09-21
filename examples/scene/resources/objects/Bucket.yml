@@ -1,0 +1,13 @@
+type: object
+compression: none
+data:
+  name: Bucket
+  sprites:
+    sheet: items.png
+    width: 30
+    height: 18
+  animation:
+    frames:
+      - row: 6
+        columns: [5]
+        duration: 1000

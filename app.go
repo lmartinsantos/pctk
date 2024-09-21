@@ -12,21 +12,23 @@ type App struct {
 	screenCaption string
 	screenZoom    int32
 
-	scene    *Scene
+	room     *Room
 	dialogs  []Dialog
 	actors   map[string]*Actor
 	objects  map[string]*Object
 	commands commandQueue
 
-	cam               rl.Camera2D
-	fontDefault       rl.Font
-	fontDialogSolid   rl.Font
-	fontDialogOutline rl.Font
-	cursorTx          rl.Texture2D
-	cursorColor       Color
-	music             *Music
-	sound             *Sound
-	egoActionSelected *Action // TODO set and unset egoActionSelected
+	cam                 rl.Camera2D
+	fontDefault         rl.Font
+	fontDialogSolid     rl.Font
+	fontDialogOutline   rl.Font
+	cursorTx            rl.Texture2D
+	cursorColor         Color
+	music               *Music
+	sound               *Sound
+	ego                 *Actor
+	controlPanelEnabled bool
+	egoVerbSelected     *Verb // TODO set and unset egoActionSelected
 }
 
 // New creates a new pctk application.

@@ -1,0 +1,84 @@
+type: costume
+compression: none
+data:
+  sprites: 
+    sheet: Guybrush.png
+    width: 32
+    height: 48
+  animations:
+    - action: idle
+      dir: right
+      frames:
+      - row: 1
+        columns: [0]
+        duration: 1000
+    - action: idle
+      dir: left
+      flip: true
+      frames:
+      - row: 1
+        columns: [0]
+        duration: 1000
+    - action: idle
+      dir: up
+      frames:
+      - row: 5
+        columns: [0]
+        duration: 1000
+    - action: idle
+      dir: down
+      frames:
+      - row: 4
+        columns: [0]
+        duration: 1000
+    - action: speak
+      dir: right
+      frames:
+      - row: 1
+        columns: [0, 1, 2, 3, 4, 5]
+        duration: 100
+    - action: speak
+      dir: left
+      flip: true
+      frames:
+      - row: 1
+        columns: [0, 1, 2, 3, 4, 5]
+        duration: 100
+    - action: speak
+      dir: up
+      frames:
+      - row: 5
+        columns: [0, 1, 2]
+        duration: 100
+    - action: speak
+      dir: down
+      frames:
+      - row: 4
+        columns: [0, 1, 2, 3, 4, 5]
+        duration: 100
+    - action: walk
+      dir: right
+      frames:
+      - row: 0
+        columns: [0, 1, 2, 1, 0, 3, 4, 5, 4, 3]
+        duration: 100
+    - action: walk
+      dir: left
+      flip: true
+      frames:
+      - row: 0
+        columns: [0, 1, 2, 1, 0, 3, 4, 5, 4, 3]
+        duration: 100
+    - action: walk
+      dir: up
+      frames:
+      - row: 3
+        columns: [0, 1, 2, 1, 0, 3, 4, 5, 4, 3]
+        duration: 100
+    - action: walk
+      dir: down
+      frames:
+      - row: 2
+        columns: [0, 1, 2, 1, 0, 3, 4, 5, 4, 3]
+        duration: 100
+    

@@ -1,0 +1,4 @@
+type: sound
+compression: none
+data:
+  source: "Cricket.wav"

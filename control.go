@@ -1,73 +1,28 @@
 package pctk
 
-import "fmt"
+import (
+	"fmt"
 
-type ActionName int
-
-// ActionName represents a verb or command that the player can perform in the game.
-const (
-	Open ActionName = iota
-	Close
-	Push
-	Pull
-	WalkTo
-	PickUp
-	TalkTo
-	Give
-	Use
-	LookAt
-	TurnOn
-	TurnOff
+	rl "github.com/gen2brain/raylib-go/raylib"
 )
-
-// Action represents an interactive action in the game including where is rendered.
-type Action struct {
-	ActionName  ActionName
-	Description string
-	Col         int
-	Row         int
-}
 
 var (
 	ControlVerbColor                 = Green
 	ControlVerbHoverOrSuggestedColor = BrigthGreen
-	ControlActionColor               = Cyan
-
-	// Actions
-	ActionOpen  = &Action{ActionName: Open, Description: "Open", Col: 0, Row: 0}
-	ActionClose = &Action{ActionName: Close, Description: "Close", Col: 0, Row: 1}
-	ActionPush  = &Action{ActionName: Push, Description: "Push", Col: 0, Row: 2}
-	ActionPull  = &Action{ActionName: Pull, Description: "Pull", Col: 0, Row: 3}
-
-	ActionWalkTo = &Action{ActionName: WalkTo, Description: "Walk to", Col: 1, Row: 0}
-	ActionPickUp = &Action{ActionName: PickUp, Description: "Pick up", Col: 1, Row: 1}
-	ActionTalkTo = &Action{ActionName: TalkTo, Description: "Talk to", Col: 1, Row: 2}
-	ActionGive   = &Action{ActionName: Give, Description: "Give", Col: 1, Row: 3}
-
-	ActionUse     = &Action{ActionName: Use, Description: "Use", Col: 2, Row: 0}
-	ActionLookAt  = &Action{ActionName: LookAt, Description: "Look at", Col: 2, Row: 1}
-	ActionTurnOn  = &Action{ActionName: TurnOn, Description: "Turn on", Col: 2, Row: 2}
-	ActionTurnOff = &Action{ActionName: TurnOff, Description: "Turn off", Col: 2, Row: 3}
-
-	DefaultAction = ActionWalkTo
 )
 
 func (a *App) drawControlPanel() {
-
-	actions := []*Action{
-		ActionOpen, ActionClose, ActionPush, ActionPull,
-		ActionWalkTo, ActionPickUp, ActionTalkTo, ActionGive,
-		ActionUse, ActionLookAt, ActionTurnOn, ActionTurnOff,
-	}
-
-	for _, action := range actions {
-		a.drawAction(action, ControlVerbColor)
+	if a.controlPanelEnabled {
+		for _, verb := range Verbs {
+			a.drawVerb(verb, ControlVerbColor)
+		}
+		a.drawEgoVerb()
 	}
 }
 
-func (a *App) drawAction(action *Action, color Color) {
-	x := 2 + action.Col*ScreenWidth/6
-	y := ScreenHeightScene + (action.Row+1)*FontDefaultSize
+func (a *App) drawVerb(Verb *Verb, color Color) {
+	x := 2 + Verb.Col*ScreenWidth/6
+	y := ViewportHeight + (Verb.Row+1)*FontDefaultSize
 	w := ScreenWidth / 6
 	h := FontDefaultSize
 
@@ -75,26 +30,49 @@ func (a *App) drawAction(action *Action, color Color) {
 		color = ControlVerbHoverOrSuggestedColor
 	}
 
-	a.drawDefaultText(action.Description, NewPos(x, y), AlignLeft, color)
+	a.drawDefaultText(Verb.Description, NewPos(x, y), AlignLeft, color)
 }
 
-func (a *App) drawEgoAction() {
-	action := DefaultAction.Description
-	if a.egoActionSelected != nil {
-		action = a.egoActionSelected.Description
+func (a *App) drawEgoVerb() {
+	Verb := DefaultVerb.Description
+	if a.egoVerbSelected != nil {
+		Verb = a.egoVerbSelected.Description
 	}
 	// check if mouse is hovering an object
 	for _, o := range a.objects {
-		size := o.anim.getAnimationSize(a)
+		size := o.FrameSize()
 		if a.MouseIsInto(NewRect(o.pos.X, o.pos.Y, size.W, size.H)) {
-			action = fmt.Sprintf("%s %s", action, o.name)
-			a.drawAction(ActionLookAt, ControlVerbHoverOrSuggestedColor)
+			Verb = fmt.Sprintf("%s %s", Verb, o.name)
+			a.drawVerb(VerbLookAt, ControlVerbHoverOrSuggestedColor)
 			break
 		}
 	}
 
 	// TODO  hovering actors (discarding ego)
 
-	pos := NewPos(ScreenWidth/2, ScreenHeightScene)
-	a.drawDefaultText(action, pos, AlignCenter, ControlVerbColor)
+	pos := NewPos(ScreenWidth/2, ViewportHeight)
+	a.drawDefaultText(Verb, pos, AlignCenter, ControlVerbColor)
+}
+
+func (a *App) processControlInputs() {
+	if a.ego != nil && rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
+		mouseClick := a.MousePosition()
+		if RoomViewport.Contains(mouseClick) {
+			// TODO missing check Verb / control selected
+			a.Do(ActorWalkToPosition{
+				ActorName: a.ego.name,
+				Position:  NewPos(mouseClick.X, a.ego.pos.Y),
+			})
+		}
+	}
+}
+
+// EnableControlPanel is a command that will enable or disable the control panel.
+type EnableControlPanel struct {
+	Enable bool
+}
+
+func (cmd EnableControlPanel) Execute(app *App, done Promise) {
+	app.controlPanelEnabled = cmd.Enable
+	done.Complete()
 }
