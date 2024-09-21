@@ -9,6 +9,7 @@ import (
 var (
 	ControlVerbColor                 = Green
 	ControlVerbHoverOrSuggestedColor = BrigthGreen
+	ControlEgoVerbColor              = Cyan
 )
 
 func (a *App) drawControlPanel() {
@@ -34,15 +35,15 @@ func (a *App) drawVerb(Verb *Verb, color Color) {
 }
 
 func (a *App) drawEgoVerb() {
-	Verb := DefaultVerb.Description
+	description := DefaultVerb.Description
 	if a.egoVerbSelected != nil {
-		Verb = a.egoVerbSelected.Description
+		description = a.egoVerbSelected.Description
 	}
 	// check if mouse is hovering an object
 	for _, o := range a.objects {
 		size := o.FrameSize()
 		if a.MouseIsInto(NewRect(o.pos.X, o.pos.Y, size.W, size.H)) {
-			Verb = fmt.Sprintf("%s %s", Verb, o.name)
+			description = fmt.Sprintf("%s %s", description, o.name)
 			a.drawVerb(VerbLookAt, ControlVerbHoverOrSuggestedColor)
 			break
 		}
@@ -51,7 +52,7 @@ func (a *App) drawEgoVerb() {
 	// TODO  hovering actors (discarding ego)
 
 	pos := NewPos(ScreenWidth/2, ViewportHeight)
-	a.drawDefaultText(Verb, pos, AlignCenter, ControlVerbColor)
+	a.drawDefaultText(description, pos, AlignCenter, ControlEgoVerbColor)
 }
 
 func (a *App) processControlInputs() {
