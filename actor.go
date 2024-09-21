@@ -39,25 +39,25 @@ func (a *Actor) SetCostume(costume *Costume) *Actor {
 
 func (a *Actor) stand(dir Direction) *Actor {
 	a.lookAt = dir
-	a.act = func(app *App, c *Actor) (completed bool) {
+	a.act = func() (completed bool) {
 		if cos := a.costume; cos != nil {
-			cos.draw(CostumeIdle(dir), c.pos)
+			cos.draw(CostumeIdle(dir), a.pos)
 		}
 		return false
 	}
 	return a
 }
 
-func (a *Actor) draw(app *App) {
+func (a *Actor) draw() {
 	if a.act == nil {
 		a.stand(a.lookAt)
 	}
-	if a.act(app, a) {
+	if a.act() {
 		a.stand(a.lookAt)
 	}
 }
 
-type action func(*App, *Actor) (completed bool)
+type action func() (completed bool)
 
 // ActorShow is a command that will show an actor in the room at the given position.
 type ActorShow struct {
@@ -112,29 +112,29 @@ type ActorWalkToPosition struct {
 
 func (cmd ActorWalkToPosition) Execute(app *App, done Promise) {
 	app.withActor(cmd.ActorName, func(a *Actor) {
-		a.act = func(app *App, c *Actor) (completed bool) {
+		a.act = func() (completed bool) {
 			if cos := a.costume; cos != nil {
-				cos.draw(CostumeWalk(a.lookAt), c.pos)
+				cos.draw(CostumeWalk(a.lookAt), a.pos)
 			}
 
-			if c.pos == cmd.Position {
+			if a.pos == cmd.Position {
 				done.Complete()
 				return true
 			}
 
 			// TODO: This implementation is totally naive. It doesn't take into account the
 			// diagonal movement, the obstacles, the speed of the actor, etc.
-			a.lookAt = c.pos.DirectionTo(cmd.Position)
+			a.lookAt = a.pos.DirectionTo(cmd.Position)
 
 			switch a.lookAt {
 			case DirRight:
-				c.pos.X++
+				a.pos.X++
 			case DirLeft:
-				c.pos.X--
+				a.pos.X--
 			case DirUp:
-				c.pos.Y--
+				a.pos.Y--
 			case DirDown:
-				c.pos.Y++
+				a.pos.Y++
 			}
 			return false
 		}
@@ -165,9 +165,9 @@ func (cmd ActorSpeak) Execute(app *App, done Promise) {
 			Color:    cmd.Color,
 			Speed:    1.0,
 		})
-		a.act = func(app *App, c *Actor) (completed bool) {
+		a.act = func() (completed bool) {
 			if cos := a.costume; cos != nil {
-				cos.draw(CostumeSpeak(a.lookAt), c.pos)
+				cos.draw(CostumeSpeak(a.lookAt), a.pos)
 			}
 			if dialogDone.IsCompleted() {
 				done.CompleteAfter(nil, cmd.Delay)
@@ -198,7 +198,7 @@ func (a *App) ensureActor(name string) *Actor {
 func (a *App) drawActors() {
 
 	for _, actor := range a.actors {
-		actor.draw(a)
+		actor.draw()
 	}
 }
 
