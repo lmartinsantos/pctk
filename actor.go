@@ -196,6 +196,7 @@ func (a *App) ensureActor(name string) *Actor {
 }
 
 func (a *App) drawActors() {
+
 	for _, actor := range a.actors {
 		actor.draw(a)
 	}

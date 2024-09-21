@@ -18,9 +18,6 @@ type App struct {
 	commands commandQueue
 
 	cam                 rl.Camera2D
-	fontDefault         rl.Font
-	fontDialogSolid     rl.Font
-	fontDialogOutline   rl.Font
 	cursorTx            rl.Texture2D
 	cursorColor         Color
 	music               *Music
@@ -52,7 +49,6 @@ func (a *App) init() {
 	rl.SetTargetFPS(60)
 
 	a.cam.Zoom = float32(a.screenZoom)
-	a.initFonts()
 	a.initMouse()
 }
 

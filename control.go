@@ -42,12 +42,12 @@ func (a *App) drawActionVerb(verb string, col, row int) {
 		color = ControlVerbHoverColor
 	}
 
-	a.drawDefaultText(verb, NewPos(x, y), AlignLeft, color)
+	DrawDefaultText(verb, NewPos(x, y), AlignLeft, color)
 }
 
 func (a *App) drawFullAction(action string) {
 	pos := NewPos(ScreenWidth/2, ViewportHeight)
-	a.drawDefaultText(action, pos, AlignCenter, ControlActionColor)
+	DrawDefaultText(action, pos, AlignCenter, ControlActionColor)
 }
 
 func (a *App) processControlInputs() {
