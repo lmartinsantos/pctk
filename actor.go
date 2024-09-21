@@ -1,6 +1,7 @@
 package pctk
 
 import (
+	"slices"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -196,8 +197,14 @@ func (a *App) ensureActor(name string) *Actor {
 }
 
 func (a *App) drawActors() {
-
+	actors := make([]*Actor, 0, len(a.actors))
 	for _, actor := range a.actors {
+		actors = append(actors, actor)
+	}
+	slices.SortFunc(actors, func(a, b *Actor) int {
+		return a.pos.Y - b.pos.Y
+	})
+	for _, actor := range actors {
 		actor.draw()
 	}
 }
