@@ -4,16 +4,9 @@ import (
 	"io"
 )
 
-// TODO
 const (
 	NoClass          = 0
 	ClassUntouchable = 1 << iota
-	ClassPickupable
-	ClassTalkable
-	ClassGiveable
-	ClassOpenable
-	ClassDoor
-	// ClassActor
 )
 
 var (
