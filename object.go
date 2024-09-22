@@ -4,6 +4,18 @@ import (
 	"io"
 )
 
+// TODO
+const (
+	NoClass          = 0
+	ClassUntouchable = 1 << iota
+	ClassPickupable
+	ClassTalkable
+	ClassGiveable
+	ClassOpenable
+	ClassDoor
+	// ClassActor
+)
+
 var (
 	DefaultObjectPosition = NewPos(160, 90)
 )
@@ -13,28 +25,23 @@ type Object struct {
 	name    string
 	sprites *SpriteSheet
 	pos     Position
-	anim    *Animation // be more flexible being an anim instead of an sprite
-	scripts map[VerbType]*Script
+	states  []*State
+	state   int // By default, objects are in state 0.
+	classes uint
 }
 
-func NewObject(name string, sprites *SpriteSheet) *Object {
+func NewObject(name string, sprites *SpriteSheet, classes uint) *Object {
 	return &Object{
 		name:    name,
 		sprites: sprites,
-		scripts: make(map[VerbType]*Script),
+		classes: classes,
+		states:  []*State{},
 	}
 }
 
-// WithAnimation sets an animation for the object.
-func (o *Object) WithAnimation(anim *Animation) *Object {
-	o.anim = anim
-	return o
-}
-
-// WithScript assigns a script to a specific action for the object.
-func (o *Object) WithScript(a VerbType, s *Script) *Object {
-	o.scripts[a] = s
-	return o
+// WithState sets a new state for the object.
+func (o *Object) WithState(newState *State) {
+	o.states = append(o.states, newState)
 }
 
 // Rectangle returns the screen area (as a Rectangle) associated with the object's position
@@ -43,21 +50,45 @@ func (o *Object) Rectangle() Rectangle {
 	return NewRect(o.pos.X, o.pos.Y, size.W, size.H)
 }
 
+func (o *Object) AddClass(newClass uint) {
+	o.classes |= newClass
+}
+
+func (o *Object) RemoveClass(class uint) {
+	o.classes &^= class
+}
+
+func (o *Object) HasClass(class uint) bool {
+	return o.classes&class != 0
+}
+
 // BinaryEncode encodes the object to a binary format. The format is as follows:
 // - uint32 name string length (in bytes).
 // - name.
 // - sprite sheet.
-// - the animation.
+// - classes.
+// - uint32: the number of states.
+// - states.
 func (o *Object) BinaryEncode(w io.Writer) (n int, err error) {
-	//TODO
-	return BinaryEncode(w, uint32(len(o.name)), []byte(o.name), o.sprites, o.anim)
+	n, err = BinaryEncode(w, uint32(len(o.name)), []byte(o.name), o.sprites, byte(o.classes), uint32(len(o.states)))
+	if err != nil {
+		return n, err
+	}
+	for _, state := range o.states {
+		nn, err := BinaryEncode(w, state)
+		n += nn
+		if err != nil {
+			return n, err
+		}
+	}
+
+	return n, nil
 }
 
 // BinaryDecode decodes the object from a binary format. See BinaryEncode for the format.
 func (o *Object) BinaryDecode(r io.Reader) error {
-	// TODO
 	o.sprites = new(SpriteSheet)
-	o.anim = new(Animation)
+	o.states = make([]*State, 0)
 
 	var length uint32
 	if err := BinaryDecode(r, &length); err != nil {
@@ -69,8 +100,92 @@ func (o *Object) BinaryDecode(r io.Reader) error {
 	}
 	o.name = string(nameBytes)
 
-	if err := BinaryDecode(r, o.sprites, o.anim); err != nil {
+	var count uint32
+	var classes byte
+	if err := BinaryDecode(r, o.sprites, &classes, &count); err != nil {
 		return err
+	}
+
+	o.classes = uint(classes)
+
+	for i := uint32(0); i < count; i++ {
+		state := new(State)
+		if err := BinaryDecode(r, state); err != nil {
+			return err
+		}
+		o.states = append(o.states, state)
+	}
+
+	return nil
+}
+
+// State defines the various states of the object.
+type State struct {
+	anim    *Animation // be more flexible being an anim instead of an sprite
+	scripts map[VerbType]*Script
+}
+
+func NewState() *State {
+	return &State{
+		scripts: make(map[VerbType]*Script),
+	}
+}
+
+func (s *State) WithAnimation(anim *Animation) *State {
+	s.anim = anim
+	return s
+}
+
+func (s *State) WithScript(v VerbType, script *Script) *State {
+	s.scripts[v] = script
+	return s
+}
+
+// BinaryEncode encodes the object's state to a binary format. The format is as follows:
+// - anim.
+// - uint32: the number of scripts.
+// - for each script:
+//   - byte: the verb.
+//   - script.
+func (s *State) BinaryEncode(w io.Writer) (n int, err error) {
+	n, err = BinaryEncode(w, s.anim, uint32(len(s.scripts)))
+	if err != nil {
+		return n, err
+	}
+
+	for verb, script := range s.scripts {
+		nn, err := BinaryEncode(w, byte(verb), script)
+		n += nn
+		if err != nil {
+			return n, err
+		}
+	}
+
+	return n, nil
+}
+
+// BinaryDecode decodes the object's state from a binary format. See BinaryEncode for the format.
+func (s *State) BinaryDecode(r io.Reader) error {
+	s.anim = new(Animation)
+	s.scripts = make(map[VerbType]*Script)
+
+	if err := BinaryDecode(r, s.anim); err != nil {
+		return err
+	}
+	var count uint32
+	if err := BinaryDecode(r, &count); err != nil {
+		return err
+	}
+
+	for i := uint32(0); i < count; i++ {
+		script := new(Script)
+		var verb byte
+		if err := BinaryDecode(r, &verb, script); err != nil {
+			return err
+		}
+
+		s.scripts[VerbType(verb)] = script
+
 	}
 
 	return nil
@@ -92,7 +207,9 @@ func (cmd ObjectShow) Execute(app *App, done Promise) {
 
 func (a *App) drawObjects() {
 	for _, o := range a.objects {
-		o.anim.draw(o.sprites, o.pos)
+		state := o.states[o.state]
+		// TODO
+		state.anim.draw(o.sprites, o.pos)
 	}
 }
 
@@ -116,7 +233,8 @@ type ObjectOnAction struct {
 func (cmd ObjectOnAction) Execute(app *App, done Promise) {
 	object := app.objects[cmd.ObjectName]
 	if object != nil {
-		script := object.scripts[cmd.Verb.Type]
+		state := object.states[object.state]
+		script := state.scripts[cmd.Verb.Type]
 		if script != nil {
 			script.run(app, done)
 		}

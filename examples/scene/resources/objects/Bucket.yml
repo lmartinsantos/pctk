@@ -6,8 +6,13 @@ data:
     sheet: items.png
     width: 30
     height: 18
-  animation:
-    frames:
-      - row: 6
-        columns: [5]
-        duration: 1000
+  states:
+    - animation:
+        frames:
+          - row: 6
+            columns: [5]
+            duration: 1000
+      scripts:
+        - verb: lookat
+          code: |
+            DialogShow("Nice bucket!", { pos = {x=60, y=20}, color = Colorwhite }).Wait()
