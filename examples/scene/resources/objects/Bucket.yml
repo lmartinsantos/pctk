@@ -15,4 +15,4 @@ data:
       scripts:
         - verb: lookat
           code: |
-            DialogShow("Nice bucket!", { pos = {x=60, y=20}, color = Colorwhite }).Wait()
+            DialogShow("Nice bucket!", { pos = {x=270, y=20}, color = Colorwhite }).Wait()

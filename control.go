@@ -57,10 +57,24 @@ func (a *App) processControlInputs() {
 		mouseClick := a.MousePosition()
 		if RoomViewport.Contains(mouseClick) {
 			// TODO missing check ego verb / object source
-			a.Do(ActorWalkToPosition{
-				ActorName: ego.actor.name,
-				Position:  NewPos(mouseClick.X, a.ego.actor.pos.Y),
-			})
+			var target *Object
+			for _, o := range a.objects {
+				if a.MouseIsInto(o.Rectangle()) {
+					target = o
+					break
+				}
+			}
+			if target != nil && ego.verb != nil {
+				a.Do(ObjectOnAction{
+					ObjectName: target.name,
+					Verb:       ego.verb,
+				})
+			} else {
+				a.Do(ActorWalkToPosition{
+					ActorName: ego.actor.name,
+					Position:  NewPos(mouseClick.X, a.ego.actor.pos.Y),
+				})
+			}
 		} else {
 			// check verbs
 			for _, verb := range Verbs {

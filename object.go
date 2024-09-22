@@ -232,6 +232,4 @@ func (cmd ObjectOnAction) Execute(app *App, done Promise) {
 			script.run(app, done)
 		}
 	}
-
-	done.Complete()
 }
