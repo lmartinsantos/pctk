@@ -37,9 +37,10 @@ func (o *Object) WithScript(a VerbType, s *Script) *Object {
 	return o
 }
 
-// FrameSize gets the object frame size
-func (o *Object) FrameSize() Size {
-	return o.sprites.frameSize
+// Rectangle returns the screen area (as a Rectangle) associated with the object's position
+func (o *Object) Rectangle() Rectangle {
+	size := o.sprites.frameSize
+	return NewRect(o.pos.X, o.pos.Y, size.W, size.H)
 }
 
 // BinaryEncode encodes the object to a binary format. The format is as follows:

@@ -26,9 +26,8 @@ type App struct {
 	cursorColor         Color
 	music               *Music
 	sound               *Sound
-	ego                 *Actor
+	ego                 *Ego
 	controlPanelEnabled bool
-	egoVerbSelected     *Verb // TODO set and unset egoActionSelected
 }
 
 // New creates a new pctk application.
@@ -37,6 +36,7 @@ func New(resources ResourceLoader, opts ...AppOption) *App {
 		res:     resources,
 		actors:  make(map[string]*Actor),
 		objects: make(map[string]*Object),
+		ego:     &Ego{},
 	}
 
 	opts = append(defaultAppOptions, opts...)

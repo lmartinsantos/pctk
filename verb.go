@@ -49,3 +49,13 @@ var (
 		VerbUse, VerbLookAt, VerbTurnOn, VerbTurnOff,
 	}
 )
+
+// Rectangle returns the screen area (as a Rectangle) associated with the verb's position.
+func (v *Verb) Rectangle() Rectangle {
+	x := 2 + v.Col*ScreenWidth/6
+	y := ViewportHeight + (v.Row+1)*FontDefaultSize
+	w := ScreenWidth / 6
+	h := FontDefaultSize
+
+	return NewRect(x, y, w, h)
+}

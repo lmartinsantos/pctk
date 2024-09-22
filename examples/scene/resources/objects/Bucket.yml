@@ -1,7 +1,7 @@
 type: object
 compression: none
 data:
-  name: Bucket
+  name: bucket
   sprites:
     sheet: items.png
     width: 30

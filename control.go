@@ -1,8 +1,6 @@
 package pctk
 
 import (
-	"fmt"
-
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -21,50 +19,59 @@ func (a *App) drawControlPanel() {
 	}
 }
 
-func (a *App) drawVerb(Verb *Verb, color Color) {
-	x := 2 + Verb.Col*ScreenWidth/6
-	y := ViewportHeight + (Verb.Row+1)*FontDefaultSize
-	w := ScreenWidth / 6
-	h := FontDefaultSize
-
-	if a.MouseIsInto(NewRect(x, y, w, h)) {
+func (a *App) drawVerb(v *Verb, color Color) {
+	rectangle := v.Rectangle()
+	if a.MouseIsInto(rectangle) {
 		color = ControlVerbHoverOrSuggestedColor
 	}
 
-	a.drawDefaultText(Verb.Description, NewPos(x, y), AlignLeft, color)
+	a.drawDefaultText(v.Description, NewPos(rectangle.Pos.X, rectangle.Pos.Y), AlignLeft, color)
 }
 
 func (a *App) drawEgoVerb() {
-	description := DefaultVerb.Description
-	if a.egoVerbSelected != nil {
-		description = a.egoVerbSelected.Description
-	}
+	ego := a.ego
+
+	targetDescription := ""
 	// check if mouse is hovering an object
 	for _, o := range a.objects {
-		size := o.FrameSize()
-		if a.MouseIsInto(NewRect(o.pos.X, o.pos.Y, size.W, size.H)) {
-			description = fmt.Sprintf("%s %s", description, o.name)
+		if a.MouseIsInto(o.Rectangle()) {
+			targetDescription = o.name
 			a.drawVerb(VerbLookAt, ControlVerbHoverOrSuggestedColor)
 			break
 		}
 	}
-
 	// TODO  hovering actors (discarding ego)
 
 	pos := NewPos(ScreenWidth/2, ViewportHeight)
-	a.drawDefaultText(description, pos, AlignCenter, ControlEgoVerbColor)
+	a.drawDefaultText(ego.Description(targetDescription), pos, AlignCenter, ControlEgoVerbColor)
 }
 
 func (a *App) processControlInputs() {
-	if a.ego != nil && rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
+	ego := a.ego
+	if ego != nil && ego.actor != nil && rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
 		mouseClick := a.MousePosition()
 		if RoomViewport.Contains(mouseClick) {
-			// TODO missing check Verb / control selected
+			// TODO missing check ego verb / object source
 			a.Do(ActorWalkToPosition{
-				ActorName: a.ego.name,
-				Position:  NewPos(mouseClick.X, a.ego.pos.Y),
+				ActorName: ego.actor.name,
+				Position:  NewPos(mouseClick.X, a.ego.actor.pos.Y),
 			})
+			ego.clearVerb()
+			return
+		} else {
+			// check verbs
+			for _, verb := range Verbs {
+				if a.MouseIsInto(verb.Rectangle()) {
+					ego.setVerb(verb)
+					return
+				}
+			}
+
+			// TODO check inventory (setObject)
 		}
+
+		// clean ego status
+		ego.clearVerb()
 	}
 }
 
