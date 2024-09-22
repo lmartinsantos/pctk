@@ -9,7 +9,7 @@ type Ego struct {
 	source *Object
 }
 
-func (e *Ego) Description(target string) string {
+func (e *Ego) String() string {
 	description := DefaultVerb.Description
 	source := ""
 	if e != nil && e.source != nil {
@@ -30,9 +30,6 @@ func (e *Ego) Description(target string) string {
 		}
 	}
 
-	if target != "" {
-		description = fmt.Sprintf("%s the %s", description, target)
-	}
 	return description
 }
 
@@ -44,11 +41,6 @@ func (e *Ego) setVerb(verb *Verb) {
 	e.verb = verb
 }
 
-func (e *Ego) clearVerb() {
-	e.verb = nil
-}
-
 func (e *Ego) clear() {
-	e.clearVerb()
 	e.actor, e.verb = nil, nil
 }

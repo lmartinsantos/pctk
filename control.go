@@ -1,6 +1,8 @@
 package pctk
 
 import (
+	"fmt"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -30,7 +32,6 @@ func (a *App) drawVerb(v *Verb, color Color) {
 
 func (a *App) drawEgoVerb() {
 	ego := a.ego
-
 	targetDescription := ""
 	// check if mouse is hovering an object
 	for _, o := range a.objects {
@@ -41,9 +42,13 @@ func (a *App) drawEgoVerb() {
 		}
 	}
 	// TODO  hovering actors (discarding ego)
+	description := ego.String()
+	if targetDescription != "" {
+		description = fmt.Sprintf("%s the %s", description, targetDescription)
+	}
 
 	pos := NewPos(ScreenWidth/2, ViewportHeight)
-	a.drawDefaultText(ego.Description(targetDescription), pos, AlignCenter, ControlEgoVerbColor)
+	a.drawDefaultText(description, pos, AlignCenter, ControlEgoVerbColor)
 }
 
 func (a *App) processControlInputs() {
@@ -56,8 +61,6 @@ func (a *App) processControlInputs() {
 				ActorName: ego.actor.name,
 				Position:  NewPos(mouseClick.X, a.ego.actor.pos.Y),
 			})
-			ego.clearVerb()
-			return
 		} else {
 			// check verbs
 			for _, verb := range Verbs {
@@ -71,7 +74,7 @@ func (a *App) processControlInputs() {
 		}
 
 		// clean ego status
-		ego.clearVerb()
+		ego.verb = nil
 	}
 }
 
