@@ -23,16 +23,20 @@ func NewObjectData(workingDir string) *ObjectData {
 }
 
 func (d *ObjectData) UnmarshalYAML(n *yaml.Node) error {
-	// TODO
 	var data struct {
-		Name    string
+		Name     string
+		Position struct {
+			X uint
+			Y uint
+			Z uint // TODO for z-index ordering
+		}
 		Sprites struct {
 			Sheet  string
 			Width  uint
 			Height uint
 		}
 		States []struct {
-			Animation struct {
+			Animation *struct {
 				Action string
 				Dir    string
 				Flip   bool
@@ -58,20 +62,25 @@ func (d *ObjectData) UnmarshalYAML(n *yaml.Node) error {
 		filepath.Join(d.workingDir, data.Sprites.Sheet),
 		pctk.Size{W: int(data.Sprites.Width), H: int(data.Sprites.Height)},
 	)
-	d.Resource = pctk.NewObject(data.Name, sprites, data.Classes)
+	// TODO Z
+	position := pctk.NewPos(int(data.Position.X), int(data.Position.Y))
+	d.Resource = pctk.NewObject(data.Name, sprites, position, data.Classes)
 
 	for _, state := range data.States {
 		s := pctk.NewState()
-		a := pctk.NewAnimation().Flip(state.Animation.Flip)
-		for _, frame := range state.Animation.Frames {
-			a.WithFrames(
-				frame.Row,
-				time.Duration(frame.Duration)*time.Millisecond,
-				frame.Columns...,
-			)
-		}
+		if state.Animation != nil {
+			a := pctk.NewAnimation().Flip(state.Animation.Flip)
+			for _, frame := range state.Animation.Frames {
+				a.WithFrames(
+					frame.Row,
+					time.Duration(frame.Duration)*time.Millisecond,
+					frame.Columns...,
+				)
+			}
 
-		s.WithAnimation(a)
+			s.WithAnimation(a)
+
+		}
 
 		for _, script := range state.Scripts {
 			verb := func() pctk.VerbType {
@@ -100,6 +109,8 @@ func (d *ObjectData) UnmarshalYAML(n *yaml.Node) error {
 					return pctk.TurnOn
 				case "turnoff":
 					return pctk.TurnOff
+				case "default":
+					return pctk.Default
 				default:
 					panic(fmt.Sprintf("invalid verb %q", script.Verb))
 				}

@@ -6,6 +6,10 @@ data:
     sheet: items.png
     width: 30
     height: 18
+  position:
+    x: 275
+    y: 110
+    z: 1
   states:
     - animation:
         frames:
@@ -15,4 +19,9 @@ data:
       scripts:
         - verb: lookat
           code: |
-            DialogShow("Nice bucket!", { pos = {x=270, y=20}, color = Colorwhite }).Wait()
+            ActorWalkToPosition("guybrush", {x=260, y=90}).Wait()
+            ActorSpeak("guybrush", "Nice bucket!").Wait()
+        - verb: default
+          code: |
+            ActorWalkToPosition("guybrush", {x=260, y=90}).Wait()
+            ActorSpeak("guybrush", "That's a stupid idea... which means\nI`ll probably try it later.").Wait()

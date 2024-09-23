@@ -16,6 +16,7 @@ const (
 	LookAt
 	TurnOn
 	TurnOff
+	Default
 )
 
 // Verb represents an interactive Verb in the game including where is rendered.

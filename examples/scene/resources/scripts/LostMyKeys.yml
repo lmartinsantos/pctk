@@ -10,6 +10,9 @@ data:
     ObjectShow("resources:objects/Bucket", "bucket", {
       pos={x=275, y=110}
     })
+    ObjectShow("resources:objects/Clock", "clock", {
+      pos={x=140, y=20}
+    })
     ActorShow("guybrush", {
       pos={x=340, y=90},
       dir=DirLeft,

@@ -66,8 +66,8 @@ func (a *App) processControlInputs() {
 			}
 			if target != nil && ego.verb != nil {
 				a.Do(ObjectOnAction{
-					ObjectName: target.name,
-					Verb:       ego.verb,
+					Object: target,
+					Verb:   ego.verb,
 				})
 			} else {
 				a.Do(ActorWalkToPosition{

@@ -1,0 +1,25 @@
+type: object
+compression: none
+data:
+  name: clock tower
+  sprites:
+    sheet: items.png
+    width: 40
+    height: 20
+  position:
+    x: 140
+    y: 20
+    z: 1
+  states:
+    - scripts:
+        - verb: lookat
+          code: |
+            ActorWalkToPosition("guybrush", {x=140, y=90}).Wait()
+            ActorWalkToPosition("guybrush", {x=140, y=80}).Wait()
+            ActorSpeak("guybrush", "As grand as it is,\nthe thing doesn't seem to work.").Wait()
+            ActorSpeak("guybrush", "No ticking, no movement\njust a giant, useless relic.").Wait()
+            ActorWalkToPosition("guybrush", {x=140, y=90}).Wait()
+        - verb: default
+          code: |
+            ActorWalkToPosition("guybrush", {x=140, y=90}).Wait()
+            ActorSpeak("guybrush", "I can't do that.\nAt least, not from here.").Wait()

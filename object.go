@@ -2,6 +2,8 @@ package pctk
 
 import (
 	"io"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 const (
@@ -23,10 +25,11 @@ type Object struct {
 	classes uint
 }
 
-func NewObject(name string, sprites *SpriteSheet, classes uint) *Object {
+func NewObject(name string, sprites *SpriteSheet, position Position, classes uint) *Object {
 	return &Object{
 		name:    name,
 		sprites: sprites,
+		pos:     position,
 		classes: classes,
 		states:  []*State{},
 	}
@@ -43,6 +46,9 @@ func (o *Object) Rectangle() Rectangle {
 	return NewRect(o.pos.X, o.pos.Y, size.W, size.H)
 }
 
+func (o *Object) State() *State {
+	return o.states[o.state]
+}
 func (o *Object) AddClass(newClass uint) {
 	o.classes |= newClass
 }
@@ -59,11 +65,12 @@ func (o *Object) HasClass(class uint) bool {
 // - uint32 name string length (in bytes).
 // - name.
 // - sprite sheet.
+// - position.
 // - classes.
 // - uint32: the number of states.
 // - states.
 func (o *Object) BinaryEncode(w io.Writer) (n int, err error) {
-	n, err = BinaryEncode(w, uint32(len(o.name)), []byte(o.name), o.sprites, byte(o.classes), uint32(len(o.states)))
+	n, err = BinaryEncode(w, uint32(len(o.name)), []byte(o.name), o.sprites, uint32(o.pos.X), uint32(o.pos.Y), byte(o.classes), uint32(len(o.states)))
 	if err != nil {
 		return n, err
 	}
@@ -93,12 +100,13 @@ func (o *Object) BinaryDecode(r io.Reader) error {
 	}
 	o.name = string(nameBytes)
 
-	var count uint32
+	var count, posX, posY uint32
 	var classes byte
-	if err := BinaryDecode(r, o.sprites, &classes, &count); err != nil {
+	if err := BinaryDecode(r, o.sprites, &posX, &posY, &classes, &count); err != nil {
 		return err
 	}
 
+	o.pos = NewPos(int(posX), int(posY))
 	o.classes = uint(classes)
 
 	for i := uint32(0); i < count; i++ {
@@ -135,13 +143,27 @@ func (s *State) WithScript(v VerbType, script *Script) *State {
 }
 
 // BinaryEncode encodes the object's state to a binary format. The format is as follows:
-// - anim.
+// - has anim (bool)
+// - anim (if exists).
 // - uint32: the number of scripts.
 // - for each script:
 //   - byte: the verb.
 //   - script.
 func (s *State) BinaryEncode(w io.Writer) (n int, err error) {
-	n, err = BinaryEncode(w, s.anim, uint32(len(s.scripts)))
+	n, err = BinaryEncode(w, s.anim != nil)
+	if err != nil {
+		return n, err
+	}
+	if s.anim != nil {
+		nn, err := BinaryEncode(w, s.anim)
+		n += nn
+		if err != nil {
+			return n, err
+		}
+	}
+
+	nn, err := BinaryEncode(w, uint32(len(s.scripts)))
+	n += nn
 	if err != nil {
 		return n, err
 	}
@@ -161,10 +183,16 @@ func (s *State) BinaryEncode(w io.Writer) (n int, err error) {
 func (s *State) BinaryDecode(r io.Reader) error {
 	s.anim = new(Animation)
 	s.scripts = make(map[VerbType]*Script)
-
-	if err := BinaryDecode(r, s.anim); err != nil {
+	var hasAnim byte
+	if err := BinaryDecode(r, &hasAnim); err != nil {
 		return err
 	}
+	if hasAnim != 0 {
+		if err := BinaryDecode(r, s.anim); err != nil {
+			return err
+		}
+	}
+
 	var count uint32
 	if err := BinaryDecode(r, &count); err != nil {
 		return err
@@ -201,8 +229,14 @@ func (cmd ObjectShow) Execute(app *App, done Promise) {
 func (a *App) drawObjects() {
 	for _, o := range a.objects {
 		state := o.states[o.state]
-		// TODO
-		state.anim.draw(o.sprites, o.pos)
+		if len(state.anim.frames) > 0 {
+			state.anim.draw(o.sprites, o.pos)
+		} else {
+			// No anim is like state 0. In this state nothing is displayed,
+			// and the object simply defines an area in the room.
+			rl.DrawRectangleRec(o.Rectangle().toRaylib(), Transparent)
+		}
+
 	}
 }
 
@@ -219,17 +253,22 @@ func (cmd ObjectRelease) Execute(app *App, done Promise) {
 // TODO object source & object target
 // ObjectOnAction is a command that will run the action script related to an object.
 type ObjectOnAction struct {
-	ObjectName string
-	Verb       *Verb
+	Object *Object
+	Verb   *Verb
 }
 
 func (cmd ObjectOnAction) Execute(app *App, done Promise) {
-	object := app.objects[cmd.ObjectName]
-	if object != nil {
-		state := object.states[object.state]
-		script := state.scripts[cmd.Verb.Type]
-		if script != nil {
-			script.run(app, done)
-		}
+	state := cmd.Object.State()
+	script := state.scripts[cmd.Verb.Type]
+	if script == nil {
+		script = state.scripts[Default]
+
 	}
+	script.run(app, done)
 }
+
+// TODO
+// Move obects under room
+// Minimal Inventory func
+// Complex actions (use X on Y, Give X to Y)
+// GetTarget function (should actor be an object?)

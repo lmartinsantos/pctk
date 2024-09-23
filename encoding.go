@@ -41,6 +41,10 @@ func binaryEncode(w io.Writer, obj any) (n int, err error) {
 	if str, ok := obj.(string); ok {
 		return BinaryEncode(w, uint16(len(str)), []byte(str))
 	}
+	if b, ok := obj.(bool); ok {
+		return BinaryEncode(w, byte(boolToBinary(b)))
+	}
+
 	err = binary.Write(w, binary.LittleEndian, obj)
 	n = int(binary.Size(obj))
 	return
@@ -238,6 +242,13 @@ func (e *ResourceEncoder) encodeDataHeader() error {
 func (e *ResourceEncoder) encodeIndexEntry(id ResourceID, offset, size int) error {
 	_, err := BinaryEncode(e.index, indexEntry{id, uint32(offset), uint32(size)})
 	return err
+}
+
+func boolToBinary(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 // ResourceFileLoader is a value that can load resources from files.
