@@ -240,7 +240,6 @@ func (a *App) drawObjects() {
 	}
 }
 
-// TODO object source & object target
 // ObjectOnVerb is a command that will run the action script related to an object.
 type ObjectOnVerb struct {
 	Object *Object
