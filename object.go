@@ -266,9 +266,3 @@ func (cmd ObjectOnAction) Execute(app *App, done Promise) {
 	}
 	script.run(app, done)
 }
-
-// TODO
-// Move obects under room
-// Minimal Inventory func
-// Complex actions (use X on Y, Give X to Y)
-// GetTarget function (should actor be an object?)
