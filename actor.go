@@ -209,10 +209,11 @@ type ActorSelectEgo struct {
 
 func (cmd ActorSelectEgo) Execute(app *App, done Promise) {
 	actor, ok := app.actors[cmd.ActorName]
+	ego := app.ego
 	if ok {
-		app.ego.setActor(actor)
+		ego.actor = actor
 	} else {
-		app.ego.clear()
+		ego.Clear()
 	}
 
 	done.Complete()

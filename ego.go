@@ -6,7 +6,7 @@ import "fmt"
 type Ego struct {
 	actor  *Actor
 	verb   *Verb
-	source *Object
+	source *Object // TODO review how to represent complex actions (Give X to Y, Use X with Y) Y may be an Actor or an Object
 }
 
 func (e *Ego) String() string {
@@ -33,14 +33,6 @@ func (e *Ego) String() string {
 	return description
 }
 
-func (e *Ego) setActor(actor *Actor) {
-	e.actor = actor
-}
-
-func (e *Ego) setVerb(verb *Verb) {
-	e.verb = verb
-}
-
-func (e *Ego) clear() {
+func (e *Ego) Clear() {
 	e.actor, e.verb = nil, nil
 }

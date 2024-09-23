@@ -10,7 +10,8 @@ something useful.
 
 Related to objects:
 
-- Move obects under room
+- Move obects under room (missing onInit / onExit)
 - Minimal Inventory func
 - Complex actions (use X on Y, Give X to Y)
 - GetTarget function (should actor be an object?)
+- Ego Commands (for objet scripts)

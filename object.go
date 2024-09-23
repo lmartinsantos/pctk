@@ -240,24 +240,14 @@ func (a *App) drawObjects() {
 	}
 }
 
-// ObjectRelease is a command that will release an object removing it from the application.
-type ObjectRelease struct {
-	ObjectName string
-}
-
-func (cmd ObjectRelease) Execute(app *App, done Promise) {
-	delete(app.objects, cmd.ObjectName)
-	done.Complete()
-}
-
 // TODO object source & object target
-// ObjectOnAction is a command that will run the action script related to an object.
-type ObjectOnAction struct {
+// ObjectOnVerb is a command that will run the action script related to an object.
+type ObjectOnVerb struct {
 	Object *Object
 	Verb   *Verb
 }
 
-func (cmd ObjectOnAction) Execute(app *App, done Promise) {
+func (cmd ObjectOnVerb) Execute(app *App, done Promise) {
 	state := cmd.Object.State()
 	script := state.scripts[cmd.Verb.Type]
 	if script == nil {

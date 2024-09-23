@@ -35,7 +35,7 @@ func (a *App) drawEgoVerb() {
 	targetDescription := ""
 	// check if mouse is hovering an object
 	for _, o := range a.objects {
-		if a.MouseIsInto(o.Rectangle()) {
+		if a.MouseIsInto(o.Rectangle()) && !o.HasClass(ClassUntouchable) {
 			targetDescription = o.name
 			a.drawVerb(VerbLookAt, ControlVerbHoverOrSuggestedColor)
 			break
@@ -59,13 +59,13 @@ func (a *App) processControlInputs() {
 			// TODO missing check ego verb / object source
 			var target *Object
 			for _, o := range a.objects {
-				if a.MouseIsInto(o.Rectangle()) {
+				if a.MouseIsInto(o.Rectangle()) && !o.HasClass(ClassUntouchable) {
 					target = o
 					break
 				}
 			}
 			if target != nil && ego.verb != nil {
-				a.Do(ObjectOnAction{
+				a.Do(ObjectOnVerb{
 					Object: target,
 					Verb:   ego.verb,
 				})
@@ -79,7 +79,7 @@ func (a *App) processControlInputs() {
 			// check verbs
 			for _, verb := range Verbs {
 				if a.MouseIsInto(verb.Rectangle()) {
-					ego.setVerb(verb)
+					ego.verb = verb
 					return
 				}
 			}

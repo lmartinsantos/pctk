@@ -12,8 +12,7 @@ import (
 
 // ObjectData is the data for an object resource.
 type ObjectData struct {
-	Resource *pctk.Object
-
+	Resource   *pctk.Object
 	workingDir string
 }
 
@@ -36,6 +35,8 @@ func (d *ObjectData) UnmarshalYAML(n *yaml.Node) error {
 			Height uint
 		}
 		States []struct {
+			// No anim is like state 0. In this state nothing is displayed,
+			// and the object simply defines an area in the room.
 			Animation *struct {
 				Action string
 				Dir    string
@@ -62,7 +63,6 @@ func (d *ObjectData) UnmarshalYAML(n *yaml.Node) error {
 		filepath.Join(d.workingDir, data.Sprites.Sheet),
 		pctk.Size{W: int(data.Sprites.Width), H: int(data.Sprites.Height)},
 	)
-	// TODO Z
 	position := pctk.NewPos(int(data.Position.X), int(data.Position.Y))
 	d.Resource = pctk.NewObject(data.Name, sprites, position, data.Classes)
 
