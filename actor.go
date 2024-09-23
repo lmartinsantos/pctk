@@ -13,6 +13,8 @@ const (
 
 var (
 	DefaultActorPosition  = NewPos(160, 90)
+	DefaultActorSpeed     = NewPosf(80, 20)
+	DefaultActorSize      = NewSize(32, 48)
 	DefaultActorDirection = DirRight
 )
 
@@ -22,14 +24,19 @@ type Actor struct {
 	costume *Costume
 
 	lookAt Direction
-	pos    Position
+	pos    Positionf
+	size   Size
+	speed  Positionf
 	elev   int
 	act    action
 }
 
 func NewActor(name string) *Actor {
 	return &Actor{
-		name: name,
+		name:  name,
+		pos:   DefaultActorPosition.ToPosf(),
+		size:  DefaultActorSize,
+		speed: DefaultActorSpeed,
 	}
 }
 
@@ -39,11 +46,19 @@ func (a *Actor) SetCostume(costume *Costume) *Actor {
 	return a
 }
 
+func (a *Actor) costumePos() Position {
+	return a.pos.ToPos().Sub(NewPos(a.size.W/2, a.size.H-a.elev))
+}
+
+func (a *Actor) dialogPos() Position {
+	return a.pos.ToPos().Above(a.size.H + 40)
+}
+
 func (a *Actor) stand(dir Direction) *Actor {
 	a.lookAt = dir
 	a.act = func() (completed bool) {
 		if cos := a.costume; cos != nil {
-			cos.draw(CostumeIdle(dir), a.pos.Above(a.elev))
+			cos.draw(CostumeIdle(dir), a.costumePos())
 		}
 		return false
 	}
@@ -71,7 +86,7 @@ type ActorShow struct {
 
 func (cmd ActorShow) Execute(app *App, done Promise) {
 	actor := app.ensureActor(cmd.ActorName)
-	actor.pos = cmd.Position
+	actor.pos = cmd.Position.ToPosf()
 	actor.stand(cmd.LookAt)
 	if cmd.CostumeResource != ResourceRefNull {
 		actor.SetCostume(app.res.LoadCostume(cmd.CostumeResource))
@@ -88,7 +103,7 @@ type ActorLookAtPos struct {
 
 func (cmd ActorLookAtPos) Execute(app *App, done Promise) {
 	app.withActor(cmd.ActorName, func(a *Actor) {
-		a.stand(a.pos.DirectionTo(cmd.Position))
+		a.stand(a.pos.ToPos().DirectionTo(cmd.Position))
 	})
 	done.Complete()
 }
@@ -116,28 +131,16 @@ func (cmd ActorWalkToPosition) Execute(app *App, done Promise) {
 	app.withActor(cmd.ActorName, func(a *Actor) {
 		a.act = func() (completed bool) {
 			if cos := a.costume; cos != nil {
-				cos.draw(CostumeWalk(a.lookAt), a.pos.Above(a.elev))
+				cos.draw(CostumeWalk(a.lookAt), a.costumePos())
 			}
 
-			if a.pos == cmd.Position {
+			if a.pos.ToPos() == cmd.Position {
 				done.Complete()
 				return true
 			}
 
-			// TODO: This implementation is totally naive. It doesn't take into account the
-			// diagonal movement, the obstacles, the speed of the actor, etc.
-			a.lookAt = a.pos.DirectionTo(cmd.Position)
-
-			switch a.lookAt {
-			case DirRight:
-				a.pos.X++
-			case DirLeft:
-				a.pos.X--
-			case DirUp:
-				a.pos.Y--
-			case DirDown:
-				a.pos.Y++
-			}
+			a.lookAt = a.pos.ToPos().DirectionTo(cmd.Position)
+			a.pos = a.pos.Move(cmd.Position.ToPosf(), a.speed.Scale(rl.GetFrameTime()))
 			return false
 		}
 	})
@@ -163,13 +166,13 @@ func (cmd ActorSpeak) Execute(app *App, done Promise) {
 	app.withActor(cmd.ActorName, func(a *Actor) {
 		dialogDone := app.doNow(ShowDialog{
 			Text:     cmd.Text,
-			Position: a.pos.Above(50),
+			Position: a.dialogPos(),
 			Color:    cmd.Color,
 			Speed:    1.0,
 		})
 		a.act = func() (completed bool) {
 			if cos := a.costume; cos != nil {
-				cos.draw(CostumeSpeak(a.lookAt), a.pos.Above(a.elev))
+				cos.draw(CostumeSpeak(a.lookAt), a.costumePos())
 			}
 			if dialogDone.IsCompleted() {
 				done.CompleteAfter(nil, cmd.Delay)
@@ -203,7 +206,7 @@ func (a *App) drawActors() {
 		actors = append(actors, actor)
 	}
 	slices.SortFunc(actors, func(a, b *Actor) int {
-		return a.pos.Y - b.pos.Y
+		return a.pos.ToPos().Y - b.pos.ToPos().Y
 	})
 	for _, actor := range actors {
 		actor.draw()

@@ -8,25 +8,25 @@ data:
 
     RoomShow("resources:rooms/Melee")
     ActorShow("guybrush", {
-      pos={x=340, y=90}, 
+      pos={x=340, y=140}, 
       dir=DirLeft,
       costume="resources:costumes/Guybrush"
     })
     MusicPlay("resources:audio/OnTheHill")
     SoundPlay("resources:audio/Cricket")
-    ActorWalkToPosition("guybrush", {x=290, y=90}).Wait()
+    ActorWalkToPosition("guybrush", {x=290, y=140}).Wait()
     ActorSpeak("guybrush", "Hello, I'm Guybrush Threepwood,\nmighty pirate!").Wait()
     DialogShow("**Oh no! This guy again!**", pirate1_dialog_props)
-    ActorWalkToPosition("guybrush", {x=120, y=90}).Wait()
+    ActorWalkToPosition("guybrush", {x=120, y=140}).Wait()
     ActorSpeak("guybrush", "I think I've lost the keys to my boat.").Wait()
     ActorSpeak("guybrush", "Have you seen any keys?", {delay=2000}).Wait()
     DialogShow("Eeerrrr... Nope!", pirate1_dialog_props)
     SleepMillis(2000)
 
     MusicPlay("resources:audio/GuitarNoodling")
-    ActorWalkToPosition("guybrush", {x=120, y=80}).Wait()
+    ActorWalkToPosition("guybrush", {x=120, y=120}).Wait()
     ActorSpeak("guybrush", "Where can I find the keys?", {delay=1000}).Wait()
-    ActorWalkToPosition("guybrush", {x=120, y=90}).Wait()
+    ActorWalkToPosition("guybrush", {x=120, y=140}).Wait()
     ActorSpeak("guybrush", "Ooooook...").Wait()
     SleepMillis(2000)
     ActorStand("guybrush", {dir = DirRight}).Wait()
@@ -35,7 +35,7 @@ data:
     ActorStand("guybrush", {dir = DirLeft}).Wait()
     ActorSpeak("guybrush", "Thank you guys!").Wait()
     SoundPlay("resources:audio/Cricket")
-    ActorWalkToPosition("guybrush", {x=360, y=90}).Wait()
+    ActorWalkToPosition("guybrush", {x=360, y=140}).Wait()
 
     DialogShow("Oh, Jesus! I though he would\ntell again that stupid\ntale about LeChuck!", pirate1_dialog_props).Wait()
     SleepMillis(5000)

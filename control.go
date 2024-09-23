@@ -57,7 +57,7 @@ func (a *App) processControlInputs() {
 			// TODO missing check action / control selected
 			a.Do(ActorWalkToPosition{
 				ActorName: a.ego.name,
-				Position:  NewPos(mouseClick.X, a.ego.pos.Y),
+				Position:  NewPos(mouseClick.X, mouseClick.Y),
 			})
 		}
 	}
