@@ -11,7 +11,6 @@ something useful.
 Related to objects:
 
 - Move obects under Room (missing onInit / onExit)
-- Minimal Inventory func based on commands (`AddToInventory` / `RemoveFromIventory`)
 - Complete `processControlInputs`
   - Complete hovering over actors (filtering ego)
   - Complex actions (use X on Y, Give X to Y)

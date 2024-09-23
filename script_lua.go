@@ -75,6 +75,22 @@ func luaApiFunctions(app *App) []lua.RegistryFunction {
 			luaPushFuture(l, done)
 			return 1
 		}},
+		{Name: "EgoAddToInventory", Function: func(l *lua.State) int {
+			cmd := EgoAddToInventory{
+				ObjectName: lua.CheckString(l, 1),
+			}
+			done := app.Do(cmd)
+			luaPushFuture(l, done)
+			return 1
+		}},
+		{Name: "EgoRemoveFromInventory", Function: func(l *lua.State) int {
+			cmd := EgoRemoveFromInventory{
+				ObjectName: lua.CheckString(l, 1),
+			}
+			done := app.Do(cmd)
+			luaPushFuture(l, done)
+			return 1
+		}},
 		{Name: "DialogShow", Function: func(l *lua.State) int {
 			cmd := ShowDialog{
 				Text:     lua.CheckString(l, 1),

@@ -43,8 +43,9 @@ var (
 	VerbTurnOn  = &Verb{Type: TurnOn, Description: "Turn on", Col: 2, Row: 2}
 	VerbTurnOff = &Verb{Type: TurnOff, Description: "Turn off", Col: 2, Row: 3}
 
-	DefaultVerb = VerbWalkTo
-	Verbs       = []*Verb{
+	DefaultVerb          = VerbWalkTo
+	DefaultInventoryVerb = VerbUse
+	Verbs                = []*Verb{
 		VerbOpen, VerbClose, VerbPush, VerbPull,
 		VerbWalkTo, VerbPickUp, VerbTalkTo, VerbGive,
 		VerbUse, VerbLookAt, VerbTurnOn, VerbTurnOff,

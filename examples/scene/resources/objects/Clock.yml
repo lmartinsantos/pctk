@@ -19,6 +19,9 @@ data:
             ActorSpeak("guybrush", "As grand as it is,\nthe thing doesn't seem to work.").Wait()
             ActorSpeak("guybrush", "No ticking, no movement\njust a giant, useless relic.").Wait()
             ActorWalkToPosition("guybrush", {x=140, y=90}).Wait()
+        - verb: walkto
+          code: |
+            ActorWalkToPosition("guybrush", {x=140, y=90}).Wait()
         - verb: default
           code: |
             ActorWalkToPosition("guybrush", {x=140, y=90}).Wait()

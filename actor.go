@@ -20,14 +20,16 @@ type Actor struct {
 
 	costume *Costume
 
-	lookAt Direction
-	pos    Position
-	act    action
+	lookAt    Direction
+	pos       Position
+	act       action
+	inventory map[string]*Object
 }
 
 func NewActor(name string) *Actor {
 	return &Actor{
-		name: name,
+		name:      name,
+		inventory: make(map[string]*Object),
 	}
 }
 
@@ -214,6 +216,38 @@ func (cmd ActorSelectEgo) Execute(app *App, done Promise) {
 		ego.actor = actor
 	} else {
 		ego.Clear()
+	}
+
+	done.Complete()
+}
+
+// EgoAddToInventory is a command to add an object to the inventory's actor (ego).
+type EgoAddToInventory struct {
+	ObjectName string
+}
+
+func (cmd EgoAddToInventory) Execute(app *App, done Promise) {
+	ego := app.ego
+	if ego.actor != nil {
+		ego.actor.inventory[cmd.ObjectName] = app.objects[cmd.ObjectName]
+		// TODO for testing purposes, the state of the object must be
+		// changed from the script
+		app.objects[cmd.ObjectName].state += 1
+		app.objects[cmd.ObjectName].AddClass(ClassUntouchable)
+	}
+
+	done.Complete()
+}
+
+// EgoRemoveFromInventory is a command to remove an object to the inventory's actor (ego).
+type EgoRemoveFromInventory struct {
+	ObjectName string
+}
+
+func (cmd EgoRemoveFromInventory) Execute(app *App, done Promise) {
+	ego := app.ego
+	if ego.actor != nil {
+		delete(ego.actor.inventory, cmd.ObjectName)
 	}
 
 	done.Complete()

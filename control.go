@@ -10,14 +10,21 @@ var (
 	ControlVerbColor                 = Green
 	ControlVerbHoverOrSuggestedColor = BrigthGreen
 	ControlEgoVerbColor              = Cyan
+	ControlInventoryColor            = Blue
 )
 
 func (a *App) drawControlPanel() {
 	if a.controlPanelEnabled {
-		for _, verb := range Verbs {
-			a.drawVerb(verb, ControlVerbColor)
-		}
+
+		a.drawVerbs()
 		a.drawEgoVerb()
+		a.drawInventory()
+	}
+}
+
+func (a *App) drawVerbs() {
+	for _, verb := range Verbs {
+		a.drawVerb(verb, ControlVerbColor)
 	}
 }
 
@@ -41,14 +48,52 @@ func (a *App) drawEgoVerb() {
 			break
 		}
 	}
+
+	// check if mouse is hovering an object in the inventory
+	var row int
+	var fromInventory bool
+	for _, o := range ego.actor.inventory {
+		r := getInventoryItemRectangle(row)
+		if a.MouseIsInto(r) {
+			targetDescription = o.name
+			a.drawVerb(VerbUse, ControlVerbHoverOrSuggestedColor)
+			fromInventory = true
+			break
+		}
+	}
+
 	// TODO  hovering actors (discarding ego)
-	description := ego.String()
+
+	description := ego.String(fromInventory)
 	if targetDescription != "" {
 		description = fmt.Sprintf("%s the %s", description, targetDescription)
 	}
 
 	pos := NewPos(ScreenWidth/2, ViewportHeight)
 	a.drawDefaultText(description, pos, AlignCenter, ControlEgoVerbColor)
+}
+
+func (a *App) drawInventory() {
+	ego := a.ego
+	// TODO missing scroll
+	var row int
+	for _, o := range ego.actor.inventory {
+		r := getInventoryItemRectangle(row)
+		if a.MouseIsInto(r) {
+			a.drawDefaultText(o.name, NewPos(r.Pos.X, r.Pos.Y), AlignCenter, ControlVerbHoverOrSuggestedColor)
+		} else {
+			a.drawDefaultText(o.name, NewPos(r.Pos.X, r.Pos.Y), AlignCenter, ControlInventoryColor)
+		}
+	}
+}
+
+func getInventoryItemRectangle(row int) Rectangle {
+	x := 2 + 4*ScreenWidth/6
+	y := ViewportHeight + (row+1)*FontDefaultSize
+	w := ScreenWidth / 6
+	h := FontDefaultSize
+
+	return NewRect(x, y, w, h)
 }
 
 func (a *App) processControlInputs() {
@@ -69,6 +114,7 @@ func (a *App) processControlInputs() {
 					Object: target,
 					Verb:   ego.verb,
 				})
+				ego.verb = nil
 			} else {
 				a.Do(ActorWalkToPosition{
 					ActorName: ego.actor.name,
@@ -85,6 +131,18 @@ func (a *App) processControlInputs() {
 			}
 
 			// TODO check inventory (setObject)
+			var row int
+			for _, o := range ego.actor.inventory {
+				r := getInventoryItemRectangle(row)
+				if a.MouseIsInto(r) && ego.verb != nil {
+					a.Do(ObjectOnVerb{
+						Object: o,
+						Verb:   ego.verb,
+					})
+					ego.verb = nil
+					return
+				}
+			}
 		}
 
 		// clean ego status

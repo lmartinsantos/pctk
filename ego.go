@@ -9,8 +9,11 @@ type Ego struct {
 	source *Object // TODO review how to represent complex actions (Give X to Y, Use X with Y) Y may be an Actor or an Object
 }
 
-func (e *Ego) String() string {
+func (e *Ego) String(fromInventory bool) string {
 	description := DefaultVerb.Description
+	if fromInventory {
+		description = DefaultInventoryVerb.Description
+	}
 	source := ""
 	if e != nil && e.source != nil {
 		source = e.source.name
