@@ -1,6 +1,7 @@
 package pctk
 
 import (
+	"slices"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -12,6 +13,8 @@ const (
 
 var (
 	DefaultActorPosition  = NewPos(160, 90)
+	DefaultActorSpeed     = NewPosf(80, 20)
+	DefaultActorSize      = NewSize(32, 48)
 	DefaultActorDirection = DirRight
 )
 
@@ -21,13 +24,19 @@ type Actor struct {
 	costume *Costume
 
 	lookAt Direction
-	pos    Position
+	pos    Positionf
+	size   Size
+	speed  Positionf
+	elev   int
 	act    action
 }
 
 func NewActor(name string) *Actor {
 	return &Actor{
-		name: name,
+		name:  name,
+		pos:   DefaultActorPosition.ToPosf(),
+		size:  DefaultActorSize,
+		speed: DefaultActorSpeed,
 	}
 }
 
@@ -37,44 +46,52 @@ func (a *Actor) SetCostume(costume *Costume) *Actor {
 	return a
 }
 
+func (a *Actor) costumePos() Position {
+	return a.pos.ToPos().Sub(NewPos(a.size.W/2, a.size.H-a.elev))
+}
+
+func (a *Actor) dialogPos() Position {
+	return a.pos.ToPos().Above(a.size.H + 40)
+}
+
 func (a *Actor) stand(dir Direction) *Actor {
 	a.lookAt = dir
-	a.act = func(app *App, c *Actor) (completed bool) {
+	a.act = func() (completed bool) {
 		if cos := a.costume; cos != nil {
-			cos.draw(CostumeIdle(dir), c.pos)
+			cos.draw(CostumeIdle(dir), a.costumePos())
 		}
 		return false
 	}
 	return a
 }
 
-func (a *Actor) draw(app *App) {
+func (a *Actor) draw() {
 	if a.act == nil {
 		a.stand(a.lookAt)
 	}
-	if a.act(app, a) {
+	if a.act() {
 		a.stand(a.lookAt)
 	}
 }
 
-type action func(*App, *Actor) (completed bool)
+type action func() (completed bool)
 
 // ActorShow is a command that will show an actor in the room at the given position.
 type ActorShow struct {
 	CostumeResource ResourceRef
-	ActorName       string
+	ActorID         string
 	Position        Position
 	LookAt          Direction
 }
 
-func (cmd ActorShow) Execute(app *App, done Promise) {
-	actor := app.ensureActor(cmd.ActorName)
-	actor.pos = cmd.Position
+func (cmd ActorShow) Execute(app *App, done *Promise) {
+	actor := app.ensureActor(cmd.ActorID)
+	actor.pos = cmd.Position.ToPosf()
 	actor.stand(cmd.LookAt)
 	if cmd.CostumeResource != ResourceRefNull {
 		actor.SetCostume(app.res.LoadCostume(cmd.CostumeResource))
 	}
-	app.actors[cmd.ActorName] = actor
+	app.actors[cmd.ActorID] = actor
 	done.Complete()
 }
 
@@ -84,21 +101,21 @@ type ActorLookAtPos struct {
 	Position  Position
 }
 
-func (cmd ActorLookAtPos) Execute(app *App, done Promise) {
+func (cmd ActorLookAtPos) Execute(app *App, done *Promise) {
 	app.withActor(cmd.ActorName, func(a *Actor) {
-		a.stand(a.pos.DirectionTo(cmd.Position))
+		a.stand(a.pos.ToPos().DirectionTo(cmd.Position))
 	})
 	done.Complete()
 }
 
 // ActorStand is a command that will make an actor stand in the given direction.
 type ActorStand struct {
-	ActorName string
+	ActorID   string
 	Direction Direction
 }
 
-func (cmd ActorStand) Execute(app *App, done Promise) {
-	app.withActor(cmd.ActorName, func(a *Actor) {
+func (cmd ActorStand) Execute(app *App, done *Promise) {
+	app.withActor(cmd.ActorID, func(a *Actor) {
 		a.stand(cmd.Direction)
 	})
 	done.Complete()
@@ -106,36 +123,24 @@ func (cmd ActorStand) Execute(app *App, done Promise) {
 
 // ActorWalkToPosition is a command that will make an actor walk to a given position.
 type ActorWalkToPosition struct {
-	ActorName string
-	Position  Position
+	ActorID  string
+	Position Position
 }
 
-func (cmd ActorWalkToPosition) Execute(app *App, done Promise) {
-	app.withActor(cmd.ActorName, func(a *Actor) {
-		a.act = func(app *App, c *Actor) (completed bool) {
+func (cmd ActorWalkToPosition) Execute(app *App, done *Promise) {
+	app.withActor(cmd.ActorID, func(a *Actor) {
+		a.act = func() (completed bool) {
 			if cos := a.costume; cos != nil {
-				cos.draw(CostumeWalk(a.lookAt), c.pos)
+				cos.draw(CostumeWalk(a.lookAt), a.costumePos())
 			}
 
-			if c.pos == cmd.Position {
+			if a.pos.ToPos() == cmd.Position {
 				done.Complete()
 				return true
 			}
 
-			// TODO: This implementation is totally naive. It doesn't take into account the
-			// diagonal movement, the obstacles, the speed of the actor, etc.
-			a.lookAt = c.pos.DirectionTo(cmd.Position)
-
-			switch a.lookAt {
-			case DirRight:
-				c.pos.X++
-			case DirLeft:
-				c.pos.X--
-			case DirUp:
-				c.pos.Y--
-			case DirDown:
-				c.pos.Y++
-			}
+			a.lookAt = a.pos.ToPos().DirectionTo(cmd.Position)
+			a.pos = a.pos.Move(cmd.Position.ToPosf(), a.speed.Scale(rl.GetFrameTime()))
 			return false
 		}
 	})
@@ -143,13 +148,13 @@ func (cmd ActorWalkToPosition) Execute(app *App, done Promise) {
 
 // ActorSpeak is a command that will make an actor speak the given text.
 type ActorSpeak struct {
-	ActorName string
-	Text      string
-	Delay     time.Duration
-	Color     Color
+	ActorID string
+	Text    string
+	Delay   time.Duration
+	Color   Color
 }
 
-func (cmd ActorSpeak) Execute(app *App, done Promise) {
+func (cmd ActorSpeak) Execute(app *App, done *Promise) {
 	if cmd.Delay == 0 {
 		cmd.Delay = DefaultActorSpeakDelay
 	}
@@ -158,16 +163,16 @@ func (cmd ActorSpeak) Execute(app *App, done Promise) {
 		cmd.Color = rl.White
 	}
 
-	app.withActor(cmd.ActorName, func(a *Actor) {
+	app.withActor(cmd.ActorID, func(a *Actor) {
 		dialogDone := app.doNow(ShowDialog{
 			Text:     cmd.Text,
-			Position: a.pos.Above(50),
+			Position: a.dialogPos(),
 			Color:    cmd.Color,
 			Speed:    1.0,
 		})
-		a.act = func(app *App, c *Actor) (completed bool) {
+		a.act = func() (completed bool) {
 			if cos := a.costume; cos != nil {
-				cos.draw(CostumeSpeak(a.lookAt), c.pos)
+				cos.draw(CostumeSpeak(a.lookAt), a.costumePos())
 			}
 			if dialogDone.IsCompleted() {
 				done.CompleteAfter(nil, cmd.Delay)
@@ -196,19 +201,26 @@ func (a *App) ensureActor(name string) *Actor {
 }
 
 func (a *App) drawActors() {
+	actors := make([]*Actor, 0, len(a.actors))
 	for _, actor := range a.actors {
-		actor.draw(a)
+		actors = append(actors, actor)
+	}
+	slices.SortFunc(actors, func(a, b *Actor) int {
+		return a.pos.ToPos().Y - b.pos.ToPos().Y
+	})
+	for _, actor := range actors {
+		actor.draw()
 	}
 }
 
 // ActorSelectEgo is a command that will make an actor be the actor under player's control.
 type ActorSelectEgo struct {
-	// Using an empty ActorName allows deselecting the previous ego
-	ActorName string
+	// Using an empty ActorID allows deselecting the previous ego
+	ActorID string
 }
 
-func (cmd ActorSelectEgo) Execute(app *App, done Promise) {
-	actor, ok := app.actors[cmd.ActorName]
+func (cmd ActorSelectEgo) Execute(app *App, done *Promise) {
+	actor, ok := app.actors[cmd.ActorID]
 	if ok {
 		app.ego = actor
 	} else {

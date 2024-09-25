@@ -24,28 +24,28 @@ type Dialog struct {
 	speed float32
 
 	expiresAt time.Time
-	done      Promise
+	done      *Promise
+}
+
+func (d *Dialog) draw() (expired bool) {
+	if time.Now().After(d.expiresAt) {
+		return true
+	}
+
+	DrawDialogText(d.text, d.pos, d.color)
+	return false
 }
 
 func (a *App) drawDialogs() {
 	dialogs := make([]Dialog, 0, len(a.dialogs))
 	for _, d := range a.dialogs {
-		if a.drawDialog(&d) {
+		if d.draw() {
 			d.done.Complete()
 		} else {
 			dialogs = append(dialogs, d)
 		}
 	}
 	a.dialogs = dialogs
-}
-
-func (a *App) drawDialog(d *Dialog) (expired bool) {
-	if time.Now().After(d.expiresAt) {
-		return true
-	}
-
-	a.drawDialogText(d.text, d.pos, d.color)
-	return false
 }
 
 // ShowDialog is a command that will show a dialog with the given text.
@@ -56,7 +56,7 @@ type ShowDialog struct {
 	Speed    float32
 }
 
-func (cmd ShowDialog) Execute(app *App, done Promise) {
+func (cmd ShowDialog) Execute(app *App, done *Promise) {
 	if cmd.Speed == 0 {
 		cmd.Speed = 1
 	}

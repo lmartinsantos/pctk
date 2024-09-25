@@ -12,15 +12,14 @@ type App struct {
 	screenCaption string
 	screenZoom    int32
 
+	rooms    map[string]*Room
 	room     *Room
 	dialogs  []Dialog
 	actors   map[string]*Actor
+	scripts  map[ResourceRef]*Script
 	commands commandQueue
 
 	cam                 rl.Camera2D
-	fontDefault         rl.Font
-	fontDialogSolid     rl.Font
-	fontDialogOutline   rl.Font
 	cursorTx            rl.Texture2D
 	cursorColor         Color
 	music               *Music
@@ -32,8 +31,10 @@ type App struct {
 // New creates a new pctk application.
 func New(resources ResourceLoader, opts ...AppOption) *App {
 	app := &App{
-		res:    resources,
-		actors: make(map[string]*Actor),
+		res:     resources,
+		actors:  make(map[string]*Actor),
+		rooms:   make(map[string]*Room),
+		scripts: make(map[ResourceRef]*Script),
 	}
 
 	opts = append(defaultAppOptions, opts...)
@@ -52,7 +53,6 @@ func (a *App) init() {
 	rl.SetTargetFPS(60)
 
 	a.cam.Zoom = float32(a.screenZoom)
-	a.initFonts()
 	a.initMouse()
 }
 

@@ -18,13 +18,13 @@ type Promise struct {
 }
 
 // NewPromise creates a new future.
-func NewPromise() Promise {
+func NewPromise() *Promise {
 	done := make(chan struct{})
-	return Promise{done: done}
+	return &Promise{done: done}
 }
 
 // Complete completes the future.
-func (f Promise) Complete() {
+func (f *Promise) Complete() {
 	close(f.done)
 }
 
@@ -46,13 +46,13 @@ func (f *Promise) CompleteAfter(v any, d time.Duration) {
 }
 
 // Wait waits for the future to be completed.
-func (f Promise) Wait() any {
+func (f *Promise) Wait() any {
 	<-f.done
 	return f.result
 }
 
 // IsCompleted returns true if the future is completed.
-func (f Promise) IsCompleted() bool {
+func (f *Promise) IsCompleted() bool {
 	select {
 	case <-f.done:
 		return true

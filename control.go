@@ -42,12 +42,12 @@ func (a *App) drawActionVerb(verb string, col, row int) {
 		color = ControlVerbHoverColor
 	}
 
-	a.drawDefaultText(verb, NewPos(x, y), AlignLeft, color)
+	DrawDefaultText(verb, NewPos(x, y), AlignLeft, color)
 }
 
 func (a *App) drawFullAction(action string) {
 	pos := NewPos(ScreenWidth/2, ViewportHeight)
-	a.drawDefaultText(action, pos, AlignCenter, ControlActionColor)
+	DrawDefaultText(action, pos, AlignCenter, ControlActionColor)
 }
 
 func (a *App) processControlInputs() {
@@ -56,8 +56,8 @@ func (a *App) processControlInputs() {
 		if SceneViewport.Contains(mouseClick) {
 			// TODO missing check action / control selected
 			a.Do(ActorWalkToPosition{
-				ActorName: a.ego.name,
-				Position:  NewPos(mouseClick.X, a.ego.pos.Y),
+				ActorID:  a.ego.name,
+				Position: NewPos(mouseClick.X, mouseClick.Y),
 			})
 		}
 	}
@@ -68,7 +68,7 @@ type EnableControlPanel struct {
 	Enable bool
 }
 
-func (cmd EnableControlPanel) Execute(app *App, done Promise) {
+func (cmd EnableControlPanel) Execute(app *App, done *Promise) {
 	app.controlPanelEnabled = cmd.Enable
 	done.Complete()
 }

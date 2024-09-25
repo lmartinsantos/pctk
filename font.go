@@ -25,17 +25,37 @@ const (
 	AlignRight
 )
 
-func (a *App) initFonts() {
-	a.fontDefault = rl.LoadFontFromMemory(".ttf", fontDefaultData, 32, nil)
-	a.fontDialogSolid = rl.LoadFontFromMemory(".ttf", fontDialogSolidData, 32, nil)
-	a.fontDialogOutline = rl.LoadFontFromMemory(".ttf", fontDialogOutlineData, 32, nil)
+var (
+	fontDefault       rl.Font
+	fontDialogSolid   rl.Font
+	fontDialogOutline rl.Font
+)
+
+// FontDefault is the default font, used for system messages and menus.
+func FontDefault() rl.Font {
+	if fontDefault.Chars == nil {
+		fontDefault = rl.LoadFontFromMemory(".ttf", fontDefaultData, 32, nil)
+	}
+	return fontDefault
 }
 
-func (a *App) drawDefaultText(text string, pos Position, align TextAlignment, color Color) {
+// FontDialogSolid is the solid part of the font used for dialog text.
+func FontDialog() (solid, outline rl.Font) {
+	if fontDialogSolid.Chars == nil {
+		fontDialogSolid = rl.LoadFontFromMemory(".ttf", fontDialogSolidData, 32, nil)
+	}
+	if fontDialogOutline.Chars == nil {
+		fontDialogOutline = rl.LoadFontFromMemory(".ttf", fontDialogOutlineData, 32, nil)
+	}
+	return fontDialogSolid, fontDialogOutline
+}
+
+// DrawDefaultText draws text using the default font.
+func DrawDefaultText(text string, pos Position, align TextAlignment, color Color) {
 	// Hack needed to render spaces correctly, as they are too narrow in the default font.
 	text = strings.ReplaceAll(text, " ", "    ")
 
-	textSize := rl.MeasureTextEx(a.fontDefault, text, FontDefaultSize, 0)
+	textSize := rl.MeasureTextEx(FontDefault(), text, FontDefaultSize, 0)
 	switch align {
 	case AlignLeft:
 	case AlignCenter:
@@ -45,7 +65,7 @@ func (a *App) drawDefaultText(text string, pos Position, align TextAlignment, co
 	}
 
 	rl.DrawTextEx(
-		a.fontDefault,
+		FontDefault(),
 		text,
 		pos.toRaylib(),
 		FontDefaultSize,
@@ -54,11 +74,14 @@ func (a *App) drawDefaultText(text string, pos Position, align TextAlignment, co
 	)
 }
 
-func (a *App) drawDialogText(text string, pos Position, color Color) {
+// DrawDialogText draws text using the dialog font.
+func DrawDialogText(text string, pos Position, color Color) {
+	fontSolid, fontOutline := FontDialog()
+
 	lines := strings.Split(text, "\n")
 	for i, line := range lines {
 
-		tsize := sizeFromRaylib(rl.MeasureTextEx(a.fontDialogOutline, line, FontDialogSize, 0))
+		tsize := sizeFromRaylib(rl.MeasureTextEx(fontOutline, line, FontDialogSize, 0))
 		tw := tsize.W
 
 		if pos.X-tw/2 < DialogScreenMarging {
@@ -69,7 +92,7 @@ func (a *App) drawDialogText(text string, pos Position, color Color) {
 		}
 
 		rl.DrawTextEx(
-			a.fontDialogSolid,
+			fontSolid,
 			line,
 			rl.Vector2{X: float32(pos.X - tw/2), Y: float32(pos.Y + i*FontDialogSize)},
 			FontDialogSize,
@@ -77,7 +100,7 @@ func (a *App) drawDialogText(text string, pos Position, color Color) {
 			color,
 		)
 		rl.DrawTextEx(
-			a.fontDialogOutline,
+			fontOutline,
 			line,
 			rl.Vector2{X: float32(pos.X - tw/2), Y: float32(pos.Y + i*FontDialogSize)},
 			FontDialogSize,

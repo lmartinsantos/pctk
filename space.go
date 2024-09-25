@@ -37,8 +37,14 @@ func positionFromRaylib(v rl.Vector2) Position {
 	return Position{int(v.X), int(v.Y)}
 }
 
+// String returns a string representation of the position.
 func (p Position) String() string {
 	return fmt.Sprintf("(X:%d, Y:%d)", p.X, p.Y)
+}
+
+// ToPosf converts an integer position to a floating point position.
+func (p Position) ToPosf() Positionf {
+	return Positionf{float32(p.X), float32(p.Y)}
 }
 
 // Add adds two positions.
@@ -90,9 +96,86 @@ func (p Position) toRaylib() rl.Vector2 {
 	return rl.NewVector2(float32(p.X), float32(p.Y))
 }
 
+// Positionf represents a 2D position with floating point coordinates for fractional positions.
+type Positionf struct {
+	X, Y float32
+}
+
+// NewPosf creates a new position with floating point coordinates.
+func NewPosf(x, y float32) Positionf {
+	return Positionf{x, y}
+}
+
+// String returns a string representation of the position.
+func (p Positionf) String() string {
+	return fmt.Sprintf("(X:%.2f, Y:%.2f)", p.X, p.Y)
+}
+
+// ToPos converts a floating point position to an integer position.
+func (p Positionf) ToPos() Position {
+	return Position{int(p.X), int(p.Y)}
+}
+
+// Scale scales the position by a factor.
+func (p Positionf) Scale(s float32) Positionf {
+	return Positionf{p.X * s, p.Y * s}
+}
+
+// ScaleBy scales the position by another position.
+func (p Positionf) ScaleBy(other Positionf) Positionf {
+	return Positionf{p.X * other.X, p.Y * other.Y}
+}
+
+// Add adds two positions.
+func (p Positionf) Add(other Positionf) Positionf {
+	return Positionf{p.X + other.X, p.Y + other.Y}
+}
+
+// Sub subtracts two positions.
+func (p Positionf) Sub(other Positionf) Positionf {
+	return Positionf{p.X - other.X, p.Y - other.Y}
+}
+
+// Move moves the position towards another position by a given speed.
+func (p Positionf) Move(to Positionf, speed Positionf) Positionf {
+	dist := to.Sub(p)
+	if dist.X > 0 {
+		if speed.X < dist.X {
+			p.X += speed.X
+		} else {
+			p.X = to.X
+		}
+	} else if dist.X < 0 {
+		if speed.X < -dist.X {
+			p.X -= speed.X
+		} else {
+			p.X = to.X
+		}
+	}
+	if dist.Y > 0 {
+		if speed.Y < dist.Y {
+			p.Y += speed.Y
+		} else {
+			p.Y = to.Y
+		}
+	} else if dist.Y < 0 {
+		if speed.Y < -dist.Y {
+			p.Y -= speed.Y
+		} else {
+			p.Y = to.Y
+		}
+	}
+	return p
+}
+
 // Size represents a 2D size.
 type Size struct {
 	W, H int
+}
+
+// NewSize creates a new size.
+func NewSize(w, h int) Size {
+	return Size{w, h}
 }
 
 func sizeFromRaylib(v rl.Vector2) Size {
