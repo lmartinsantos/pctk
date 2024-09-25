@@ -79,19 +79,19 @@ type action func() (completed bool)
 // ActorShow is a command that will show an actor in the room at the given position.
 type ActorShow struct {
 	CostumeResource ResourceRef
-	ActorName       string
+	ActorID         string
 	Position        Position
 	LookAt          Direction
 }
 
 func (cmd ActorShow) Execute(app *App, done Promise) {
-	actor := app.ensureActor(cmd.ActorName)
+	actor := app.ensureActor(cmd.ActorID)
 	actor.pos = cmd.Position.ToPosf()
 	actor.stand(cmd.LookAt)
 	if cmd.CostumeResource != ResourceRefNull {
 		actor.SetCostume(app.res.LoadCostume(cmd.CostumeResource))
 	}
-	app.actors[cmd.ActorName] = actor
+	app.actors[cmd.ActorID] = actor
 	done.Complete()
 }
 
@@ -110,12 +110,12 @@ func (cmd ActorLookAtPos) Execute(app *App, done Promise) {
 
 // ActorStand is a command that will make an actor stand in the given direction.
 type ActorStand struct {
-	ActorName string
+	ActorID   string
 	Direction Direction
 }
 
 func (cmd ActorStand) Execute(app *App, done Promise) {
-	app.withActor(cmd.ActorName, func(a *Actor) {
+	app.withActor(cmd.ActorID, func(a *Actor) {
 		a.stand(cmd.Direction)
 	})
 	done.Complete()
@@ -123,12 +123,12 @@ func (cmd ActorStand) Execute(app *App, done Promise) {
 
 // ActorWalkToPosition is a command that will make an actor walk to a given position.
 type ActorWalkToPosition struct {
-	ActorName string
-	Position  Position
+	ActorID  string
+	Position Position
 }
 
 func (cmd ActorWalkToPosition) Execute(app *App, done Promise) {
-	app.withActor(cmd.ActorName, func(a *Actor) {
+	app.withActor(cmd.ActorID, func(a *Actor) {
 		a.act = func() (completed bool) {
 			if cos := a.costume; cos != nil {
 				cos.draw(CostumeWalk(a.lookAt), a.costumePos())
@@ -148,10 +148,10 @@ func (cmd ActorWalkToPosition) Execute(app *App, done Promise) {
 
 // ActorSpeak is a command that will make an actor speak the given text.
 type ActorSpeak struct {
-	ActorName string
-	Text      string
-	Delay     time.Duration
-	Color     Color
+	ActorID string
+	Text    string
+	Delay   time.Duration
+	Color   Color
 }
 
 func (cmd ActorSpeak) Execute(app *App, done Promise) {
@@ -163,7 +163,7 @@ func (cmd ActorSpeak) Execute(app *App, done Promise) {
 		cmd.Color = rl.White
 	}
 
-	app.withActor(cmd.ActorName, func(a *Actor) {
+	app.withActor(cmd.ActorID, func(a *Actor) {
 		dialogDone := app.doNow(ShowDialog{
 			Text:     cmd.Text,
 			Position: a.dialogPos(),
@@ -215,12 +215,12 @@ func (a *App) drawActors() {
 
 // ActorSelectEgo is a command that will make an actor be the actor under player's control.
 type ActorSelectEgo struct {
-	// Using an empty ActorName allows deselecting the previous ego
-	ActorName string
+	// Using an empty ActorID allows deselecting the previous ego
+	ActorID string
 }
 
 func (cmd ActorSelectEgo) Execute(app *App, done Promise) {
-	actor, ok := app.actors[cmd.ActorName]
+	actor, ok := app.actors[cmd.ActorID]
 	if ok {
 		app.ego = actor
 	} else {

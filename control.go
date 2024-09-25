@@ -56,8 +56,8 @@ func (a *App) processControlInputs() {
 		if SceneViewport.Contains(mouseClick) {
 			// TODO missing check action / control selected
 			a.Do(ActorWalkToPosition{
-				ActorName: a.ego.name,
-				Position:  NewPos(mouseClick.X, mouseClick.Y),
+				ActorID:  a.ego.name,
+				Position: NewPos(mouseClick.X, mouseClick.Y),
 			})
 		}
 	}
