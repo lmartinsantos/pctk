@@ -84,7 +84,7 @@ type ActorShow struct {
 	LookAt          Direction
 }
 
-func (cmd ActorShow) Execute(app *App, done Promise) {
+func (cmd ActorShow) Execute(app *App, done *Promise) {
 	actor := app.ensureActor(cmd.ActorID)
 	actor.pos = cmd.Position.ToPosf()
 	actor.stand(cmd.LookAt)
@@ -101,7 +101,7 @@ type ActorLookAtPos struct {
 	Position  Position
 }
 
-func (cmd ActorLookAtPos) Execute(app *App, done Promise) {
+func (cmd ActorLookAtPos) Execute(app *App, done *Promise) {
 	app.withActor(cmd.ActorName, func(a *Actor) {
 		a.stand(a.pos.ToPos().DirectionTo(cmd.Position))
 	})
@@ -114,7 +114,7 @@ type ActorStand struct {
 	Direction Direction
 }
 
-func (cmd ActorStand) Execute(app *App, done Promise) {
+func (cmd ActorStand) Execute(app *App, done *Promise) {
 	app.withActor(cmd.ActorID, func(a *Actor) {
 		a.stand(cmd.Direction)
 	})
@@ -127,7 +127,7 @@ type ActorWalkToPosition struct {
 	Position Position
 }
 
-func (cmd ActorWalkToPosition) Execute(app *App, done Promise) {
+func (cmd ActorWalkToPosition) Execute(app *App, done *Promise) {
 	app.withActor(cmd.ActorID, func(a *Actor) {
 		a.act = func() (completed bool) {
 			if cos := a.costume; cos != nil {
@@ -154,7 +154,7 @@ type ActorSpeak struct {
 	Color   Color
 }
 
-func (cmd ActorSpeak) Execute(app *App, done Promise) {
+func (cmd ActorSpeak) Execute(app *App, done *Promise) {
 	if cmd.Delay == 0 {
 		cmd.Delay = DefaultActorSpeakDelay
 	}
@@ -219,7 +219,7 @@ type ActorSelectEgo struct {
 	ActorID string
 }
 
-func (cmd ActorSelectEgo) Execute(app *App, done Promise) {
+func (cmd ActorSelectEgo) Execute(app *App, done *Promise) {
 	actor, ok := app.actors[cmd.ActorID]
 	if ok {
 		app.ego = actor

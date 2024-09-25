@@ -8,49 +8,103 @@ import (
 	"github.com/Shopify/go-lua"
 )
 
-func (s *Script) runLua(app *App, prom Promise) {
-	go func() {
-		l := lua.NewState()
-		lua.BaseOpen(l)
+func (s *Script) luaInit(app AppContext) {
+	if s.l == nil {
+		s.l = lua.NewState()
+		lua.BaseOpen(s.l)
 
-		luaDeclareConstants(l)
-		api := luaResourceApi(app)
+		luaDeclareConstants(s.l)
+		api := s.luaResourceApi(app)
 		for _, f := range api {
-			l.PushGoFunction(f.Function)
-			l.SetGlobal(f.Name)
+			s.l.PushGoFunction(f.Function)
+			s.l.SetGlobal(f.Name)
+		}
+	}
+}
+
+func (s *Script) luaRun(app AppContext, prom *Promise) {
+	go func() {
+		if s.l == nil {
+			log.Panic("Script not initialized")
+		}
+		s.luaEval(app, s.Code, false)
+		prom.CompleteWithValue(s)
+	}()
+}
+
+func (s *Script) luaCall(object, method string, prom *Promise) {
+	go func() {
+		if s.l == nil {
+			log.Panic("Script not initialized")
 		}
 
-		if err := lua.DoString(l, string(s.Code)); err != nil {
-			log.Panicf("Error running script: %s", err)
+		s.l.Global(object)
+		if !s.l.IsTable(-1) {
+			log.Panicf("Object %s not found", object)
 		}
+		s.l.Field(-1, method)
+		if !s.l.IsFunction(-1) {
+			log.Panicf("Method %s not found in object %s", method, object)
+		}
+		s.l.PushValue(-2)
+		s.l.Call(1, 0)
 		prom.Complete()
 	}()
 }
 
-func (s *Script) luaInclude(app *App, l *lua.State) {
-	s.luaEval(app, l, true)
-}
-
-func (s *Script) luaEval(app *App, l *lua.State, include bool) {
-	api := luaResourceApi(app)
-	for _, f := range api {
-		l.PushGoFunction(f.Function)
-		l.SetGlobal(f.Name)
-	}
-
-	if err := lua.DoString(l, string(s.Code)); err != nil {
+func (s *Script) luaEval(app AppContext, code []byte, include bool) {
+	prev := s.including
+	s.including = include
+	if err := lua.DoString(s.l, string(code)); err != nil {
 		log.Panicf("Error running script: %s", err)
 	}
+
+	s.forEachDeclaredObject(func(typ, key string, included bool) {
+		// Define the ID from the object key
+		s.l.PushString(key)
+		s.l.SetField(-2, "id")
+
+		// For rooms that are not included, declare them in the app
+		if typ == "room" && !included {
+			app.Do(RoomDeclare{
+				RoomID:        key,
+				Script:        s,
+				BackgroundRef: luaCheckField(s.l, -1, "background", luaToResourceRef),
+			}).Wait()
+		}
+	})
+
+	s.including = prev
 }
 
-func luaResourceApi(app *App) []lua.RegistryFunction {
+func (s *Script) forEachDeclaredObject(f func(typ, key string, included bool)) {
+	if s.l == nil {
+		log.Panic("Script not initialized")
+	}
+	s.l.PushGlobalTable()
+	defer s.l.Pop(1)
+
+	s.l.PushNil()
+	for s.l.Next(-2) {
+		key := lua.CheckString(s.l, -2)
+		if typ, ok := luaObjectType(s.l, -1); ok {
+			s.l.Field(-1, "included")
+			included := s.l.ToBoolean(-1)
+			s.l.Pop(1)
+
+			f(typ, key, included)
+		}
+		s.l.Pop(1)
+	}
+}
+
+func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
 	return []lua.RegistryFunction{
+		//
+		// Resource construction functions
+		//
 		{Name: "actor", Function: func(l *lua.State) int {
-			//
-			// Resource construction functions
-			//
 			luaPushObject(l, "actor", map[string]any{
-				"id": luaCheckField(l, 1, "id", (*lua.State).ToString),
 				"say": lua.Function(func(l *lua.State) int {
 					cmd := ActorSpeak{
 						ActorID: luaCheckObjectField(l, 1, "actor", "id", (*lua.State).ToString),
@@ -119,7 +173,11 @@ func luaResourceApi(app *App) []lua.RegistryFunction {
 			if luaIsIncluded(l, ref) {
 				return 0
 			}
-			app.res.LoadScript(ref).luaInclude(app, l)
+			script := app.Do(ScriptRun{
+				ScriptRef: ref,
+			}).Wait().(*Script)
+			s.luaEval(app, script.Code, true)
+
 			luaSetIncluded(l, ref)
 			return 0
 		}},
@@ -137,16 +195,19 @@ func luaResourceApi(app *App) []lua.RegistryFunction {
 			return 1
 		}},
 		{Name: "room", Function: func(l *lua.State) int {
-			luaPushObject(l, "room", map[string]any{
-				"ref": luaCheckField(l, 1, "ref", luaToResourceRef),
-				"show": lua.Function(func(l *lua.State) int {
-					done := app.Do(RoomShow{
-						RoomRef: luaCheckObjectField(l, 1, "room", "ref", luaToResourceRef),
-					})
-					luaPushFuture(l, done)
-					return 1
-				}),
-			})
+			luaWrapTableAsObject(l, 1, "room")
+			luaSetField(l, -1, "show", lua.Function(func(l *lua.State) int {
+				done := app.Do(RoomShow{
+					RoomID: luaCheckObjectField(l, 1, "room", "id", (*lua.State).ToString),
+				})
+				luaPushFuture(l, done)
+				return 1
+			}))
+			luaSetField(l, -1, "included", s.including)
+
+			if !s.including {
+				// TODO: process the room definitions (objects, etc).
+			}
 			return 1
 		}},
 		{Name: "sound", Function: func(l *lua.State) int {
@@ -165,7 +226,6 @@ func luaResourceApi(app *App) []lua.RegistryFunction {
 		{Name: "var", Function: func(l *lua.State) int {
 			// TODO: declare the variable in the app and bind the getter and setter
 			luaPushObject(l, "var", map[string]any{
-				"id": luaCheckField(l, 1, "id", (*lua.State).ToString),
 				"get": lua.Function(func(l *lua.State) int {
 					lua.Errorf(l, "not implemented")
 					return 0
@@ -208,26 +268,10 @@ func luaResourceApi(app *App) []lua.RegistryFunction {
 
 func luaDeclareConstants(l *lua.State) {
 	for k, pushFunc := range map[string]func(){
-		"ColorBlack":         func() { luaPushColor(l, Black) },
-		"ColorBlue":          func() { luaPushColor(l, Blue) },
-		"ColorGreen":         func() { luaPushColor(l, Green) },
-		"ColorCyan":          func() { luaPushColor(l, Cyan) },
-		"ColorRed":           func() { luaPushColor(l, Red) },
-		"ColorMagenta":       func() { luaPushColor(l, Magenta) },
-		"ColorBrown":         func() { luaPushColor(l, Brown) },
-		"ColorLightGray":     func() { luaPushColor(l, LightGray) },
-		"ColorDarkGray":      func() { luaPushColor(l, DarkGray) },
-		"ColorBrigthBlue":    func() { luaPushColor(l, BrigthBlue) },
-		"ColorBrigthGreen":   func() { luaPushColor(l, BrigthGreen) },
-		"ColorBrigthCyan":    func() { luaPushColor(l, BrigthCyan) },
-		"ColorBrigthRed":     func() { luaPushColor(l, BrigthRed) },
-		"ColorBrigthMagenta": func() { luaPushColor(l, BrigthMagenta) },
-		"ColorYellow":        func() { luaPushColor(l, Yellow) },
-		"ColorWhite":         func() { luaPushColor(l, White) },
-		"DirUp":              func() { l.PushInteger(int(DirUp)) },
-		"DirRight":           func() { l.PushInteger(int(DirRight)) },
-		"DirDown":            func() { l.PushInteger(int(DirDown)) },
-		"DirLeft":            func() { l.PushInteger(int(DirLeft)) },
+		"up":    func() { l.PushInteger(int(DirUp)) },
+		"right": func() { l.PushInteger(int(DirRight)) },
+		"down":  func() { l.PushInteger(int(DirDown)) },
+		"left":  func() { l.PushInteger(int(DirLeft)) },
 	} {
 		pushFunc()
 		l.SetGlobal(k)
@@ -291,6 +335,7 @@ func luaToColor(l *lua.State, index int) (col Color, ok bool) {
 	col.A, ok = luaFieldTo(l, index, "a", luaToByte)
 	if !ok {
 		col.A = 255
+		ok = true
 	}
 	return
 }
@@ -452,6 +497,29 @@ func luaCheckObjectType(l *lua.State, index int, expected string) {
 	}
 }
 
+func luaObjectType(l *lua.State, index int) (string, bool) {
+	if !l.IsTable(index) {
+		return "", false
+	}
+	l.Field(index, "__type")
+	defer l.Pop(1)
+	return l.ToString(-1)
+}
+
+func luaIsObjectType(l *lua.State, index int, expected string) bool {
+	if !l.IsTable(index) {
+		return false
+	}
+	l.Field(index, "__type")
+	defer l.Pop(1)
+
+	actual, ok := l.ToString(-1)
+	if !ok {
+		return false
+	}
+	return actual == expected
+}
+
 func luaPushObject(l *lua.State, typ string, fields map[string]any) {
 	fields["__type"] = typ
 	luaPushTable(l, fields)
@@ -460,24 +528,41 @@ func luaPushObject(l *lua.State, typ string, fields map[string]any) {
 func luaPushTable(l *lua.State, fields map[string]any) {
 	l.NewTable()
 	for k, v := range fields {
-		switch v := v.(type) {
-		case int:
-			l.PushInteger(v)
-		case string:
-			l.PushString(v)
-		case bool:
-			l.PushBoolean(v)
-		case lua.Function:
-			l.PushGoFunction(v)
-		case Color:
-			luaPushColor(l, v)
-		case Direction:
-			l.PushInteger(int(v))
-		case ResourceRef:
-			l.PushString(v.String())
-		default:
-			log.Panicf("unsupported type: %T", v)
-		}
-		l.SetField(-2, k)
+		luaSetField(l, -1, k, v)
 	}
+}
+
+func luaWrapTableAsObject(l *lua.State, index int, typ string) {
+	l.NewTable()
+	l.PushString(typ)
+	l.SetField(-2, "__type")
+	l.NewTable()
+	l.PushValue(index)
+	l.SetField(-2, "__index")
+	l.SetMetaTable(-2)
+}
+
+func luaSetField(l *lua.State, index int, key string, value any) {
+	if !l.IsTable(index) {
+		lua.Errorf(l, "table expected")
+	}
+	switch v := value.(type) {
+	case int:
+		l.PushInteger(v)
+	case string:
+		l.PushString(v)
+	case bool:
+		l.PushBoolean(v)
+	case lua.Function:
+		l.PushGoFunction(v)
+	case Color:
+		luaPushColor(l, v)
+	case Direction:
+		l.PushInteger(int(v))
+	case ResourceRef:
+		l.PushString(v.String())
+	default:
+		log.Panicf("unsupported type: %T", v)
+	}
+	l.SetField(index-1, key)
 }

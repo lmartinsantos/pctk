@@ -17,11 +17,11 @@ const (
 	// ManifestTypeCostume is a costume resource.
 	ManifestTypeCostume ResourceType = "costume"
 
+	// ManifestTypeImage is an image resource.
+	ManifestTypeImage ResourceType = "image"
+
 	// ManifestTypeMusic is a music resource.
 	ManifestTypeMusic ResourceType = "music"
-
-	// ManifestTypeRoom is a room resource.
-	ManifestTypeRoom ResourceType = "room"
 
 	// ManifestTypeScript is a script resource.
 	ManifestTypeScript ResourceType = "script"
@@ -70,8 +70,8 @@ func (m *Manifest) UnmarshalYAML(n *yaml.Node) error {
 		m.Data = NewCostumeData(m.workingDir)
 	case ManifestTypeMusic:
 		m.Data = NewMusicData(m.workingDir)
-	case ManifestTypeRoom:
-		m.Data = NewRoomData(m.workingDir)
+	case ManifestTypeImage:
+		m.Data = NewImageData(m.workingDir)
 	case ManifestTypeScript:
 		m.Data = new(ScriptData)
 	case ManifestTypeSound:

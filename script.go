@@ -3,6 +3,8 @@ package pctk
 import (
 	"io"
 	"log"
+
+	"github.com/Shopify/go-lua"
 )
 
 // ScriptLanguage represents the language of a script.
@@ -20,6 +22,10 @@ const (
 type Script struct {
 	Language ScriptLanguage
 	Code     []byte
+
+	ref       ResourceRef
+	l         *lua.State
+	including bool
 }
 
 // NewScript creates a new script.
@@ -56,10 +62,29 @@ func (s *Script) BinaryDecode(r io.Reader) error {
 	return nil
 }
 
-func (s *Script) run(app *App, prom Promise) {
+func (s *Script) init(app AppContext, ref ResourceRef) {
+	s.ref = ref
 	switch s.Language {
 	case ScriptLua:
-		s.runLua(app, prom)
+		s.luaInit(app)
+	default:
+		log.Panicf("Unknown script language: %0x", s.Language)
+	}
+}
+
+func (s *Script) run(app AppContext, prom *Promise) {
+	switch s.Language {
+	case ScriptLua:
+		s.luaRun(app, prom)
+	default:
+		log.Panicf("Unknown script language: %0x", s.Language)
+	}
+}
+
+func (s *Script) call(object, method string, prom *Promise) {
+	switch s.Language {
+	case ScriptLua:
+		s.luaCall(object, method, prom)
 	default:
 		log.Panicf("Unknown script language: %0x", s.Language)
 	}
@@ -67,13 +92,38 @@ func (s *Script) run(app *App, prom Promise) {
 
 // ScriptRun is a command to run a script.
 type ScriptRun struct {
-	ScriptResource ResourceRef
+	ScriptRef ResourceRef
 }
 
-func (c ScriptRun) Execute(app *App, prom Promise) {
-	script := app.res.LoadScript(c.ScriptResource)
-	if script == nil {
-		log.Panicf("Script not found: %s", c.ScriptResource)
+func (c ScriptRun) Execute(app *App, prom *Promise) {
+	script, ok := app.scripts[c.ScriptRef]
+	if ok {
+		prom.CompleteWithValue(script)
+		return
 	}
+
+	// The script was not loaded yet, so we load and execute it now.
+	script = app.res.LoadScript(c.ScriptRef)
+	if script == nil {
+		log.Panicf("Script not found: %s", c.ScriptRef)
+	}
+	script.init(app, c.ScriptRef)
+	app.scripts[c.ScriptRef] = script
 	script.run(app, prom)
+}
+
+// ScriptCall is a command to call a script function.
+type ScriptCall struct {
+	ScriptRef ResourceRef
+	Object    string
+	method    string
+}
+
+func (c ScriptCall) Execute(app *App, prom *Promise) {
+	script, ok := app.scripts[c.ScriptRef]
+	if !ok {
+		log.Panicf("Script not found: %s", c.ScriptRef)
+	}
+
+	script.call(c.Object, c.method, prom)
 }

@@ -68,7 +68,7 @@ type EnableControlPanel struct {
 	Enable bool
 }
 
-func (cmd EnableControlPanel) Execute(app *App, done Promise) {
+func (cmd EnableControlPanel) Execute(app *App, done *Promise) {
 	app.controlPanelEnabled = cmd.Enable
 	done.Complete()
 }

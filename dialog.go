@@ -24,7 +24,7 @@ type Dialog struct {
 	speed float32
 
 	expiresAt time.Time
-	done      Promise
+	done      *Promise
 }
 
 func (d *Dialog) draw() (expired bool) {
@@ -56,7 +56,7 @@ type ShowDialog struct {
 	Speed    float32
 }
 
-func (cmd ShowDialog) Execute(app *App, done Promise) {
+func (cmd ShowDialog) Execute(app *App, done *Promise) {
 	if cmd.Speed == 0 {
 		cmd.Speed = 1
 	}

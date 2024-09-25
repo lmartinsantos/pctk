@@ -63,7 +63,7 @@ type MusicPlay struct {
 	MusicResource ResourceRef
 }
 
-func (cmd MusicPlay) Execute(app *App, done Promise) {
+func (cmd MusicPlay) Execute(app *App, done *Promise) {
 	app.music = app.res.LoadMusic(cmd.MusicResource)
 	if app.isMusicReady() {
 		rl.PlayMusicStream(app.music.raw)
@@ -75,7 +75,7 @@ func (cmd MusicPlay) Execute(app *App, done Promise) {
 // MusicStop is a command that will stop the music.
 type MusicStop struct{}
 
-func (cmd MusicStop) Execute(app *App, done Promise) {
+func (cmd MusicStop) Execute(app *App, done *Promise) {
 	app.stopMusic()
 	done.Complete()
 }
@@ -83,7 +83,7 @@ func (cmd MusicStop) Execute(app *App, done Promise) {
 // MusicPause is a command that will pause the music.
 type MusicPause struct{}
 
-func (cmd MusicPause) Execute(app *App, done Promise) {
+func (cmd MusicPause) Execute(app *App, done *Promise) {
 	app.pauseMusic()
 	done.Complete()
 }
@@ -91,7 +91,7 @@ func (cmd MusicPause) Execute(app *App, done Promise) {
 // MusicResume is a command that will resume the music.
 type MusicResume struct{}
 
-func (cmd MusicResume) Execute(app *App, done Promise) {
+func (cmd MusicResume) Execute(app *App, done *Promise) {
 	app.resumeMusic()
 	done.Complete()
 }

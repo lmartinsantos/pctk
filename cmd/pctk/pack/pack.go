@@ -40,15 +40,36 @@ func do(src string, output string) error {
 		switch data := man.Data.(type) {
 		case *CostumeData:
 			err = enc.EncodeCostume(id, data.Resource, man.Compression)
+		case *ImageData:
+			err = enc.EncodeImage(id, data.Resource, man.Compression)
 		case *MusicData:
 			err = enc.EncodeMusic(id, data.Resource, man.Compression)
-		case *RoomData:
-			err = enc.EncodeRoom(id, data.Resource, man.Compression)
 		case *ScriptData:
 			err = enc.EncodeScript(id, data.Resource, man.Compression)
 		case *SoundData:
 			err = enc.EncodeSound(id, data.Resource, man.Compression)
 		}
+		if err != nil {
+			fmt.Printf(" Failed!\n")
+			return err
+		}
+		fmt.Printf(" Done\n")
+	}
+
+	luaScripts, err := listLuaScripts(src)
+	if err != nil {
+		return err
+	}
+	for _, script := range luaScripts {
+		id := pctk.ResourceID(strings.TrimSuffix(script, filepath.Ext(script)))
+		fmt.Printf("Packing %s...", id)
+		code, err := os.ReadFile(filepath.Join(src, script))
+		if err != nil {
+			return err
+		}
+
+		script := pctk.NewScript(pctk.ScriptLua, code)
+		err = enc.EncodeScript(id, script, pctk.CompressionNone)
 		if err != nil {
 			fmt.Printf(" Failed!\n")
 			return err
@@ -73,33 +94,41 @@ func createOutputFiles(output string) (*os.File, *os.File, error) {
 }
 
 func listManifests(dir string) ([]string, error) {
+	return listFiles(dir, ".yml", ".yaml")
+}
+
+func listLuaScripts(dir string) ([]string, error) {
+	return listFiles(dir, ".lua")
+}
+
+func listFiles(dir string, extensions ...string) ([]string, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
 	}
 
-	var manifests []string
+	var files []string
 	for _, entry := range entries {
 		name := entry.Name()
 
 		if entry.IsDir() {
-			others, err := listManifests(filepath.Join(dir, name))
+			others, err := listFiles(filepath.Join(dir, name), extensions...)
 			if err != nil {
 				return nil, err
 			}
 			for i := range others {
 				others[i] = filepath.Join(name, others[i])
 			}
-			manifests = append(manifests, others...)
+			files = append(files, others...)
 			continue
 		}
 
-		if len(name) > 5 && name[len(name)-4:] == ".yml" {
-			manifests = append(manifests, name)
-		}
-		if len(name) > 6 && name[len(name)-5:] == ".yaml" {
-			manifests = append(manifests, name)
+		for _, ext := range extensions {
+			if len(name) > len(ext) && name[len(name)-len(ext):] == ext {
+				files = append(files, name)
+				break
+			}
 		}
 	}
-	return manifests, nil
+	return files, nil
 }

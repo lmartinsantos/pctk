@@ -68,7 +68,7 @@ type SoundPlay struct {
 	SoundResource ResourceRef
 }
 
-func (cmd SoundPlay) Execute(app *App, done Promise) {
+func (cmd SoundPlay) Execute(app *App, done *Promise) {
 	app.sound = app.res.LoadSound(cmd.SoundResource)
 	if app.isSoundReady() {
 		rl.PlaySound(app.sound.raw)
@@ -81,7 +81,7 @@ type SoundStop struct {
 	SoundResource ResourceRef
 }
 
-func (cmd SoundStop) Execute(app *App, done Promise) {
+func (cmd SoundStop) Execute(app *App, done *Promise) {
 	app.stopSound()
 	done.Complete()
 }

@@ -130,18 +130,18 @@ func (e *ResourceEncoder) EncodeCostume(id ResourceID, c *Costume, comp Resource
 	})
 }
 
-// EncodeMusic encodes a music using the resource encoder.
-func (e *ResourceEncoder) EncodeMusic(id ResourceID, m *Music, comp ResourceCompression) error {
-	return e.encodeResource(id, m, resourceHeader{
-		Type:        resourceTypeMusic,
+// EncodeImage encodes an image using the resource encoder.
+func (e *ResourceEncoder) EncodeImage(id ResourceID, i *Image, comp ResourceCompression) error {
+	return e.encodeResource(id, i, resourceHeader{
+		Type:        resourceTypeImage,
 		Compression: comp,
 	})
 }
 
-// EncodeRoom encodes a room using the resource encoder.
-func (e *ResourceEncoder) EncodeRoom(id ResourceID, s *Room, comp ResourceCompression) error {
-	return e.encodeResource(id, s, resourceHeader{
-		Type:        resourceTypeRoom,
+// EncodeMusic encodes a music using the resource encoder.
+func (e *ResourceEncoder) EncodeMusic(id ResourceID, m *Music, comp ResourceCompression) error {
+	return e.encodeResource(id, m, resourceHeader{
+		Type:        resourceTypeMusic,
 		Compression: comp,
 	})
 }
@@ -253,16 +253,16 @@ func (l *ResourceFileLoader) LoadCostume(ref ResourceRef) *Costume {
 	return c
 }
 
+func (l *ResourceFileLoader) LoadImage(ref ResourceRef) *Image {
+	img := new(Image)
+	l.decodeResource(ref, resourceTypeImage, img)
+	return img
+}
+
 func (l *ResourceFileLoader) LoadMusic(ref ResourceRef) *Music {
 	m := new(Music)
 	l.decodeResource(ref, resourceTypeMusic, m)
 	return m
-}
-
-func (l *ResourceFileLoader) LoadRoom(ref ResourceRef) *Room {
-	room := new(Room)
-	l.decodeResource(ref, resourceTypeRoom, room)
-	return room
 }
 
 func (l *ResourceFileLoader) LoadScript(ref ResourceRef) *Script {
@@ -431,8 +431,8 @@ type resourceType byte
 const (
 	resourceTypeUndefined resourceType = iota
 	resourceTypeCostume
+	resourceTypeImage
 	resourceTypeMusic
-	resourceTypeRoom
 	resourceTypeScript
 	resourceTypeSound
 )
