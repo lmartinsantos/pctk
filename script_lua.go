@@ -1,6 +1,7 @@
 package pctk
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"time"
@@ -55,7 +56,12 @@ func (s *Script) luaCall(object, method string, prom *Promise) {
 func (s *Script) luaEval(app AppContext, code []byte, include bool) {
 	prev := s.including
 	s.including = include
-	if err := lua.DoString(s.l, string(code)); err != nil {
+
+	input := bytes.NewReader(code)
+	if err := s.l.Load(input, "="+s.ref.String(), ""); err != nil {
+		log.Panicf("Error loading script: %s", err)
+	}
+	if err := s.l.ProtectedCall(0, lua.MultipleReturns, 0); err != nil {
 		log.Panicf("Error running script: %s", err)
 	}
 
