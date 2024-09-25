@@ -19,29 +19,30 @@ data:
       scripts:
         - verb: walkto
           code: |
-            ActorWalkToPosition("guybrush", {x=260, y=90}).Wait()
+            EgoWalkToPosition({x=260, y=90}).Wait()
         - verb: lookat
           code: |
-            ActorWalkToPosition("guybrush", {x=260, y=90}).Wait()
-            ActorSpeak("guybrush", "Nice bucket!").Wait()
+            EgoWalkToPosition({x=260, y=90}).Wait()
+            EgoSpeak("Nice bucket!").Wait()
         - verb: default
           code: |
-            ActorWalkToPosition("guybrush", {x=260, y=90}).Wait()
-            ActorSpeak("guybrush", "That's a stupid idea... which means\nI`ll probably try it later.").Wait()
+            EgoWalkToPosition({x=260, y=90}).Wait()
+            EgoSpeak("That's a stupid idea... which means\nI`ll probably try it later.").Wait()
         - verb: pickup
           code: |
-            ActorWalkToPosition("guybrush", {x=260, y=90}).Wait()
-            ActorSpeak("guybrush", "Ok I'll get it...").Wait()
-            EgoAddToInventory("bucket")
-            ActorSpeak("guybrush", "Yuck, the bucket is full of spit!").Wait()
+            EgoWalkToPosition({x=260, y=90}).Wait()
+            EgoSpeak("Ok I'll get it...").Wait()
+            EgoAddObjectToInventory("bucket")
+            ObjectUpdate("bucket", ClassUntouchable, true)
+            EgoSpeak("Yuck, the bucket is full of spit!").Wait()
     - scripts:
         - verb: push
           code: |
-            ActorSpeak("guybrush", "It's time to get rid of the bucket!").Wait()
-            EgoRemoveFromInventory("bucket")
+            EgoSpeak("It's time to get rid of the bucket!").Wait()
+            EgoRemoveObjectFromInventory("bucket")
         - verb: lookat
           code: |
-            ActorSpeak("guybrush", "The bucket is full of spit.").Wait()
+            EgoSpeak("The bucket is full of spit.").Wait()
         - verb: default
           code: |
-            ActorSpeak("guybrush", "That's a stupid idea...").Wait()
+            EgoSpeak("That's a stupid idea...").Wait()

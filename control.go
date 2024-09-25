@@ -7,146 +7,177 @@ import (
 )
 
 var (
-	ControlVerbColor                 = Green
-	ControlVerbHoverOrSuggestedColor = BrigthGreen
-	ControlEgoVerbColor              = Cyan
-	ControlInventoryColor            = Blue
+	DefaultControlButtonColor             = Green
+	SelectedOrSuggestedControlButtonColor = BrigthGreen
+	EgoIntentionColor                     = Cyan
+	DefaultInventoryItemColor             = Blue
+
+	// ButtonsPerRow specifies the number of buttons to display in each row of the control rendering grid.
+	ButtonsPerRow = 3
 )
 
-func (a *App) drawControlPanel() {
-	if a.controlPanelEnabled {
-
-		a.drawVerbs()
-		a.drawEgoVerb()
-		a.drawInventory()
-	}
+// ControlButton represents a button for interacting with  in the game,
+// including its associated Verb, column, and row in a grid layout.
+type ControlButton struct {
+	Verb *Verb
+	Col  int
+	Row  int
 }
 
-func (a *App) drawVerbs() {
-	for _, verb := range Verbs {
-		a.drawVerb(verb, ControlVerbColor)
-	}
-}
-
-func (a *App) drawVerb(v *Verb, color Color) {
-	rectangle := v.Rectangle()
-	if a.MouseIsInto(rectangle) {
-		color = ControlVerbHoverOrSuggestedColor
-	}
-
-	a.drawDefaultText(v.Description, NewPos(rectangle.Pos.X, rectangle.Pos.Y), AlignLeft, color)
-}
-
-func (a *App) drawEgoVerb() {
-	ego := a.ego
-	targetDescription := ""
-	// check if mouse is hovering an object
-	for _, o := range a.objects {
-		if a.MouseIsInto(o.Rectangle()) && !o.HasClass(ClassUntouchable) {
-			targetDescription = o.name
-			a.drawVerb(VerbLookAt, ControlVerbHoverOrSuggestedColor)
-			break
-		}
-	}
-
-	// check if mouse is hovering an object in the inventory
-	var row int
-	var fromInventory bool
-	for _, o := range ego.actor.inventory {
-		r := getInventoryItemRectangle(row)
-		if a.MouseIsInto(r) {
-			targetDescription = o.name
-			a.drawVerb(VerbUse, ControlVerbHoverOrSuggestedColor)
-			fromInventory = true
-			break
-		}
-	}
-
-	// TODO  hovering actors (discarding ego)
-
-	description := ego.String(fromInventory)
-	if targetDescription != "" {
-		description = fmt.Sprintf("%s the %s", description, targetDescription)
-	}
-
-	pos := NewPos(ScreenWidth/2, ViewportHeight)
-	a.drawDefaultText(description, pos, AlignCenter, ControlEgoVerbColor)
-}
-
-func (a *App) drawInventory() {
-	ego := a.ego
-	// TODO missing scroll
-	var row int
-	for _, o := range ego.actor.inventory {
-		r := getInventoryItemRectangle(row)
-		if a.MouseIsInto(r) {
-			a.drawDefaultText(o.name, NewPos(r.Pos.X, r.Pos.Y), AlignCenter, ControlVerbHoverOrSuggestedColor)
-		} else {
-			a.drawDefaultText(o.name, NewPos(r.Pos.X, r.Pos.Y), AlignCenter, ControlInventoryColor)
-		}
-	}
-}
-
-func getInventoryItemRectangle(row int) Rectangle {
-	x := 2 + 4*ScreenWidth/6
-	y := ViewportHeight + (row+1)*FontDefaultSize
+// Bounds is implemented to satisfy the Interactable interface.
+func (cb *ControlButton) Bounds() Rectangle {
+	x := 2 + cb.Col*ScreenWidth/6
+	y := ViewportHeight + (cb.Row+1)*FontDefaultSize
 	w := ScreenWidth / 6
 	h := FontDefaultSize
 
 	return NewRect(x, y, w, h)
 }
 
+// Description is implemented to satisfy the Interactable interface.
+func (cb *ControlButton) Description() string {
+	return cb.Verb.Description
+}
+
+var (
+	// A map to hold ControlButtons indexed by their VerbType
+	buttons = make(map[VerbType]*ControlButton)
+)
+
+// Initializes the control buttons
+func init() {
+	for i, verb := range Verbs {
+		buttons[verb.Type] = &ControlButton{
+			Verb: verb,
+			Col:  i % ButtonsPerRow,
+			Row:  i / ButtonsPerRow,
+		}
+	}
+}
+
+func (a *App) drawControlPanel() {
+	if a.controlPanelEnabled {
+
+		a.drawControlButtons()
+		a.drawEgoCurrentIntention()
+		a.drawInventory()
+	}
+
+}
+
+func (a *App) drawControlButtons() {
+	for _, button := range buttons {
+		a.drawControlButton(button, DefaultControlButtonColor)
+	}
+}
+
+func (a *App) drawControlButton(cb *ControlButton, color Color) {
+	rectangle := cb.Bounds()
+	if a.MouseIsInto(rectangle) {
+		color = SelectedOrSuggestedControlButtonColor
+	}
+
+	a.drawDefaultText(cb.Verb.Description, NewPos(rectangle.Pos.X, rectangle.Pos.Y), AlignLeft, color)
+}
+
+func (a *App) drawEgoCurrentIntention() {
+	ego := a.ego
+	targetDescription := ""
+	description := ego.String()
+	for _, i := range a.Interactables() {
+		if a.MouseIsInto(i.Bounds()) {
+			switch i.(type) {
+			case *Object:
+				a.drawControlButton(buttons[LookAt], SelectedOrSuggestedControlButtonColor)
+				targetDescription = i.Description()
+			case *ControlButton:
+				continue
+			case *InventoryItem:
+				a.drawControlButton(buttons[Use], SelectedOrSuggestedControlButtonColor)
+				if description == "" {
+					description = VerbUse.Description
+				}
+				targetDescription = i.Description()
+			case *Actor:
+				a.drawControlButton(buttons[TalkTo], SelectedOrSuggestedControlButtonColor)
+				if description == "" {
+					description = VerbTalkTo.Description
+				}
+				targetDescription = i.Description()
+			}
+			break
+		}
+	}
+
+	if description == "" {
+		description = VerbWalkTo.Description
+	}
+
+	if targetDescription != "" {
+		description = fmt.Sprintf("%s the %s", description, targetDescription)
+	}
+
+	pos := NewPos(ScreenWidth/2, ViewportHeight)
+	a.drawDefaultText(description, pos, AlignCenter, EgoIntentionColor)
+
+}
+
+func (a *App) drawInventory() {
+	ego := a.ego
+	// TODO missing scroll
+	for _, i := range ego.Inventory().items {
+		r := i.Bounds()
+		if a.MouseIsInto(r) {
+			a.drawDefaultText(i.Description(), NewPos(r.Pos.X, r.Pos.Y), AlignCenter, SelectedOrSuggestedControlButtonColor)
+		} else {
+			a.drawDefaultText(i.Description(), NewPos(r.Pos.X, r.Pos.Y), AlignCenter, DefaultInventoryItemColor)
+		}
+	}
+}
+
 func (a *App) processControlInputs() {
 	ego := a.ego
 	if ego != nil && ego.actor != nil && rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
 		mouseClick := a.MousePosition()
-		if RoomViewport.Contains(mouseClick) {
-			// TODO missing check ego verb / object source
-			var target *Object
-			for _, o := range a.objects {
-				if a.MouseIsInto(o.Rectangle()) && !o.HasClass(ClassUntouchable) {
-					target = o
-					break
+		for _, i := range a.Interactables() {
+			if a.MouseIsInto(i.Bounds()) {
+				switch target := i.(type) {
+				case *Object:
+					if ego.verb != nil {
+						a.Do(EgoInteraction{
+							Object: target,
+							Verb:   ego.verb,
+						})
+					} else {
+						a.Do(ActorWalkToPosition{
+							ActorName: ego.actor.name,
+							Position:  NewPos(mouseClick.X, a.ego.actor.pos.Y),
+						})
+					}
+				case *ControlButton:
+					ego.verb = target.Verb
+					continue
+				case *InventoryItem:
+					a.Do(EgoInteraction{
+						Object: target.object,
+						Verb:   ego.verb,
+					})
+					continue
+				case *Actor:
+					// TODO actor dialogtree
+					continue
+
 				}
-			}
-			if target != nil && ego.verb != nil {
-				a.Do(ObjectOnVerb{
-					Object: target,
-					Verb:   ego.verb,
-				})
-				ego.verb = nil
-			} else {
+
+				// default
+			} else if RoomViewport.Contains(mouseClick) {
 				a.Do(ActorWalkToPosition{
 					ActorName: ego.actor.name,
 					Position:  NewPos(mouseClick.X, a.ego.actor.pos.Y),
 				})
 			}
-		} else {
-			// check verbs
-			for _, verb := range Verbs {
-				if a.MouseIsInto(verb.Rectangle()) {
-					ego.verb = verb
-					return
-				}
-			}
-
-			// TODO check inventory (setObject)
-			var row int
-			for _, o := range ego.actor.inventory {
-				r := getInventoryItemRectangle(row)
-				if a.MouseIsInto(r) && ego.verb != nil {
-					a.Do(ObjectOnVerb{
-						Object: o,
-						Verb:   ego.verb,
-					})
-					ego.verb = nil
-					return
-				}
-			}
 		}
 
-		// clean ego status
-		ego.verb = nil
 	}
 }
 

@@ -1,6 +1,7 @@
 package pctk
 
 import (
+	"fmt"
 	"io"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -40,10 +41,15 @@ func (o *Object) WithState(newState *State) {
 	o.states = append(o.states, newState)
 }
 
-// Rectangle returns the screen area (as a Rectangle) associated with the object's position
-func (o *Object) Rectangle() Rectangle {
+// Bounds is implemented to satisfy the Interactable interface.
+func (o *Object) Bounds() Rectangle {
 	size := o.sprites.frameSize
 	return NewRect(o.pos.X, o.pos.Y, size.W, size.H)
+}
+
+// Description is implemented to satisfy the Interactable interface.
+func (o *Object) Description() string {
+	return o.name
 }
 
 func (o *Object) State() *State {
@@ -59,6 +65,13 @@ func (o *Object) RemoveClass(class uint) {
 
 func (o *Object) HasClass(class uint) bool {
 	return o.classes&class != 0
+}
+
+func (o *Object) String() string {
+	return fmt.Sprintf(
+		"Object{name: %q, position: %v, classes: %d, state: %d}",
+		o.name, o.pos, o.classes, o.state,
+	)
 }
 
 // BinaryEncode encodes the object to a binary format. The format is as follows:
@@ -222,36 +235,43 @@ type ObjectShow struct {
 func (cmd ObjectShow) Execute(app *App, done Promise) {
 	object := app.res.LoadObject(cmd.ObjectResource)
 	object.pos = cmd.Position
-	app.objects[cmd.ObjectName] = object
+	object.name = cmd.ObjectName
+	app.room.SaveObject(object)
 	done.Complete()
 }
 
 func (a *App) drawObjects() {
-	for _, o := range a.objects {
-		state := o.states[o.state]
-		if len(state.anim.frames) > 0 {
-			state.anim.draw(o.sprites, o.pos)
-		} else {
-			// No anim is like state 0. In this state nothing is displayed,
-			// and the object simply defines an area in the room.
-			rl.DrawRectangleRec(o.Rectangle().toRaylib(), Transparent)
+	if a.room != nil {
+		for _, o := range a.room.Objects() {
+			state := o.states[o.state]
+			if state != nil && len(state.anim.frames) > 0 {
+				state.anim.draw(o.sprites, o.pos)
+			} else {
+				// No anim is like state 0. In this state nothing is displayed,
+				// and the object simply defines an area in the room.
+				rl.DrawRectangleRec(o.Bounds().toRaylib(), Transparent)
+			}
+
+		}
+	}
+
+}
+
+// ObjectUpdate is a command that updates the state and class of an object.
+type ObjectUpdate struct {
+	ObjectName  string
+	ClassName   uint
+	UpdateState bool
+}
+
+func (cmd ObjectUpdate) Execute(app *App, done Promise) {
+	if object := app.room.ObjectByName(cmd.ObjectName); object != nil {
+		if cmd.UpdateState {
+			object.state++
 		}
 
-	}
-}
-
-// ObjectOnVerb is a command that will run the action script related to an object.
-type ObjectOnVerb struct {
-	Object *Object
-	Verb   *Verb
-}
-
-func (cmd ObjectOnVerb) Execute(app *App, done Promise) {
-	state := cmd.Object.State()
-	script := state.scripts[cmd.Verb.Type]
-	if script == nil {
-		script = state.scripts[Default]
+		object.AddClass(cmd.ClassName)
 
 	}
-	script.run(app, done)
+	done.Complete()
 }

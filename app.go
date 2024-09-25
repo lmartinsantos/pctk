@@ -15,7 +15,6 @@ type App struct {
 	room     *Room
 	dialogs  []Dialog
 	actors   map[string]*Actor
-	objects  map[string]*Object
 	commands commandQueue
 
 	cam                 rl.Camera2D
@@ -33,10 +32,9 @@ type App struct {
 // New creates a new pctk application.
 func New(resources ResourceLoader, opts ...AppOption) *App {
 	app := &App{
-		res:     resources,
-		actors:  make(map[string]*Actor),
-		objects: make(map[string]*Object),
-		ego:     &Ego{},
+		res:    resources,
+		actors: make(map[string]*Actor),
+		ego:    &Ego{},
 	}
 
 	opts = append(defaultAppOptions, opts...)

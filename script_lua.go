@@ -49,10 +49,29 @@ func luaApiFunctions(app *App) []lua.RegistryFunction {
 			luaPushFuture(l, done)
 			return 1
 		}},
+		{Name: "EgoSpeak", Function: func(l *lua.State) int {
+			cmd := ActorSpeak{
+				ActorName: app.ego.actor.name,
+				Text:      lua.CheckString(l, 1),
+				Delay:     luaCheckOption(l, 2, "delay", DefaultActorSpeakDelay, luaCheckDurationMillis),
+			}
+			done := app.Do(cmd)
+			luaPushFuture(l, done)
+			return 1
+		}},
 		{Name: "ActorStand", Function: func(l *lua.State) int {
 			cmd := ActorStand{
 				ActorName: lua.CheckString(l, 1),
 				Direction: luaCheckOption(l, 2, "dir", DefaultActorDirection, luaCheckDirection),
+			}
+			done := app.Do(cmd)
+			luaPushFuture(l, done)
+			return 1
+		}},
+		{Name: "EgoStand", Function: func(l *lua.State) int {
+			cmd := ActorStand{
+				ActorName: app.ego.actor.name,
+				Direction: luaCheckOption(l, 1, "dir", DefaultActorDirection, luaCheckDirection),
 			}
 			done := app.Do(cmd)
 			luaPushFuture(l, done)
@@ -75,16 +94,25 @@ func luaApiFunctions(app *App) []lua.RegistryFunction {
 			luaPushFuture(l, done)
 			return 1
 		}},
-		{Name: "EgoAddToInventory", Function: func(l *lua.State) int {
-			cmd := EgoAddToInventory{
+		{Name: "EgoWalkToPosition", Function: func(l *lua.State) int {
+			cmd := ActorWalkToPosition{
+				ActorName: app.ego.actor.name,
+				Position:  luaCheckPosition(l, 1),
+			}
+			done := app.Do(cmd)
+			luaPushFuture(l, done)
+			return 1
+		}},
+		{Name: "EgoAddObjectToInventory", Function: func(l *lua.State) int {
+			cmd := EgoAddObjectToInventory{
 				ObjectName: lua.CheckString(l, 1),
 			}
 			done := app.Do(cmd)
 			luaPushFuture(l, done)
 			return 1
 		}},
-		{Name: "EgoRemoveFromInventory", Function: func(l *lua.State) int {
-			cmd := EgoRemoveFromInventory{
+		{Name: "EgoRemoveObjectFromInventory", Function: func(l *lua.State) int {
+			cmd := EgoRemoveObjectFromInventory{
 				ObjectName: lua.CheckString(l, 1),
 			}
 			done := app.Do(cmd)
@@ -111,6 +139,16 @@ func luaApiFunctions(app *App) []lua.RegistryFunction {
 				ObjectResource: ResourceRef(luaCheckResourceRef(l, 1)),
 				ObjectName:     lua.CheckString(l, 2),
 				Position:       luaCheckOption(l, 3, "pos", DefaultObjectPosition, luaCheckPosition),
+			}
+			done := app.Do(cmd)
+			luaPushFuture(l, done)
+			return 1
+		}},
+		{Name: "ObjectUpdate", Function: func(l *lua.State) int {
+			cmd := ObjectUpdate{
+				ObjectName:  lua.CheckString(l, 1),
+				ClassName:   lua.CheckUnsigned(l, 2),
+				UpdateState: l.ToBoolean(3),
 			}
 			done := app.Do(cmd)
 			luaPushFuture(l, done)
@@ -160,6 +198,8 @@ func luaDeclareConstants(l *lua.State) {
 		"DirRight":           func() { l.PushInteger(int(DirRight)) },
 		"DirDown":            func() { l.PushInteger(int(DirDown)) },
 		"DirLeft":            func() { l.PushInteger(int(DirLeft)) },
+		"NoClass":            func() { l.PushInteger(int(NoClass)) },
+		"ClassUntouchable":   func() { l.PushInteger(int(ClassUntouchable)) },
 	} {
 		pushFunc()
 		l.SetGlobal(k)

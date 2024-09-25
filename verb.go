@@ -19,45 +19,32 @@ const (
 	Default
 )
 
-// Verb represents an interactive Verb in the game including where is rendered.
+// Verb represents an interactive actor's action in the game.
 type Verb struct {
-	Type        VerbType
-	Description string
-	Col         int
-	Row         int
+	Type           VerbType
+	Description    string
+	IsDitransitive bool // This flags means this verb requires both a direct object and an indirect object
 }
 
 var (
-	VerbOpen  = &Verb{Type: Open, Description: "Open", Col: 0, Row: 0}
-	VerbClose = &Verb{Type: Close, Description: "Close", Col: 0, Row: 1}
-	VerbPush  = &Verb{Type: Push, Description: "Push", Col: 0, Row: 2}
-	VerbPull  = &Verb{Type: Pull, Description: "Pull", Col: 0, Row: 3}
+	VerbOpen  = &Verb{Type: Open, Description: "Open"}
+	VerbClose = &Verb{Type: Close, Description: "Close"}
+	VerbPush  = &Verb{Type: Push, Description: "Push"}
+	VerbPull  = &Verb{Type: Pull, Description: "Pull"}
 
-	VerbWalkTo = &Verb{Type: WalkTo, Description: "Walk to", Col: 1, Row: 0}
-	VerbPickUp = &Verb{Type: PickUp, Description: "Pick up", Col: 1, Row: 1}
-	VerbTalkTo = &Verb{Type: TalkTo, Description: "Talk to", Col: 1, Row: 2}
-	VerbGive   = &Verb{Type: Give, Description: "Give", Col: 1, Row: 3}
+	VerbWalkTo = &Verb{Type: WalkTo, Description: "Walk to"}
+	VerbPickUp = &Verb{Type: PickUp, Description: "Pick up"}
+	VerbTalkTo = &Verb{Type: TalkTo, Description: "Talk to"}
+	VerbGive   = &Verb{Type: Give, Description: "Give", IsDitransitive: true}
 
-	VerbUse     = &Verb{Type: Use, Description: "Use", Col: 2, Row: 0}
-	VerbLookAt  = &Verb{Type: LookAt, Description: "Look at", Col: 2, Row: 1}
-	VerbTurnOn  = &Verb{Type: TurnOn, Description: "Turn on", Col: 2, Row: 2}
-	VerbTurnOff = &Verb{Type: TurnOff, Description: "Turn off", Col: 2, Row: 3}
+	VerbUse     = &Verb{Type: Use, Description: "Use"}
+	VerbLookAt  = &Verb{Type: LookAt, Description: "Look at"}
+	VerbTurnOn  = &Verb{Type: TurnOn, Description: "Turn on"}
+	VerbTurnOff = &Verb{Type: TurnOff, Description: "Turn off"}
 
-	DefaultVerb          = VerbWalkTo
-	DefaultInventoryVerb = VerbUse
-	Verbs                = []*Verb{
+	Verbs = []*Verb{
 		VerbOpen, VerbClose, VerbPush, VerbPull,
 		VerbWalkTo, VerbPickUp, VerbTalkTo, VerbGive,
 		VerbUse, VerbLookAt, VerbTurnOn, VerbTurnOff,
 	}
 )
-
-// Rectangle returns the screen area (as a Rectangle) associated with the verb's position.
-func (v *Verb) Rectangle() Rectangle {
-	x := 2 + v.Col*ScreenWidth/6
-	y := ViewportHeight + (v.Row+1)*FontDefaultSize
-	w := ScreenWidth / 6
-	h := FontDefaultSize
-
-	return NewRect(x, y, w, h)
-}

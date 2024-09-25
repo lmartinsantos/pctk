@@ -23,14 +23,25 @@ type Actor struct {
 	lookAt    Direction
 	pos       Position
 	act       action
-	inventory map[string]*Object
+	inventory *Inventory
 }
 
 func NewActor(name string) *Actor {
 	return &Actor{
 		name:      name,
-		inventory: make(map[string]*Object),
+		inventory: NewInventory(),
 	}
+}
+
+// Bounds is implemented to satisfy the Interactable interface.
+func (a *Actor) Bounds() Rectangle {
+	size := a.costume.sprites.frameSize
+	return NewRect(a.pos.X, a.pos.Y, size.W, size.H)
+}
+
+// Description is implemented to satisfy the Interactable interface.
+func (a *Actor) Description() string {
+	return a.name
 }
 
 // SetCostume sets the costume for the actor.
@@ -216,38 +227,6 @@ func (cmd ActorSelectEgo) Execute(app *App, done Promise) {
 		ego.actor = actor
 	} else {
 		ego.Clear()
-	}
-
-	done.Complete()
-}
-
-// EgoAddToInventory is a command to add an object to the inventory's actor (ego).
-type EgoAddToInventory struct {
-	ObjectName string
-}
-
-func (cmd EgoAddToInventory) Execute(app *App, done Promise) {
-	ego := app.ego
-	if ego.actor != nil {
-		ego.actor.inventory[cmd.ObjectName] = app.objects[cmd.ObjectName]
-		// TODO for testing purposes, the state of the object must be
-		// changed from the script
-		app.objects[cmd.ObjectName].state += 1
-		app.objects[cmd.ObjectName].AddClass(ClassUntouchable)
-	}
-
-	done.Complete()
-}
-
-// EgoRemoveFromInventory is a command to remove an object to the inventory's actor (ego).
-type EgoRemoveFromInventory struct {
-	ObjectName string
-}
-
-func (cmd EgoRemoveFromInventory) Execute(app *App, done Promise) {
-	ego := app.ego
-	if ego.actor != nil {
-		delete(ego.actor.inventory, cmd.ObjectName)
 	}
 
 	done.Complete()
