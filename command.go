@@ -6,7 +6,13 @@ import "sync"
 // application that has a side effect should be encapsulated in a command in order to ensure
 // thread safety.
 type Command interface {
-	Execute(*App, Promise)
+	Execute(*App, *Promise)
+}
+
+// AppContext is an interface that defines the method to execute a command.
+type AppContext interface {
+	Do(Command) Future
+	App() *App
 }
 
 // Do will put the given command in the queue to be executed by the application during the next
@@ -14,6 +20,11 @@ type Command interface {
 // If one command have to execute another command, use doNow function instead.
 func (a *App) Do(c Command) Future {
 	return a.commands.push(c)
+}
+
+// Allow access APP from AppContext
+func (a *App) App() *App {
+	return a
 }
 
 func (a *App) doNow(c Command) Future {
@@ -25,7 +36,7 @@ func (a *App) doNow(c Command) Future {
 type commandQueue struct {
 	mutex    sync.Mutex
 	commands []Command
-	promises []Promise
+	promises []*Promise
 }
 
 func (q *commandQueue) push(c Command) Future {

@@ -14,15 +14,15 @@ data:
     - scripts:
         - verb: lookat
           code: |
-            EgoWalkToPosition({x=140, y=90}).Wait()
-            EgoWalkToPosition({x=140, y=80}).Wait()
-            EgoSpeak("As grand as it is,\nthe thing doesn't seem to work.").Wait()
-            EgoSpeak("No ticking, no movement\njust a giant, useless relic.").Wait()
-            EgoWalkToPosition({x=140, y=90}).Wait()
+            egowalkto({x=140, y=140}).wait()
+            egowalkto({x=140, y=130}).wait()
+            egosay("As grand as it is,\nthe thing doesn't seem to work.").wait()
+            egosay("No ticking, no movement\njust a giant, useless relic.").wait()
+            egowalkto({x=140, y=140}).wait()
         - verb: walkto
           code: |
-            EgoWalkToPosition({x=140, y=90}).Wait()
+            egowalkto({x=140, y=140}).wait()
         - verb: default
           code: |
-            EgoWalkToPosition({x=140, y=90}).Wait()
-            EgoSpeak("I can't do that.\nAt least, not from here.").Wait()
+            egowalkto({x=140, y=140}).wait()
+            egosay("I can't do that.\nAt least, not from here.").wait()

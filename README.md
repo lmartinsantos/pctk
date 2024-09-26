@@ -16,3 +16,4 @@ Related to objects:
 - Interact with actors
 - Inventory scroll
 - Allow create objects from the room definition?
+- Adaptation to new script engine: Some functions must be defined under object's api (and maybe ego under actor's)

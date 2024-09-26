@@ -77,7 +77,7 @@ func (a *App) drawControlButton(cb *ControlButton, color Color) {
 		color = SelectedOrSuggestedControlButtonColor
 	}
 
-	a.drawDefaultText(cb.Verb.Description, NewPos(rectangle.Pos.X, rectangle.Pos.Y), AlignLeft, color)
+	DrawDefaultText(cb.Verb.Description, NewPos(rectangle.Pos.X, rectangle.Pos.Y), AlignLeft, color)
 }
 
 func (a *App) drawEgoCurrentIntention() {
@@ -118,7 +118,7 @@ func (a *App) drawEgoCurrentIntention() {
 	}
 
 	pos := NewPos(ScreenWidth/2, ViewportHeight)
-	a.drawDefaultText(description, pos, AlignCenter, EgoIntentionColor)
+	DrawDefaultText(description, pos, AlignCenter, EgoIntentionColor)
 
 }
 
@@ -128,9 +128,9 @@ func (a *App) drawInventory() {
 	for _, i := range ego.Inventory().items {
 		r := i.Bounds()
 		if a.MouseIsInto(r) {
-			a.drawDefaultText(i.Description(), NewPos(r.Pos.X, r.Pos.Y), AlignCenter, SelectedOrSuggestedControlButtonColor)
+			DrawDefaultText(i.Description(), NewPos(r.Pos.X, r.Pos.Y), AlignCenter, SelectedOrSuggestedControlButtonColor)
 		} else {
-			a.drawDefaultText(i.Description(), NewPos(r.Pos.X, r.Pos.Y), AlignCenter, DefaultInventoryItemColor)
+			DrawDefaultText(i.Description(), NewPos(r.Pos.X, r.Pos.Y), AlignCenter, DefaultInventoryItemColor)
 		}
 	}
 }
@@ -150,8 +150,8 @@ func (a *App) processControlInputs() {
 						})
 					} else {
 						a.Do(ActorWalkToPosition{
-							ActorName: ego.actor.name,
-							Position:  NewPos(mouseClick.X, a.ego.actor.pos.Y),
+							ActorID:  ego.actor.name,
+							Position: NewPos(mouseClick.X, int(a.ego.actor.pos.Y)),
 						})
 					}
 				case *ControlButton:
@@ -172,8 +172,8 @@ func (a *App) processControlInputs() {
 				// default
 			} else if RoomViewport.Contains(mouseClick) {
 				a.Do(ActorWalkToPosition{
-					ActorName: ego.actor.name,
-					Position:  NewPos(mouseClick.X, a.ego.actor.pos.Y),
+					ActorID:  ego.actor.name,
+					Position: NewPos(mouseClick.X, int(a.ego.actor.pos.Y)),
 				})
 			}
 		}
@@ -186,7 +186,7 @@ type EnableControlPanel struct {
 	Enable bool
 }
 
-func (cmd EnableControlPanel) Execute(app *App, done Promise) {
+func (cmd EnableControlPanel) Execute(app *App, done *Promise) {
 	app.controlPanelEnabled = cmd.Enable
 	done.Complete()
 }

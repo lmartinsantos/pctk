@@ -19,30 +19,30 @@ data:
       scripts:
         - verb: walkto
           code: |
-            EgoWalkToPosition({x=260, y=90}).Wait()
+            egowalkto({x=260, y=140}).wait()
         - verb: lookat
           code: |
-            EgoWalkToPosition({x=260, y=90}).Wait()
-            EgoSpeak("Nice bucket!").Wait()
+            egowalkto({x=260, y=140}).wait()
+            egosay("Nice bucket!").wait()
         - verb: default
           code: |
-            EgoWalkToPosition({x=260, y=90}).Wait()
-            EgoSpeak("That's a stupid idea... which means\nI`ll probably try it later.").Wait()
+            egowalkto({x=260, y=140}).wait()
+            egosay("That's a stupid idea... which means\nI`ll probably try it later.").wait()
         - verb: pickup
           code: |
-            EgoWalkToPosition({x=260, y=90}).Wait()
-            EgoSpeak("Ok I'll get it...").Wait()
-            EgoAddObjectToInventory("bucket")
-            ObjectUpdate("bucket", ClassUntouchable, true)
-            EgoSpeak("Yuck, the bucket is full of spit!").Wait()
+            egowalkto({x=260, y=140}).wait()
+            egosay("Ok I'll get it...").wait()
+            addinventory("bucket")
+            updateobject("bucket", classuntouchable, true)
+            egosay("Yuck, the bucket is full of spit!").wait()
     - scripts:
         - verb: push
           code: |
-            EgoSpeak("It's time to get rid of the bucket!").Wait()
-            EgoRemoveObjectFromInventory("bucket")
+            egosay("It's time to get rid of the bucket!").wait()
+            removeinventory("bucket")
         - verb: lookat
           code: |
-            EgoSpeak("The bucket is full of spit.").Wait()
+            egosay("There is no change... It's still full of spit.").wait()
         - verb: default
           code: |
-            EgoSpeak("That's a stupid idea...").Wait()
+            egosay("That's a stupid idea...").wait()

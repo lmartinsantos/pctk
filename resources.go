@@ -102,15 +102,15 @@ type ResourceLoader interface {
 	// found.
 	LoadCostume(ref ResourceRef) *Costume
 
+	// LoadImage loads an image from the given ref. It returns nil if the image is not found.
+	LoadImage(ref ResourceRef) *Image
+
 	// LoadMusic loads a music song from the given ref. It returns nil if the music is not
 	// found.
 	LoadMusic(ref ResourceRef) *Music
 
 	// LoadObject loads an object from the given locator. It returns nil if the object is not found.
 	LoadObject(locator ResourceRef) *Object
-
-	// LoadRoom loads a room from the given ref. It returns nil if the room is not found.
-	LoadRoom(ref ResourceRef) *Room
 
 	// LoadScript loads a script from the given ref. It returns nil if the script is not found.
 	LoadScript(ref ResourceRef) *Script
@@ -124,9 +124,9 @@ type ResourceLoader interface {
 // testing purposes mainly.
 type ResourceBundle struct {
 	costumes map[ResourceRef]*Costume
+	images   map[ResourceRef]*Image
 	music    map[ResourceRef]*Music
 	objects  map[ResourceRef]*Object
-	rooms    map[ResourceRef]*Room
 	scripts  map[ResourceRef]*Script
 	sounds   map[ResourceRef]*Sound
 }
@@ -135,9 +135,9 @@ type ResourceBundle struct {
 func NewResourceBundle() *ResourceBundle {
 	return &ResourceBundle{
 		costumes: make(map[ResourceRef]*Costume),
+		images:   make(map[ResourceRef]*Image),
 		music:    make(map[ResourceRef]*Music),
 		objects:  make(map[ResourceRef]*Object),
-		rooms:    make(map[ResourceRef]*Room),
 		scripts:  make(map[ResourceRef]*Script),
 		sounds:   make(map[ResourceRef]*Sound),
 	}
@@ -148,6 +148,11 @@ func (c *ResourceBundle) PutCostume(ref ResourceRef, cos *Costume) {
 	c.costumes[ref] = cos
 }
 
+// PutImage adds an image to the bundle.
+func (c *ResourceBundle) PutImage(ref ResourceRef, img *Image) {
+	c.images[ref] = img
+}
+
 // PutMusic adds a music song to the bundle.
 func (c *ResourceBundle) PutMusic(ref ResourceRef, m *Music) {
 	c.music[ref] = m
@@ -156,11 +161,6 @@ func (c *ResourceBundle) PutMusic(ref ResourceRef, m *Music) {
 // PutObject adds an object to the catalog.
 func (c *ResourceBundle) PutObject(loc ResourceRef, o *Object) {
 	c.objects[loc] = o
-}
-
-// PutRoom adds a room to the bundle.
-func (c *ResourceBundle) PutRoom(ref ResourceRef, sc *Room) {
-	c.rooms[ref] = sc
 }
 
 // PutScript adds a script to the bundle.
@@ -178,24 +178,24 @@ func (c *ResourceBundle) LoadCostume(ref ResourceRef) *Costume {
 	return c.costumes[ref]
 }
 
+// LoadImage loads an image from the given ref. It returns nil if the image is not found.
+func (c *ResourceBundle) LoadImage(ref ResourceRef) *Image {
+	return c.images[ref]
+}
+
 // LoadMusic loads a music song from the given ref. It returns nil if the music is not found.
 func (c *ResourceBundle) LoadMusic(ref ResourceRef) *Music {
 	return c.music[ref]
 }
 
-// LoadRoom loads a room from the given ref. It returns nil if the room is not found.
-func (c *ResourceBundle) LoadRoom(ref ResourceRef) *Room {
-	return c.rooms[ref]
+// LoadScript loads a script from the given ref. It returns nil if the script is not found.
+func (c *ResourceBundle) LoadScript(ref ResourceRef) *Script {
+	return c.scripts[ref]
 }
 
 // LoadObject loads an object from the given locator. It returns nil if the object is not found.
 func (c *ResourceBundle) LoadObject(locator ResourceRef) *Object {
 	return c.objects[locator]
-}
-
-// LoadScript loads a script from the given ref. It returns nil if the script is not found.
-func (c *ResourceBundle) LoadScript(ref ResourceRef) *Script {
-	return c.scripts[ref]
 }
 
 // LoadSound loads a sound effect from he given ref. It returns nil if the sound is not found.

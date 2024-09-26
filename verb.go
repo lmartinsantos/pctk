@@ -48,3 +48,34 @@ var (
 		VerbUse, VerbLookAt, VerbTurnOn, VerbTurnOff,
 	}
 )
+
+func (v VerbType) String() string {
+	switch v {
+	case Open:
+		return "open"
+	case Close:
+		return "close"
+	case Push:
+		return "push"
+	case Pull:
+		return "pull"
+	case WalkTo:
+		return "walkto"
+	case PickUp:
+		return "pickup"
+	case TalkTo:
+		return "talkto"
+	case Give:
+		return "give"
+	case Use:
+		return "use"
+	case LookAt:
+		return "lookat"
+	case TurnOn:
+		return "turnon"
+	case TurnOff:
+		return "turnoff"
+	default:
+		return "default"
+	}
+}

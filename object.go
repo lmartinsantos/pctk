@@ -232,7 +232,7 @@ type ObjectShow struct {
 	Position       Position
 }
 
-func (cmd ObjectShow) Execute(app *App, done Promise) {
+func (cmd ObjectShow) Execute(app *App, done *Promise) {
 	object := app.res.LoadObject(cmd.ObjectResource)
 	object.pos = cmd.Position
 	object.name = cmd.ObjectName
@@ -264,7 +264,7 @@ type ObjectUpdate struct {
 	UpdateState bool
 }
 
-func (cmd ObjectUpdate) Execute(app *App, done Promise) {
+func (cmd ObjectUpdate) Execute(app *App, done *Promise) {
 	if object := app.room.ObjectByName(cmd.ObjectName); object != nil {
 		if cmd.UpdateState {
 			object.state++

@@ -52,7 +52,7 @@ type EgoAddObjectToInventory struct {
 	ObjectName string
 }
 
-func (cmd EgoAddObjectToInventory) Execute(app *App, done Promise) {
+func (cmd EgoAddObjectToInventory) Execute(app *App, done *Promise) {
 	if ego := app.ego; ego.actor != nil {
 		ego.Inventory().AddItem(app.room.ObjectByName(cmd.ObjectName))
 	}
@@ -65,7 +65,7 @@ type EgoRemoveObjectFromInventory struct {
 	ObjectName string
 }
 
-func (cmd EgoRemoveObjectFromInventory) Execute(app *App, done Promise) {
+func (cmd EgoRemoveObjectFromInventory) Execute(app *App, done *Promise) {
 	ego := app.ego
 	if ego.actor != nil {
 		ego.Inventory().RemoveItemByName(cmd.ObjectName)
@@ -80,13 +80,14 @@ type EgoInteraction struct {
 	Verb   *Verb
 }
 
-func (cmd EgoInteraction) Execute(app *App, done Promise) {
+func (cmd EgoInteraction) Execute(app *App, done *Promise) {
 	state := cmd.Object.State()
 	script := state.scripts[cmd.Verb.Type]
 	if script == nil {
 		script = state.scripts[Default]
 
 	}
-	script.run(app, done)
+	script.luaInit(app)
+	script.luaRun(app, done)
 	app.ego.verb = nil
 }
