@@ -44,6 +44,8 @@ func do(src string, output string) error {
 			err = enc.EncodeImage(id, data.Resource, man.Compression)
 		case *MusicData:
 			err = enc.EncodeMusic(id, data.Resource, man.Compression)
+		case *ObjectData:
+			err = enc.EncodeObject(id, data.Resource, man.Compression)
 		case *ScriptData:
 			err = enc.EncodeScript(id, data.Resource, man.Compression)
 		case *SoundData:

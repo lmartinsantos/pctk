@@ -1,5 +1,7 @@
 guybrush = actor { }
 
+bucket = object { }
+
 music1 = music { ref = "resources:audio/OnTheHill" }
 music2 = music { ref = "resources:audio/GuitarNoodling" }
 cricket = sound { ref = "resources:audio/Cricket" }

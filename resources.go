@@ -109,6 +109,9 @@ type ResourceLoader interface {
 	// found.
 	LoadMusic(ref ResourceRef) *Music
 
+	// LoadObject loads an object from the given locator. It returns nil if the object is not found.
+	LoadObject(locator ResourceRef) *Object
+
 	// LoadScript loads a script from the given ref. It returns nil if the script is not found.
 	LoadScript(ref ResourceRef) *Script
 
@@ -123,6 +126,7 @@ type ResourceBundle struct {
 	costumes map[ResourceRef]*Costume
 	images   map[ResourceRef]*Image
 	music    map[ResourceRef]*Music
+	objects  map[ResourceRef]*Object
 	scripts  map[ResourceRef]*Script
 	sounds   map[ResourceRef]*Sound
 }
@@ -133,6 +137,7 @@ func NewResourceBundle() *ResourceBundle {
 		costumes: make(map[ResourceRef]*Costume),
 		images:   make(map[ResourceRef]*Image),
 		music:    make(map[ResourceRef]*Music),
+		objects:  make(map[ResourceRef]*Object),
 		scripts:  make(map[ResourceRef]*Script),
 		sounds:   make(map[ResourceRef]*Sound),
 	}
@@ -151,6 +156,11 @@ func (c *ResourceBundle) PutImage(ref ResourceRef, img *Image) {
 // PutMusic adds a music song to the bundle.
 func (c *ResourceBundle) PutMusic(ref ResourceRef, m *Music) {
 	c.music[ref] = m
+}
+
+// PutObject adds an object to the catalog.
+func (c *ResourceBundle) PutObject(loc ResourceRef, o *Object) {
+	c.objects[loc] = o
 }
 
 // PutScript adds a script to the bundle.

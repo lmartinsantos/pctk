@@ -1,0 +1,24 @@
+type: object
+compression: none
+data:
+  name: bucket
+  sprites:
+    sheet: items.png
+    width: 30
+    height: 18
+  position:
+    x: 275
+    y: 110
+    z: 1
+  scripts:
+  - verb: default
+    code: |
+      -- Not executed yet
+      magenta = { r = 0xFF, g = 0xFF, b = 0xFF }
+      sayline("I dont want to do anything with those guys looking", { pos = {x=60, y=20}, color = white }).wait()
+  states:
+    - animation:
+        frames:
+          - row: 6
+            columns: [5]
+            duration: 1000

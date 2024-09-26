@@ -156,6 +156,22 @@ func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
 			})
 			return 1
 		}},
+		{Name: "object", Function: func(l *lua.State) int {
+			luaPushObject(l, "object", map[string]any{
+				"show": lua.Function(func(l *lua.State) int {
+					luaCheckObjectType(l, 1, "object")
+					cmd := ObjectShow{
+						ObjectName:     luaCheckObjectField(l, 1, "object", "id", (*lua.State).ToString),
+						ObjectResource: luaCheckOption(l, 2, "ref", ResourceRefNull, luaToResourceRef),
+						Position:       luaCheckOption(l, 2, "pos", DefaultObjectPosition, luaToPosition),
+					}
+					done := app.Do(cmd)
+					luaPushFuture(l, done)
+					return 1
+				}),
+			})
+			return 1
+		}},
 		{Name: "class", Function: func(l *lua.State) int {
 			luaPushObject(l, "class", map[string]any{
 				"mask": luaCheckField(l, 1, "mask", (*lua.State).ToInteger),
@@ -268,10 +284,12 @@ func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
 
 func luaDeclareConstants(l *lua.State) {
 	for k, pushFunc := range map[string]func(){
-		"up":    func() { l.PushInteger(int(DirUp)) },
-		"right": func() { l.PushInteger(int(DirRight)) },
-		"down":  func() { l.PushInteger(int(DirDown)) },
-		"left":  func() { l.PushInteger(int(DirLeft)) },
+		"up":               func() { l.PushInteger(int(DirUp)) },
+		"right":            func() { l.PushInteger(int(DirRight)) },
+		"down":             func() { l.PushInteger(int(DirDown)) },
+		"left":             func() { l.PushInteger(int(DirLeft)) },
+		"noclass":          func() { l.PushInteger(int(NoClass)) },
+		"classuntouchable": func() { l.PushInteger(int(ClassUntouchable)) },
 	} {
 		pushFunc()
 		l.SetGlobal(k)

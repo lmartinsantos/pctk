@@ -23,6 +23,9 @@ const (
 	// ManifestTypeMusic is a music resource.
 	ManifestTypeMusic ResourceType = "music"
 
+	// ManifestTypeObject is an object resource.
+	ManifestTypeObject ResourceType = "object"
+
 	// ManifestTypeScript is a script resource.
 	ManifestTypeScript ResourceType = "script"
 
@@ -72,6 +75,8 @@ func (m *Manifest) UnmarshalYAML(n *yaml.Node) error {
 		m.Data = NewMusicData(m.workingDir)
 	case ManifestTypeImage:
 		m.Data = NewImageData(m.workingDir)
+	case ManifestTypeObject:
+		m.Data = NewObjectData(m.workingDir)
 	case ManifestTypeScript:
 		m.Data = new(ScriptData)
 	case ManifestTypeSound:

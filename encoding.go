@@ -146,6 +146,14 @@ func (e *ResourceEncoder) EncodeMusic(id ResourceID, m *Music, comp ResourceComp
 	})
 }
 
+// EncodeObject encodes an object using the resource encoder.
+func (e *ResourceEncoder) EncodeObject(id ResourceID, o *Object, comp ResourceCompression) error {
+	return e.encodeResource(id, o, resourceHeader{
+		Type:        resourceTypeObject,
+		Compression: comp,
+	})
+}
+
 // EncodeScript encodes a script using the resource encoder.
 func (e *ResourceEncoder) EncodeScript(id ResourceID, s *Script, comp ResourceCompression) error {
 	return e.encodeResource(id, s, resourceHeader{
@@ -263,6 +271,12 @@ func (l *ResourceFileLoader) LoadMusic(ref ResourceRef) *Music {
 	m := new(Music)
 	l.decodeResource(ref, resourceTypeMusic, m)
 	return m
+}
+
+func (l *ResourceFileLoader) LoadObject(ref ResourceRef) *Object {
+	object := new(Object)
+	l.decodeResource(ref, resourceTypeObject, object)
+	return object
 }
 
 func (l *ResourceFileLoader) LoadScript(ref ResourceRef) *Script {
@@ -435,4 +449,5 @@ const (
 	resourceTypeMusic
 	resourceTypeScript
 	resourceTypeSound
+	resourceTypeObject
 )

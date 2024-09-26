@@ -11,7 +11,12 @@ melee = room {
             dir=left,
             costume="resources:costumes/Guybrush" -- TODO: this must be a variable
         }
-        
+
+        bucket:show{
+            pos={x=275, y=110},
+            ref="resources:objects/Bucket"
+        }
+
         music1:play()
         cricket:play()
         guybrush:walkto({x=290, y=140}).wait()
