@@ -48,6 +48,8 @@ func do(src string, output string) error {
 			err = enc.EncodeScript(id, data.Resource, man.Compression)
 		case *SoundData:
 			err = enc.EncodeSound(id, data.Resource, man.Compression)
+		case *SpriteSheetData:
+			err = enc.EncodeSpriteSheet(id, data.Resource, man.Compression)
 		}
 		if err != nil {
 			fmt.Printf(" Failed!\n")

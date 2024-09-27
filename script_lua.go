@@ -72,11 +72,38 @@ func (s *Script) luaEval(app AppContext, code []byte, include bool) {
 
 		// For rooms that are not included, declare them in the app
 		if typ == "room" && !included {
+			room := obj
+			roomID := key
 			app.Do(RoomDeclare{
-				RoomID:        key,
+				RoomID:        roomID,
 				Script:        s,
-				BackgroundRef: obj.GetRef("background"),
+				BackgroundRef: room.GetRef("background"),
 			}).Wait()
+
+			room.IfTableFieldExists("objects", func(objs luaTableUtils) {
+				objs.ForEach(func(key int, value int) {
+					obj := withLuaTableAtIndex(s.l, value)
+					cmd := ObjectDeclare{
+						Classes: ObjectClass(obj.GetIntegerOpt("class", 0)),
+						Hotspot: obj.GetRectangle("hotspot"),
+						Name:    lua.CheckString(s.l, key),
+						Pos:     obj.GetPosition("pos"),
+						RoomID:  roomID,
+						Sprites: obj.GetRef("sprites"),
+						UseDir:  obj.GetDirection("usedir"),
+						UsePos:  obj.GetPosition("usepos"),
+					}
+					obj.IfTableFieldExists("states", func(states luaTableUtils) {
+						states.ForEach(func(_ int, value int) {
+							state := withLuaTableAtIndex(s.l, value)
+							cmd.States = append(cmd.States, ObjectState{
+								Anim: state.GetAnimationOpt("anim", nil),
+							})
+						})
+					})
+					app.Do(cmd).Wait()
+				})
+			})
 		}
 	})
 
@@ -217,10 +244,6 @@ func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
 				return 1
 			}))
 			room.SetBoolean("included", s.including)
-
-			if !s.including {
-				// TODO: process the room definitions (objects, etc).
-			}
 			return 1
 		}},
 		{Name: "sound", Function: func(l *lua.State) int {
@@ -340,6 +363,15 @@ func luaCheckPosition(l *lua.State, index int) (pos Position) {
 	return
 }
 
+func luaCheckRectangle(l *lua.State, index int) (rect Rectangle) {
+	tab := withLuaTableAtIndex(l, index)
+	rect.Pos.X = tab.GetInteger("x")
+	rect.Pos.Y = tab.GetInteger("y")
+	rect.Size.W = tab.GetInteger("w")
+	rect.Size.H = tab.GetInteger("h")
+	return
+}
+
 func luaCheckResourceRef(l *lua.State, index int) ResourceRef {
 	val := lua.CheckString(l, index)
 	ref, err := ParseResourceRef(val)
@@ -347,6 +379,15 @@ func luaCheckResourceRef(l *lua.State, index int) ResourceRef {
 		lua.ArgumentError(l, index, "invalid resource reference")
 	}
 	return ref
+}
+
+func luaCheckAnimation(l *lua.State, index int) *Animation {
+	tab := withLuaTableAtIndex(l, index)
+	return NewAnimationEx(
+		tab.GetInteger("index"),
+		tab.GetInteger("frames"),
+		tab.GetDuration("delay"),
+	)
 }
 
 func luaPushColor(l *lua.State, c Color) {
@@ -382,19 +423,23 @@ type luaTableUtils struct {
 }
 
 func withLuaTableAtIndex(l *lua.State, index int) luaTableUtils {
+	// Convert top-relative index to absolute
+	if index < 0 {
+		index = l.Top() + index + 1
+	}
 	return luaTableUtils{l, index}
 }
 
 func withNewLuaTable(l *lua.State) luaTableUtils {
 	l.NewTable()
-	return luaTableUtils{l, -1}
+	return withLuaTableAtIndex(l, -1)
 }
 
 func withNewLuaObject(l *lua.State, typ string) luaTableUtils {
 	l.NewTable()
 	l.PushString(typ)
 	l.SetField(-2, "__type")
-	return luaTableUtils{l, -1}
+	return withLuaTableAtIndex(l, -1)
 }
 
 func withNewLuaObjectWrapping(l *lua.State, index int, typ string) luaTableUtils {
@@ -408,7 +453,24 @@ func withNewLuaObjectWrapping(l *lua.State, index int, typ string) luaTableUtils
 	l.PushValue(index)
 	l.SetField(-2, "__index")
 	l.SetMetaTable(-2)
-	return luaTableUtils{l, -1}
+	return withLuaTableAtIndex(l, -1)
+}
+
+func (t luaTableUtils) IfTableFieldExists(key string, then func(luaTableUtils)) {
+	t.l.Field(t.index, key)
+	defer t.l.Pop(1)
+	if t.l.IsNil(-1) {
+		return
+	}
+	then(withLuaTableAtIndex(t.l, -1))
+}
+
+func (t luaTableUtils) ForEach(then func(key int, value int)) {
+	t.l.PushNil()
+	for t.l.Next(t.index) {
+		then(-2, -1)
+		t.l.Pop(1)
+	}
 }
 
 func (t luaTableUtils) GetString(key string) (val string) {
@@ -494,6 +556,28 @@ func (t luaTableUtils) GetPosition(key string) (val Position) {
 func (t luaTableUtils) GetPositionOpt(key string, def Position) (val Position) {
 	val = def
 	t.getFieldOpt(key, lua.TypeTable, func() { val = luaCheckPosition(t.l, -1) })
+	return
+}
+
+func (t luaTableUtils) GetRectangle(key string) (val Rectangle) {
+	t.getField(key, lua.TypeTable, func() {
+		val = luaCheckRectangle(t.l, -1)
+	})
+	return
+}
+
+func (t luaTableUtils) GetAnimation(key string) (val *Animation) {
+	t.getField(key, lua.TypeTable, func() {
+		val = luaCheckAnimation(t.l, -1)
+	})
+	return
+}
+
+func (t luaTableUtils) GetAnimationOpt(key string, def *Animation) (val *Animation) {
+	val = def
+	t.getFieldOpt(key, lua.TypeTable, func() {
+		val = luaCheckAnimation(t.l, -1)
+	})
 	return
 }
 
@@ -583,6 +667,11 @@ func (t luaTableUtils) ObjectType() (typ string, ok bool) {
 	defer t.l.Pop(1)
 	return t.l.ToString(-1)
 }
+
+func (t luaTableUtils) IsTable() bool {
+	return t.l.IsTable(t.index)
+}
+
 func (t luaTableUtils) IsObject() bool {
 	if !t.l.IsTable(t.index) {
 		return false

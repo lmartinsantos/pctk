@@ -28,6 +28,9 @@ const (
 
 	// ManifestTypeSound is a sound resource.
 	ManifestTypeSound ResourceType = "sound"
+
+	// ManifestTypeSpriteSheet is a sprite sheet resource.
+	ManifestTypeSpriteSheet ResourceType = "spritesheet"
 )
 
 // Manifest is the description of a resource.
@@ -76,6 +79,8 @@ func (m *Manifest) UnmarshalYAML(n *yaml.Node) error {
 		m.Data = new(ScriptData)
 	case ManifestTypeSound:
 		m.Data = NewSoundData(m.workingDir)
+	case ManifestTypeSpriteSheet:
+		m.Data = NewSpriteSheetData(m.workingDir)
 	default:
 		return fmt.Errorf("unknown manifest type: %s", m.Type)
 	}

@@ -1,0 +1,7 @@
+type: spritesheet
+compression: none
+data:
+  source: objects.png
+  frames:
+    witdh: 30
+    height: 18
