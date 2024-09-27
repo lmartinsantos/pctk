@@ -162,6 +162,18 @@ func (e *ResourceEncoder) EncodeSound(id ResourceID, s *Sound, comp ResourceComp
 	})
 }
 
+// EncodeSpriteSheet encodes a sprite sheet using the resource encoder.
+func (e *ResourceEncoder) EncodeSpriteSheet(
+	id ResourceID,
+	s *SpriteSheet,
+	comp ResourceCompression,
+) error {
+	return e.encodeResource(id, s, resourceHeader{
+		Type:        resourceTypeSpriteSheet,
+		Compression: comp,
+	})
+}
+
 func (e *ResourceEncoder) encodeResource(id ResourceID, res BinaryEncoder, h resourceHeader) error {
 	var n int
 	var err error
@@ -275,6 +287,12 @@ func (l *ResourceFileLoader) LoadSound(ref ResourceRef) *Sound {
 	sound := new(Sound)
 	l.decodeResource(ref, resourceTypeSound, sound)
 	return sound
+}
+
+func (l *ResourceFileLoader) LoadSpriteSheet(ref ResourceRef) *SpriteSheet {
+	ss := new(SpriteSheet)
+	l.decodeResource(ref, resourceTypeSpriteSheet, ss)
+	return ss
 }
 
 func (l *ResourceFileLoader) decodeResource(ref ResourceRef, t resourceType, res BinaryDecoder) {
@@ -435,4 +453,5 @@ const (
 	resourceTypeMusic
 	resourceTypeScript
 	resourceTypeSound
+	resourceTypeSpriteSheet
 )

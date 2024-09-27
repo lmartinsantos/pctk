@@ -115,6 +115,10 @@ type ResourceLoader interface {
 	// LoadSound loads a sound effect from he given ref. It returns nil if the sound is not
 	// found.
 	LoadSound(ref ResourceRef) *Sound
+
+	// LoadSpriteSheet loads a sprite sheet from the given ref. It returns nil if the sprite
+	// sheet is not found.
+	LoadSpriteSheet(ref ResourceRef) *SpriteSheet
 }
 
 // ResourceBundle is a bundle of resources that are loaded in memory. This can be used for
@@ -125,6 +129,7 @@ type ResourceBundle struct {
 	music    map[ResourceRef]*Music
 	scripts  map[ResourceRef]*Script
 	sounds   map[ResourceRef]*Sound
+	sprites  map[ResourceRef]*SpriteSheet
 }
 
 // NewResourceBundle creates a new resource bundle that can be used as resource loader.
@@ -135,6 +140,7 @@ func NewResourceBundle() *ResourceBundle {
 		music:    make(map[ResourceRef]*Music),
 		scripts:  make(map[ResourceRef]*Script),
 		sounds:   make(map[ResourceRef]*Sound),
+		sprites:  make(map[ResourceRef]*SpriteSheet),
 	}
 }
 
@@ -163,6 +169,11 @@ func (c *ResourceBundle) PutSound(ref ResourceRef, s *Sound) {
 	c.sounds[ref] = s
 }
 
+// PutSpriteSheet adds a sprite sheet to the bundle.
+func (c *ResourceBundle) PutSpriteSheet(ref ResourceRef, s *SpriteSheet) {
+	c.sprites[ref] = s
+}
+
 // LoadCostume loads a costume from the given ref. It returns nil if the costume is not found.
 func (c *ResourceBundle) LoadCostume(ref ResourceRef) *Costume {
 	return c.costumes[ref]
@@ -186,4 +197,10 @@ func (c *ResourceBundle) LoadScript(ref ResourceRef) *Script {
 // LoadSound loads a sound effect from he given ref. It returns nil if the sound is not found.
 func (c *ResourceBundle) LoadSound(ref ResourceRef) *Sound {
 	return c.sounds[ref]
+}
+
+// LoadSpriteSheet loads a sprite sheet from the given ref. It returns nil if the sprite sheet is
+// not found.
+func (c *ResourceBundle) LoadSpriteSheet(ref ResourceRef) *SpriteSheet {
+	return c.sprites[ref]
 }
