@@ -9,8 +9,9 @@ import (
 
 // Room represents a room in the game.
 type Room struct {
-	background *Image
-	script     *Script
+	background *Image    // The background image of the room
+	objects    []*Object // The objects declared in the room
+	script     *Script   // The script where this room is defined. Used to call the room functions.
 }
 
 // NewRoom creates a new room with the given background image.
@@ -21,6 +22,21 @@ func NewRoom(bg *Image) *Room {
 	return &Room{
 		background: bg,
 	}
+}
+
+// RoomByID returns the room with the given ID, panicking if not found.
+func (a *App) RoomByID(id string) *Room {
+	room, ok := a.rooms[id]
+	if !ok {
+		log.Fatalf("Room %s not found", id)
+	}
+	return room
+}
+
+// DeclareObject declares an object in the room.
+func (r *Room) DeclareObject(obj *Object) {
+	obj.room = r
+	r.objects = append(r.objects, obj)
 }
 
 // BinaryEncode encodes the room data to a binary stream. The format is:
@@ -37,9 +53,9 @@ func (r *Room) BinaryDecode(rd io.Reader) error {
 
 // RoomDeclare is a command that will declare a new room with the given properties.
 type RoomDeclare struct {
+	BackgroundRef ResourceRef
 	RoomID        string
 	Script        *Script
-	BackgroundRef ResourceRef
 }
 
 func (cmd RoomDeclare) Execute(app *App, done *Promise) {
