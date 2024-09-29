@@ -168,6 +168,20 @@ func (p Positionf) Move(to Positionf, speed Positionf) Positionf {
 	return p
 }
 
+// CrossProduct calculates the cross product of the vectors formed by three consecutive vertices of a polygon.
+func (p *Positionf) CrossProduct(p1, p2 *Positionf) float32 {
+	return (p1.X-p.X)*(p2.Y-p1.Y) - (p1.Y-p.Y)*(p2.X-p1.X)
+}
+
+// IsIntersecting calculate the x-coordinate of the intersection of the ray with the line segment (Ray-Casting method).
+func (p *Positionf) IsIntersecting(p1, p2 *Positionf) bool {
+	if (p1.Y > p.Y) != (p2.Y > p.Y) {
+		return p.X < (p2.X-p1.X)*(p.Y-p1.Y)/(p2.Y-p1.Y)+p1.X
+	}
+
+	return false
+}
+
 // Size represents a 2D size.
 type Size struct {
 	W, H int
