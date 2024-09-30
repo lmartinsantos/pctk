@@ -81,12 +81,13 @@ func (s *Script) run(app AppContext, prom *Promise) {
 	}
 }
 
-func (s *Script) call(object, method string, prom *Promise) {
+func (s *Script) call(chain ...string) Future {
 	switch s.Language {
 	case ScriptLua:
-		s.luaCall(object, method, prom)
+		return s.luaCall(chain...)
 	default:
 		log.Panicf("Unknown script language: %0x", s.Language)
+		return nil
 	}
 }
 
@@ -115,8 +116,7 @@ func (c ScriptRun) Execute(app *App, prom *Promise) {
 // ScriptCall is a command to call a script function.
 type ScriptCall struct {
 	ScriptRef ResourceRef
-	Object    string
-	method    string
+	Method    []string
 }
 
 func (c ScriptCall) Execute(app *App, prom *Promise) {
@@ -125,5 +125,5 @@ func (c ScriptCall) Execute(app *App, prom *Promise) {
 		log.Panicf("Script not found: %s", c.ScriptRef)
 	}
 
-	script.call(c.Object, c.method, prom)
+	prom.CompleteWhen(script.call(c.Method...))
 }

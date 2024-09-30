@@ -10,14 +10,6 @@ var (
 	ControlActionColor    = Cyan
 )
 
-// ControlPane is the screen control pane that shows the action, verbs and inventory.
-type ControlPane struct {
-	Enabled bool
-
-	actionVerb Verb
-	actionArg1 RoomItem
-}
-
 // Verb is a type that represents the action verb.
 type Verb string
 
@@ -36,40 +28,71 @@ const (
 	VerbTurnOff Verb = "Turn off"
 )
 
-// Draw renders the control panel in the viewport.
-func (p *ControlPane) Draw(a *App) {
-	if p.Enabled {
-		p.drawActionVerb(a, VerbOpen, 0, 0)
-		p.drawActionVerb(a, VerbClose, 0, 1)
-		p.drawActionVerb(a, VerbPush, 0, 2)
-		p.drawActionVerb(a, VerbPull, 0, 3)
-
-		p.drawActionVerb(a, VerbWalkTo, 1, 0)
-		p.drawActionVerb(a, VerbPickUp, 1, 1)
-		p.drawActionVerb(a, VerbTalkTo, 1, 2)
-		p.drawActionVerb(a, VerbGive, 1, 3)
-
-		p.drawActionVerb(a, VerbUse, 2, 0)
-		p.drawActionVerb(a, VerbLookAt, 2, 1)
-		p.drawActionVerb(a, VerbTurnOn, 2, 2)
-		p.drawActionVerb(a, VerbTurnOff, 2, 3)
-
-		p.drawActionLine(a)
-	}
+// VerbSlot is a slot in the control panel that holds a verb.
+type VerbSlot struct {
+	Verb Verb
+	Row  int
+	Col  int
 }
 
-func (p *ControlPane) drawActionVerb(a *App, verb Verb, col, row int) {
-	x := 2 + col*ScreenWidth/6
-	y := ViewportHeight + (row+1)*FontDefaultSize
-	w := ScreenWidth / 6
-	h := FontDefaultSize
-
+// Draw renders the verb slot in the control pane.
+func (s VerbSlot) Draw(a *App) {
+	rect := s.Rect()
 	color := ControlVerbColor
-	if a.MouseIsInto(NewRect(x, y, w, h)) {
+	if a.MouseIsInto(rect) {
 		color = ControlVerbHoverColor
 	}
 
-	DrawDefaultText(string(verb), NewPos(x, y), AlignLeft, color)
+	DrawDefaultText(string(s.Verb), rect.Pos, AlignLeft, color)
+}
+
+// Rect returns the rectangle of the verb slot in the screen.
+func (v VerbSlot) Rect() Rectangle {
+	x := 2 + v.Col*ScreenWidth/6
+	y := ViewportHeight + (v.Row+1)*FontDefaultSize
+	w := ScreenWidth / 6
+	h := FontDefaultSize
+	return NewRect(x, y, w, h)
+}
+
+// ControlPane is the screen control pane that shows the action, verbs and inventory.
+type ControlPane struct {
+	Enabled bool
+
+	verbs      []VerbSlot
+	actionVerb Verb
+	actionArg1 RoomItem
+}
+
+// Init initializes the control pane.
+func (p *ControlPane) Init() {
+	p.Enabled = true
+	p.verbs = []VerbSlot{
+		{Verb: VerbOpen, Row: 0, Col: 0},
+		{Verb: VerbClose, Row: 1, Col: 0},
+		{Verb: VerbPush, Row: 2, Col: 0},
+		{Verb: VerbPull, Row: 3, Col: 0},
+
+		{Verb: VerbWalkTo, Row: 0, Col: 1},
+		{Verb: VerbPickUp, Row: 1, Col: 1},
+		{Verb: VerbTalkTo, Row: 2, Col: 1},
+		{Verb: VerbGive, Row: 3, Col: 1},
+
+		{Verb: VerbUse, Row: 0, Col: 2},
+		{Verb: VerbLookAt, Row: 1, Col: 2},
+		{Verb: VerbTurnOn, Row: 2, Col: 2},
+		{Verb: VerbTurnOff, Row: 3, Col: 2},
+	}
+}
+
+// Draw renders the control panel in the viewport.
+func (p *ControlPane) Draw(a *App) {
+	if p.Enabled {
+		for _, v := range p.verbs {
+			v.Draw(a)
+		}
+		p.drawActionLine(a)
+	}
 }
 
 func (p *ControlPane) drawActionLine(a *App) {
@@ -93,6 +116,9 @@ func (p *ControlPane) processControlInputs(a *App) {
 		mouseClick := a.MousePosition()
 		if ViewportRect.Contains(mouseClick) {
 			p.processViewportClick(a, mouseClick)
+		}
+		if ControlPaneRect.Contains(mouseClick) {
+			p.processControlPaneClick(a, mouseClick)
 		}
 	}
 }
@@ -118,9 +144,25 @@ func (p *ControlPane) processViewportClick(a *App, click Position) {
 				Position: NewPos(click.X, click.Y),
 			})
 		}
+	case VerbLookAt:
+		if p.actionArg1 != nil {
+			a.Do(ActorLookAtObject{
+				ActorID:  a.ego.name,
+				ObjectID: p.actionArg1.Name(),
+			})
+		}
 	}
 	p.actionArg1 = nil
 	p.actionVerb = VerbWalkTo
+}
+
+func (p *ControlPane) processControlPaneClick(_ *App, click Position) {
+	for _, v := range p.verbs {
+		if v.Rect().Contains(click) {
+			p.actionVerb = v.Verb
+			return
+		}
+	}
 }
 
 // EnableControlPanel is a command that will enable or disable the control panel.

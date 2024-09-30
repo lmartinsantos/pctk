@@ -54,6 +54,7 @@ func (a *App) init() {
 
 	a.cam.Zoom = float32(a.screenZoom)
 	a.initMouse()
+	a.control.Init()
 }
 
 func (a *App) Close() {

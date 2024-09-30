@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/Shopify/go-lua"
@@ -33,24 +34,35 @@ func (s *Script) luaRun(app AppContext, prom *Promise) {
 	}()
 }
 
-func (s *Script) luaCall(object, method string, prom *Promise) {
+func (s *Script) luaCall(chain ...string) Future {
+	prom := NewPromise()
 	go func() {
 		if s.l == nil {
 			log.Panic("Script not initialized")
 		}
-
-		s.l.Global(object)
-		if !s.l.IsTable(-1) {
-			log.Panicf("Object %s not found", object)
+		if len(chain) == 0 {
+			log.Panic("No chain provided")
 		}
-		s.l.Field(-1, method)
+
+		objPath := strings.Join(chain[:len(chain)-1], ".")
+		s.l.PushGlobalTable()
+		for ; len(chain) > 1; chain = chain[1:] {
+			s.l.Field(-1, chain[0])
+			if !s.l.IsTable(-1) {
+				log.Panicf("Object %s not found", objPath)
+			}
+		}
+
+		methodName := chain[0]
+		s.l.Field(-1, methodName)
 		if !s.l.IsFunction(-1) {
-			log.Panicf("Method %s not found in object %s", method, object)
+			log.Panicf("Method %s not found in object %s", methodName, objPath)
 		}
 		s.l.PushValue(-2)
 		s.l.Call(1, 0)
 		prom.Complete()
 	}()
+	return prom
 }
 
 func (s *Script) luaEval(app AppContext, code []byte, include bool) {

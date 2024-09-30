@@ -198,6 +198,33 @@ func (cmd ActorWalkToObject) Execute(app *App, done *Promise) {
 	})
 }
 
+// ActorLookAtObject is a command that will make an actor look at an object.
+type ActorLookAtObject struct {
+	ActorID  string
+	ObjectID string
+}
+
+func (cmd ActorLookAtObject) Execute(app *App, done *Promise) {
+	app.withActor(cmd.ActorID, func(a *Actor) {
+		obj := app.room.ObjectByID(cmd.ObjectID)
+		if obj == nil {
+			done.Complete()
+			return
+		}
+		done.CompleteWhen(Sequence(
+			func() Future {
+				return app.Do(ActorWalkToObject{
+					ActorID:  a.name,
+					ObjectID: obj.name,
+				})
+			},
+			func() Future {
+				return a.room.script.call(app.room.id, "objects", obj.name, "lookat")
+			},
+		))
+	})
+}
+
 // ActorSpeak is a command that will make an actor speak the given text.
 type ActorSpeak struct {
 	ActorID string

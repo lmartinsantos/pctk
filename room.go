@@ -9,6 +9,7 @@ import (
 type Room struct {
 	actors     []*Actor  // The actors in the room
 	background *Image    // The background image of the room
+	id         string    // The ID of the room
 	objects    []*Object // The objects declared in the room
 	script     *Script   // The script where this room is defined. Used to call the room functions.
 }
@@ -111,6 +112,7 @@ func (cmd RoomDeclare) Execute(app *App, done *Promise) {
 		log.Fatalf("Room %s already exists", cmd.RoomID)
 	}
 	room := Room{
+		id:         cmd.RoomID,
 		background: app.res.LoadImage(cmd.BackgroundRef),
 		script:     cmd.Script,
 	}
@@ -132,7 +134,7 @@ func (cmd RoomShow) Execute(app *App, done *Promise) {
 	}
 
 	// Call the enter function of the room script.
-	app.room.script.call(cmd.RoomID, "enter", done)
+	done.CompleteWhen(app.room.script.call(cmd.RoomID, "enter"))
 }
 
 func (a *App) drawViewport() {
