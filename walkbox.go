@@ -79,3 +79,58 @@ func (w *WalkBox) ContainsPoint(p *Positionf) bool {
 
 	return numberOfIntersections%2 == 1 // Odd count means inside
 }
+
+// IsConnected checks if WalkBoxes are connected.
+func (w *WalkBox) IsConnected(otherWalkBox *WalkBox) bool {
+	for _, vertex := range otherWalkBox.vertices {
+		if w.ContainsPoint(vertex) {
+			return true
+		}
+	}
+	return false
+}
+
+// WalkBoxMatrix represents a collection of WalkBoxes and their adjacency relationships.
+type WalkBoxMatrix struct {
+	walkBoxes     map[string]*WalkBox
+	adjacencyList map[string][]*WalkBox
+}
+
+// NewWalkBoxMatrix creates and returns a new WalkBoxMatrix instance
+func NewWalkBoxMatrix() *WalkBoxMatrix {
+	return &WalkBoxMatrix{
+		walkBoxes:     make(map[string]*WalkBox),
+		adjacencyList: make(map[string][]*WalkBox),
+	}
+}
+
+// Add adds a new WalkBox to the WalkBoxMatrix.
+// The new WalkBox must be connected to at least one existing WalkBox in the matrix
+// ensuring that there are no isolated walkable areas.
+func (wm *WalkBoxMatrix) Add(w *WalkBox) {
+	if _, exists := wm.adjacencyList[w.walkBoxID]; !exists {
+		wm.adjacencyList[w.walkBoxID] = []*WalkBox{}
+	}
+
+	for _, otherWalkBox := range wm.walkBoxes {
+		if w.IsConnected(otherWalkBox) {
+			wm.adjacencyList[w.walkBoxID] = append(wm.adjacencyList[w.walkBoxID], otherWalkBox)
+			wm.adjacencyList[otherWalkBox.walkBoxID] = append(wm.adjacencyList[otherWalkBox.walkBoxID], w)
+		}
+	}
+
+	wm.walkBoxes[w.walkBoxID] = w
+
+	if len(wm.walkBoxes) > 1 && len(wm.adjacencyList[w.walkBoxID]) < 1 {
+		log.Panicf("walkbox %s is not connected", w.walkBoxID)
+	}
+}
+
+// Adjacents returns a slice of WalkBoxes that are adjacent to the WalkBox with the specified walkBoxID.
+// If no adjacencies are found, it returns an empty slice.
+func (wm *WalkBoxMatrix) Adjacents(walkBoxID string) []*WalkBox {
+	if adjacents, ok := wm.adjacencyList[walkBoxID]; ok {
+		return adjacents
+	}
+	return []*WalkBox{}
+}

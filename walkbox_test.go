@@ -110,3 +110,95 @@ func TestContainsPoint(t *testing.T) {
 		})
 	}
 }
+
+func TestWalkBoxMatrixAdd(t *testing.T) {
+	testCases := []struct {
+		name        string
+		walkBoxes   []*pctk.WalkBox
+		shouldPanic bool
+		message     string
+	}{
+		{
+			name: "Add connected WalkBoxes",
+			walkBoxes: []*pctk.WalkBox{
+				pctk.NewWalkBox("WalkBoxA", [4]*pctk.Positionf{{X: 0, Y: 0}, {X: 2, Y: 0}, {X: 2, Y: 2}, {X: 0, Y: 2}}),
+				pctk.NewWalkBox("WalkBoxB", [4]*pctk.Positionf{{X: 1.5, Y: 0}, {X: 3, Y: 0}, {X: 3, Y: 2}, {X: 1.5, Y: 2}}),
+			},
+			shouldPanic: false,
+			message:     "Expected WalkBoxes A and B to be connected without panic!",
+		},
+		{
+			name: "Add disconnected WalkBox should panic",
+			walkBoxes: []*pctk.WalkBox{
+				pctk.NewWalkBox("WalkBoxA", [4]*pctk.Positionf{{X: 0, Y: 0}, {X: 2, Y: 0}, {X: 2, Y: 2}, {X: 0, Y: 2}}),
+				pctk.NewWalkBox("WalkBoxB", [4]*pctk.Positionf{{X: 5, Y: 5}, {X: 6, Y: 5}, {X: 6, Y: 6}, {X: 5, Y: 6}}),
+			},
+			shouldPanic: true,
+			message:     "Expected panic because WalkBoxB is not connected!",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			wm := pctk.NewWalkBoxMatrix()
+
+			if testCase.shouldPanic {
+				assert.Panics(t, func() {
+					for _, wb := range testCase.walkBoxes {
+						wm.Add(wb)
+					}
+				}, testCase.message)
+			} else {
+				assert.NotPanics(t, func() {
+					for _, wb := range testCase.walkBoxes {
+						wm.Add(wb)
+					}
+				}, testCase.message)
+
+				// Verifying connections of WalkBoxA
+				adjacents := wm.Adjacents("WalkBoxA")
+				assert.True(t, len(adjacents) == 1, "WalkBoxA should be connected to 1 WalkBox")
+			}
+		})
+	}
+}
+
+func TestWalkBoxMatrixAdjacents(t *testing.T) {
+	wbA := pctk.NewWalkBox("WalkBoxA", [4]*pctk.Positionf{{X: 0, Y: 0}, {X: 2, Y: 0}, {X: 2, Y: 2}, {X: 0, Y: 2}})
+	wbB := pctk.NewWalkBox("WalkBoxB", [4]*pctk.Positionf{{X: 1.5, Y: 0}, {X: 3.5, Y: 0}, {X: 3.5, Y: 2}, {X: 1.5, Y: 2}})
+	wbC := pctk.NewWalkBox("WalkBoxC", [4]*pctk.Positionf{{X: 3, Y: 0}, {X: 5, Y: 0}, {X: 5, Y: 2}, {X: 3, Y: 2}})
+	wbD := pctk.NewWalkBox("WalkBoxD", [4]*pctk.Positionf{{X: 4.5, Y: 0}, {X: 6.5, Y: 0}, {X: 6.5, Y: 2}, {X: 4.5, Y: 2}})
+
+	wm := pctk.NewWalkBoxMatrix()
+
+	wm.Add(wbA)
+	wm.Add(wbB)
+	wm.Add(wbC)
+	wm.Add(wbD)
+
+	t.Run("Check WalkBoxA adjacency", func(t *testing.T) {
+		adjacents := wm.Adjacents("WalkBoxA")
+		assert.Equal(t, 1, len(adjacents), "WalkBoxA should be adjacent to 1 WalkBox")
+		assert.Contains(t, adjacents, wbB, "WalkBoxA should be adjacent to WalkBoxB")
+	})
+
+	t.Run("Check WalkBoxB adjacency", func(t *testing.T) {
+		adjacents := wm.Adjacents("WalkBoxB")
+		assert.Equal(t, 2, len(adjacents), "WalkBoxB should be adjacent to 2 WalkBoxes")
+		assert.Contains(t, adjacents, wbA, "WalkBoxB should be adjacent to WalkBoxA")
+		assert.Contains(t, adjacents, wbC, "WalkBoxB should be adjacent to WalkBoxC")
+	})
+
+	t.Run("Check WalkBoxC adjacency", func(t *testing.T) {
+		adjacents := wm.Adjacents("WalkBoxC")
+		assert.Equal(t, 2, len(adjacents), "WalkBoxC should be adjacent to 2 WalkBoxes")
+		assert.Contains(t, adjacents, wbB, "WalkBoxC should be adjacent to WalkBoxB")
+		assert.Contains(t, adjacents, wbD, "WalkBoxC should be adjacent to WalkBoxD")
+	})
+
+	t.Run("Check WalkBoxD adjacency", func(t *testing.T) {
+		adjacents := wm.Adjacents("WalkBoxD")
+		assert.Equal(t, 1, len(adjacents), "WalkBoxD should be adjacent to 1 WalkBox")
+		assert.Contains(t, adjacents, wbC, "WalkBoxD should be adjacent to WalkBoxC")
+	})
+}
