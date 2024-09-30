@@ -56,6 +56,21 @@ func (r *Room) Draw() {
 	}
 }
 
+// ItemAt returns the item at the given position in the room.
+func (r *Room) ItemAt(pos Position) RoomItem {
+	for _, actor := range r.actors {
+		if !actor.IsEgo() && actor.Hotspot().Contains(pos) {
+			return actor
+		}
+	}
+	for _, obj := range r.objects {
+		if obj.hotspot.Contains(pos) {
+			return obj
+		}
+	}
+	return nil
+}
+
 // PutActor puts an actor in the room.
 func (r *Room) PutActor(actor *Actor) {
 	actor.room = r
@@ -69,6 +84,7 @@ func (r *Room) PutActor(actor *Actor) {
 
 // RoomItem is an item from a room that can be represented in the viewport.
 type RoomItem interface {
+	Name() string
 	Position() Position
 	Draw()
 }

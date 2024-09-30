@@ -21,6 +21,7 @@ type Actor struct {
 	act     action
 	costume *Costume
 	elev    int
+	ego     bool
 	lookAt  Direction
 	name    string
 	pos     Positionf
@@ -46,6 +47,21 @@ func (a *Actor) Draw() {
 	if a.act() {
 		a.stand(a.lookAt)
 	}
+}
+
+// Hotspot returns the hotspot of the actor.
+func (a *Actor) Hotspot() Rectangle {
+	return Rectangle{Pos: a.costumePos(), Size: a.size}
+}
+
+// IsEgo returns true if the actor is the actor under player's control, false otherwise.
+func (a *Actor) IsEgo() bool {
+	return a.ego
+}
+
+// Name returns the name of the actor.
+func (a *Actor) Name() string {
+	return a.name
 }
 
 // Position returns the position of the actor.
@@ -212,12 +228,11 @@ type ActorSelectEgo struct {
 }
 
 func (cmd ActorSelectEgo) Execute(app *App, done *Promise) {
-	actor, ok := app.actors[cmd.ActorID]
-	if ok {
-		app.ego = actor
-	} else {
-		app.ego = nil
+	if app.ego != nil {
+		app.ego.ego = false
 	}
+	app.ego = app.ensureActor(cmd.ActorID)
+	app.ego.ego = true
 
 	done.Complete()
 }

@@ -12,10 +12,11 @@ var (
 
 type ControlPane struct {
 	Enabled bool
+	action  string
 }
 
 // Draw renders the control panel in the viewport.
-func (p ControlPane) Draw(a *App) {
+func (p *ControlPane) Draw(a *App) {
 	if p.Enabled {
 		p.drawActionVerb(a, "Open", 0, 0)
 		p.drawActionVerb(a, "Close", 0, 1)
@@ -32,11 +33,11 @@ func (p ControlPane) Draw(a *App) {
 		p.drawActionVerb(a, "Turn on", 2, 2)
 		p.drawActionVerb(a, "Turn off", 2, 3)
 
-		p.drawFullAction(a, "Walk to") // TODO: do not hardcode this
+		p.drawActionLine(a)
 	}
 }
 
-func (p ControlPane) drawActionVerb(a *App, verb string, col, row int) {
+func (p *ControlPane) drawActionVerb(a *App, verb string, col, row int) {
 	x := 2 + col*ScreenWidth/6
 	y := ViewportHeight + (row+1)*FontDefaultSize
 	w := ScreenWidth / 6
@@ -50,15 +51,26 @@ func (p ControlPane) drawActionVerb(a *App, verb string, col, row int) {
 	DrawDefaultText(verb, NewPos(x, y), AlignLeft, color)
 }
 
-func (p ControlPane) drawFullAction(a *App, action string) {
+func (p *ControlPane) drawActionLine(a *App) {
+	if p.action == "" {
+		p.action = "Walk to"
+	}
 	pos := NewPos(ScreenWidth/2, ViewportHeight)
+	action := p.action
+	if room := a.room; room != nil {
+		item := room.ItemAt(a.MousePosition())
+		if item != nil {
+			action = p.action + " " + item.Name()
+		}
+	}
+
 	DrawDefaultText(action, pos, AlignCenter, ControlActionColor)
 }
 
-func (p ControlPane) processControlInputs(a *App) {
+func (p *ControlPane) processControlInputs(a *App) {
 	if a.ego != nil && rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
 		mouseClick := a.MousePosition()
-		if SceneViewport.Contains(mouseClick) {
+		if ViewportRect.Contains(mouseClick) {
 			// TODO missing check action / control selected
 			a.Do(ActorWalkToPosition{
 				ActorID:  a.ego.name,

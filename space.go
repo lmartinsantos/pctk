@@ -16,12 +16,17 @@ const (
 	// ViewportHeight is the width of the room section of the screen.
 	ViewportHeight = 144
 
-	// ControlBoxHeight is the width of the control box section of the screen.
-	ControlBoxHeight = 56
+	// ControlPaneHeight is the height of the control pane of the screen.
+	ControlPaneHeight = 56
 )
 
-// SceneViewport is the rectangle that represents the viewport of the scene.
-var SceneViewport = NewRect(0, 0, ScreenWidth, ViewportHeight)
+var (
+	// ViewportRect is the rectangle that represents the viewport of the scene.
+	ViewportRect = NewRect(0, 0, ScreenWidth, ViewportHeight)
+
+	// ControlPaneRect is the rectangle that represents the control pane.
+	ControlPaneRect = NewRect(0, ViewportHeight, ScreenWidth, ControlPaneHeight)
+)
 
 // Position represents a 2D position.
 type Position struct {

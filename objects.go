@@ -36,6 +36,11 @@ func (o *Object) IsVisible() bool {
 	return o.owner == nil
 }
 
+// Name returns the name of the object.
+func (o *Object) Name() string {
+	return o.name
+}
+
 // Position returns the position of the object.
 func (o *Object) Position() Position {
 	return o.pos
