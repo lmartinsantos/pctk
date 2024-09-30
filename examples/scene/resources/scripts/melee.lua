@@ -6,14 +6,14 @@ melee = room {
         bucket = {
             name = "bucket",
             sprites = "resources:sprites/objects",
-            pos = {x=300, y=180},
-            hotspot = {x=290, y=190, w=20, h=20},
+            pos = {x=260, y=100},
+            hotspot = {x=260, y=100, w=30, h=18},
             usedir = left,
-            usepos = {x=290, y=190},
+            usepos = {x=290, y=130},
             states = {
                 default = {
                     anim = { 
-                        { row = 0, delay = 0, seq = {0} }
+                        { row = 6, delay = 1000, seq = {5} }
                     }
                 },
                 pickup = {}

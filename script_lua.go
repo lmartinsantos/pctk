@@ -96,7 +96,7 @@ func (s *Script) luaEval(app AppContext, code []byte, include bool) {
 					obj.IfTableFieldExists("states", func(states luaTableUtils) {
 						states.ForEach(func(_ int, value int) {
 							state := withLuaTableAtIndex(s.l, value)
-							cmd.States = append(cmd.States, ObjectState{
+							cmd.States = append(cmd.States, &ObjectState{
 								Anim: state.GetAnimationOpt("anim", nil),
 							})
 						})

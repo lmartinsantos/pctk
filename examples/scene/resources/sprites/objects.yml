@@ -3,5 +3,5 @@ compression: none
 data:
   source: objects.png
   frames:
-    witdh: 30
+    width: 30
     height: 18

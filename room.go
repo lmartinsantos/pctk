@@ -1,10 +1,7 @@
 package pctk
 
 import (
-	"io"
 	"log"
-
-	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 // Room represents a room in the game.
@@ -39,16 +36,14 @@ func (r *Room) DeclareObject(obj *Object) {
 	r.objects = append(r.objects, obj)
 }
 
-// BinaryEncode encodes the room data to a binary stream. The format is:
-//   - the background image.
-func (r *Room) BinaryEncode(w io.Writer) (int, error) {
-	return BinaryEncode(w, r.background)
-}
-
-// BinaryDecode decodes the room data from a binary stream. See Room.BinaryEncode for the format.
-func (r *Room) BinaryDecode(rd io.Reader) error {
-	r.background = new(Image)
-	return BinaryDecode(rd, r.background)
+// Draw renders the room in the viewport.
+func (r *Room) Draw() {
+	r.background.Draw(NewPos(0, 0), White)
+	for _, obj := range r.objects {
+		if obj.IsVisible() {
+			obj.Draw()
+		}
+	}
 }
 
 // RoomDeclare is a command that will declare a new room with the given properties.
@@ -87,8 +82,8 @@ func (cmd RoomShow) Execute(app *App, done *Promise) {
 	app.room.script.call(cmd.RoomID, "enter", done)
 }
 
-func (a *App) drawBackgroud() {
+func (a *App) drawViewport() {
 	if a.room != nil {
-		rl.DrawTexture(a.room.background.Texture(), 0, 0, rl.White)
+		a.room.Draw()
 	}
 }

@@ -81,7 +81,8 @@ func (a *Animation) BinaryDecode(r io.Reader) error {
 	return nil
 }
 
-func (a *Animation) draw(sprites *SpriteSheet, pos Position) {
+// Draw renders the animation in the viewport.
+func (a *Animation) Draw(sprites *SpriteSheet, pos Position) {
 	if a.frames[a.currentFrame].delay < time.Since(a.lastFrame) {
 		a.lastFrame = time.Now()
 		a.currentFrame++

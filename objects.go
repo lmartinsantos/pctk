@@ -3,22 +3,42 @@ package pctk
 // Object represents an object in the game. Objects are defined in the scope of rooms and generated
 // by the room scripts.
 type Object struct {
-	classes ObjectClass   // The classes the object belongs to as OR-ed bit flags
-	hotspot Rectangle     // The hotspot of the object (for mouse interaction)
-	name    string        // The name of the object as seen by the player
-	owner   *Actor        // The actor that owns the object, or nil if not picked up
-	pos     Position      // The position of the object in its room (for rendering)
-	room    *Room         // The room the object is in, or nil otherwise (i.e., in the inventory)
-	sprites *SpriteSheet  // The sprites of the object
-	states  []ObjectState // The states the object can be in
-	state   int           // The current state of the object
-	useDir  Direction     // The direction the actor when using the object
-	usePos  Position      // The position the actor was when using the object
+	classes ObjectClass    // The classes the object belongs to as OR-ed bit flags
+	hotspot Rectangle      // The hotspot of the object (for mouse interaction)
+	name    string         // The name of the object as seen by the player
+	owner   *Actor         // The actor that owns the object, or nil if not picked up
+	pos     Position       // The position of the object in its room (for rendering)
+	room    *Room          // The room where the object is declared, and where actions code resides
+	sprites *SpriteSheet   // The sprites of the object
+	states  []*ObjectState // The states the object can be in
+	state   int            // The current state of the object
+	useDir  Direction      // The direction the actor when using the object
+	usePos  Position       // The position the actor was when using the object
+}
+
+// CurrentState returns the current state of the object.
+func (o *Object) CurrentState() *ObjectState {
+	if o.state < 0 || o.state >= len(o.states) {
+		return nil
+	}
+	return o.states[o.state]
+}
+
+// IsVisible returns true if the object is visible in the room, false otherwise.
+func (o *Object) IsVisible() bool {
+	return o.owner == nil
+}
+
+// Draw renders the object in the viewport.
+func (o *Object) Draw() {
+	if st := o.CurrentState(); st != nil {
+		st.Anim.Draw(o.sprites, o.pos)
+	}
 }
 
 // ObjectState represents a state of an object.
 type ObjectState struct {
-	Anim *Animation // The animation while in this state. If nil, the object is invisible.
+	Anim *Animation // The animation while in this state.
 }
 
 // ObjectClass represents a class of objects. Classes are aimed to be used as bit flags that can be
@@ -34,7 +54,7 @@ type ObjectDeclare struct {
 	Pos     Position
 	RoomID  string
 	Sprites ResourceRef
-	States  []ObjectState
+	States  []*ObjectState
 	UseDir  Direction
 	UsePos  Position
 }
