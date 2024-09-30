@@ -10,28 +10,33 @@ var (
 	ControlActionColor    = Cyan
 )
 
-func (a *App) drawControlPanel() {
-	if a.controlPanelEnabled {
-		a.drawActionVerb("Open", 0, 0)
-		a.drawActionVerb("Close", 0, 1)
-		a.drawActionVerb("Push", 0, 2)
-		a.drawActionVerb("Pull", 0, 3)
+type ControlPane struct {
+	Enabled bool
+}
 
-		a.drawActionVerb("Walk to", 1, 0)
-		a.drawActionVerb("Pick up", 1, 1)
-		a.drawActionVerb("Talk to", 1, 2)
-		a.drawActionVerb("Give", 1, 3)
+// Draw renders the control panel in the viewport.
+func (p ControlPane) Draw(a *App) {
+	if p.Enabled {
+		p.drawActionVerb(a, "Open", 0, 0)
+		p.drawActionVerb(a, "Close", 0, 1)
+		p.drawActionVerb(a, "Push", 0, 2)
+		p.drawActionVerb(a, "Pull", 0, 3)
 
-		a.drawActionVerb("Use", 2, 0)
-		a.drawActionVerb("Look at", 2, 1)
-		a.drawActionVerb("Turn on", 2, 2)
-		a.drawActionVerb("Turn off", 2, 3)
+		p.drawActionVerb(a, "Walk to", 1, 0)
+		p.drawActionVerb(a, "Pick up", 1, 1)
+		p.drawActionVerb(a, "Talk to", 1, 2)
+		p.drawActionVerb(a, "Give", 1, 3)
 
-		a.drawFullAction("Walk to") // TODO: do not hardcode this
+		p.drawActionVerb(a, "Use", 2, 0)
+		p.drawActionVerb(a, "Look at", 2, 1)
+		p.drawActionVerb(a, "Turn on", 2, 2)
+		p.drawActionVerb(a, "Turn off", 2, 3)
+
+		p.drawFullAction(a, "Walk to") // TODO: do not hardcode this
 	}
 }
 
-func (a *App) drawActionVerb(verb string, col, row int) {
+func (p ControlPane) drawActionVerb(a *App, verb string, col, row int) {
 	x := 2 + col*ScreenWidth/6
 	y := ViewportHeight + (row+1)*FontDefaultSize
 	w := ScreenWidth / 6
@@ -45,12 +50,12 @@ func (a *App) drawActionVerb(verb string, col, row int) {
 	DrawDefaultText(verb, NewPos(x, y), AlignLeft, color)
 }
 
-func (a *App) drawFullAction(action string) {
+func (p ControlPane) drawFullAction(a *App, action string) {
 	pos := NewPos(ScreenWidth/2, ViewportHeight)
 	DrawDefaultText(action, pos, AlignCenter, ControlActionColor)
 }
 
-func (a *App) processControlInputs() {
+func (p ControlPane) processControlInputs(a *App) {
 	if a.ego != nil && rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
 		mouseClick := a.MousePosition()
 		if SceneViewport.Contains(mouseClick) {
@@ -69,6 +74,6 @@ type EnableControlPanel struct {
 }
 
 func (cmd EnableControlPanel) Execute(app *App, done *Promise) {
-	app.controlPanelEnabled = cmd.Enable
+	app.control.Enabled = cmd.Enable
 	done.Complete()
 }

@@ -12,6 +12,7 @@ type App struct {
 	screenCaption string
 	screenZoom    int32
 
+	control  ControlPane
 	rooms    map[string]*Room
 	room     *Room
 	dialogs  []Dialog
@@ -19,13 +20,12 @@ type App struct {
 	scripts  map[ResourceRef]*Script
 	commands commandQueue
 
-	cam                 rl.Camera2D
-	cursorTx            rl.Texture2D
-	cursorColor         Color
-	music               *Music
-	sound               *Sound
-	ego                 *Actor
-	controlPanelEnabled bool
+	cam         rl.Camera2D
+	cursorTx    rl.Texture2D
+	cursorColor Color
+	music       *Music
+	sound       *Sound
+	ego         *Actor
 }
 
 // New creates a new pctk application.

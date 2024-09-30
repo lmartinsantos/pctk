@@ -18,11 +18,11 @@ func (a *App) run() {
 	rl.ClearBackground(rl.Black)
 	rl.BeginMode2D(a.cam)
 	a.drawViewport()
-	a.drawControlPanel()
+	a.control.Draw(a)
 	a.drawDialogs()
 	a.drawMouseCursor()
 	rl.EndMode2D()
 	rl.EndDrawing()
-	a.processControlInputs()
+	a.control.processControlInputs(a)
 	a.commands.execute(a)
 }
