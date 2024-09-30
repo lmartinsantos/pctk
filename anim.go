@@ -23,28 +23,13 @@ func NewAnimation() *Animation {
 	return &Animation{}
 }
 
-// NewAnimationEx creates a new animation with a sequence of frames. This constructor assumes
-// the spritesheet is a single row of frames. The index is the column of the first frame and
-// frames is the number of frames in the animation. The delay is the time to wait before moving
-// to the next frame.
-func NewAnimationEx(index, frames int, delay time.Duration) *Animation {
-	a := NewAnimation()
-	for i := 0; i < frames; i++ {
-		a.frames = append(a.frames, animationFrame{
-			row:   0,
-			col:   uint(index + i),
-			delay: delay,
-		})
-	}
-	return a
-}
-
-// WithFrames adds a sequence of frames to the animation. The frames are located at the row-th
-// row and the indicated cols of the sprite sheet. The delay is the time to wait before moving to
-// the next frame.
-func (a *Animation) WithFrames(row uint, delay time.Duration, cols ...uint) *Animation {
-	for _, col := range cols {
-		a.frames = append(a.frames, animationFrame{col, row, delay})
+// AddFrames adds a sequence of frames to the animation. The frames are located at the row-th row
+// of the sprite sheet. The delay is the time to wait before moving to the next frame. The sequence
+// is the columns of the sheet row that will be repeated in the animation in the order they are
+// given.
+func (a *Animation) AddFrames(delay time.Duration, row int, sequence ...int) *Animation {
+	for _, col := range sequence {
+		a.frames = append(a.frames, animationFrame{uint(col), uint(row), delay})
 	}
 	return a
 }

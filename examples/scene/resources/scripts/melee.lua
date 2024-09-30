@@ -12,7 +12,9 @@ melee = room {
             usepos = {x=290, y=190},
             states = {
                 default = {
-                    anim = { index = 0, frames = 0, delay = 0 },
+                    anim = { 
+                        { row = 0, delay = 0, seq = {0} }
+                    }
                 },
                 pickup = {}
             }

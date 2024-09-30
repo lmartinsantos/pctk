@@ -381,13 +381,19 @@ func luaCheckResourceRef(l *lua.State, index int) ResourceRef {
 	return ref
 }
 
-func luaCheckAnimation(l *lua.State, index int) *Animation {
+func luaCheckAnimation(l *lua.State, index int) (anim *Animation) {
 	tab := withLuaTableAtIndex(l, index)
-	return NewAnimationEx(
-		tab.GetInteger("index"),
-		tab.GetInteger("frames"),
-		tab.GetDuration("delay"),
-	)
+
+	anim = NewAnimation()
+	tab.ForEach(func(key int, value int) {
+		frame := withLuaTableAtIndex(l, value)
+		anim.AddFrames(
+			frame.GetDuration("delay"),
+			frame.GetInteger("row"),
+			frame.GetIntegers("seq")...,
+		)
+	})
+	return anim
 }
 
 func luaPushColor(l *lua.State, c Color) {
@@ -492,6 +498,16 @@ func (t luaTableUtils) GetInteger(key string) (val int) {
 func (t luaTableUtils) GetIntegerOpt(key string, def int) (val int) {
 	val = def
 	t.getFieldOpt(key, lua.TypeNumber, func() { val = lua.CheckInteger(t.l, -1) })
+	return
+}
+
+func (t luaTableUtils) GetIntegers(key string) (val []int) {
+	t.getField(key, lua.TypeTable, func() {
+		tab := withLuaTableAtIndex(t.l, -1)
+		tab.ForEach(func(_, value int) {
+			val = append(val, lua.CheckInteger(t.l, value))
+		})
+	})
 	return
 }
 
