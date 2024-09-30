@@ -45,12 +45,12 @@ func (q *commandQueue) push(c Command) Future {
 
 func (q *commandQueue) execute(a *App) {
 	q.mutex.Lock()
-	defer q.mutex.Unlock()
-
 	commands := q.commands
 	promises := q.promises
 	q.commands = nil
 	q.promises = nil
+	q.mutex.Unlock()
+
 	for i, c := range commands {
 		c.Execute(a, promises[i])
 	}

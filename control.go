@@ -10,34 +10,55 @@ var (
 	ControlActionColor    = Cyan
 )
 
+// ControlPane is the screen control pane that shows the action, verbs and inventory.
 type ControlPane struct {
 	Enabled bool
-	action  string
+
+	actionVerb Verb
+	actionArg1 RoomItem
 }
+
+// Verb is a type that represents the action verb.
+type Verb string
+
+const (
+	VerbOpen    Verb = "Open"
+	VerbClose   Verb = "Close"
+	VerbPush    Verb = "Push"
+	VerbPull    Verb = "Pull"
+	VerbWalkTo  Verb = "Walk to"
+	VerbPickUp  Verb = "Pick up"
+	VerbTalkTo  Verb = "Talk to"
+	VerbGive    Verb = "Give"
+	VerbUse     Verb = "Use"
+	VerbLookAt  Verb = "Look at"
+	VerbTurnOn  Verb = "Turn on"
+	VerbTurnOff Verb = "Turn off"
+)
 
 // Draw renders the control panel in the viewport.
 func (p *ControlPane) Draw(a *App) {
 	if p.Enabled {
-		p.drawActionVerb(a, "Open", 0, 0)
-		p.drawActionVerb(a, "Close", 0, 1)
-		p.drawActionVerb(a, "Push", 0, 2)
-		p.drawActionVerb(a, "Pull", 0, 3)
+		p.drawActionVerb(a, VerbOpen, 0, 0)
+		p.drawActionVerb(a, VerbClose, 0, 1)
+		p.drawActionVerb(a, VerbPush, 0, 2)
+		p.drawActionVerb(a, VerbPull, 0, 3)
 
-		p.drawActionVerb(a, "Walk to", 1, 0)
-		p.drawActionVerb(a, "Pick up", 1, 1)
-		p.drawActionVerb(a, "Talk to", 1, 2)
-		p.drawActionVerb(a, "Give", 1, 3)
+		p.drawActionVerb(a, VerbWalkTo, 1, 0)
+		p.drawActionVerb(a, VerbPickUp, 1, 1)
+		p.drawActionVerb(a, VerbTalkTo, 1, 2)
+		p.drawActionVerb(a, VerbGive, 1, 3)
 
-		p.drawActionVerb(a, "Use", 2, 0)
-		p.drawActionVerb(a, "Look at", 2, 1)
-		p.drawActionVerb(a, "Turn on", 2, 2)
-		p.drawActionVerb(a, "Turn off", 2, 3)
+		p.drawActionVerb(a, VerbUse, 2, 0)
+		p.drawActionVerb(a, VerbLookAt, 2, 1)
+		p.drawActionVerb(a, VerbTurnOn, 2, 2)
+		p.drawActionVerb(a, VerbTurnOff, 2, 3)
 
 		p.drawActionLine(a)
 	}
 }
 
-func (p *ControlPane) drawActionVerb(a *App, verb string, col, row int) {
+func (p *ControlPane) drawActionVerb(a *App, verb Verb, col, row int) {
 	x := 2 + col*ScreenWidth/6
 	y := ViewportHeight + (row+1)*FontDefaultSize
 	w := ScreenWidth / 6
@@ -48,19 +69,19 @@ func (p *ControlPane) drawActionVerb(a *App, verb string, col, row int) {
 		color = ControlVerbHoverColor
 	}
 
-	DrawDefaultText(verb, NewPos(x, y), AlignLeft, color)
+	DrawDefaultText(string(verb), NewPos(x, y), AlignLeft, color)
 }
 
 func (p *ControlPane) drawActionLine(a *App) {
-	if p.action == "" {
-		p.action = "Walk to"
+	if p.actionVerb == "" {
+		p.actionVerb = VerbWalkTo
 	}
 	pos := NewPos(ScreenWidth/2, ViewportHeight)
-	action := p.action
+	action := string(p.actionVerb)
 	if room := a.room; room != nil {
 		item := room.ItemAt(a.MousePosition())
 		if item != nil {
-			action = p.action + " " + item.Name()
+			action = action + " " + item.Name()
 		}
 	}
 
@@ -71,13 +92,35 @@ func (p *ControlPane) processControlInputs(a *App) {
 	if a.ego != nil && rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
 		mouseClick := a.MousePosition()
 		if ViewportRect.Contains(mouseClick) {
-			// TODO missing check action / control selected
+			p.processViewportClick(a, mouseClick)
+		}
+	}
+}
+
+func (p *ControlPane) processViewportClick(a *App, click Position) {
+	if p.actionVerb == "" {
+		p.actionVerb = VerbWalkTo
+	}
+	if room := a.room; room != nil {
+		p.actionArg1 = room.ItemAt(click)
+	}
+	switch p.actionVerb {
+	case VerbWalkTo:
+		if p.actionArg1 != nil {
+			// TODO: the item might be an actor
+			a.Do(ActorWalkToObject{
+				ActorID:  a.ego.name,
+				ObjectID: p.actionArg1.Name(),
+			})
+		} else {
 			a.Do(ActorWalkToPosition{
 				ActorID:  a.ego.name,
-				Position: NewPos(mouseClick.X, mouseClick.Y),
+				Position: NewPos(click.X, click.Y),
 			})
 		}
 	}
+	p.actionArg1 = nil
+	p.actionVerb = VerbWalkTo
 }
 
 // EnableControlPanel is a command that will enable or disable the control panel.

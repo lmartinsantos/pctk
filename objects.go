@@ -46,6 +46,11 @@ func (o *Object) Position() Position {
 	return o.pos
 }
 
+// UsePos returns the position where actors interact with the object.
+func (o *Object) UsePos() (Position, Direction) {
+	return o.usePos, o.useDir
+}
+
 // ObjectState represents a state of an object.
 type ObjectState struct {
 	Anim *Animation // The animation while in this state.

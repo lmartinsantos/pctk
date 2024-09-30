@@ -71,6 +71,16 @@ func (r *Room) ItemAt(pos Position) RoomItem {
 	return nil
 }
 
+// ObjectByID returns the object with the given ID, or nil if not found.
+func (r *Room) ObjectByID(id string) *Object {
+	for _, obj := range r.objects {
+		if obj.name == id {
+			return obj
+		}
+	}
+	return nil
+}
+
 // PutActor puts an actor in the room.
 func (r *Room) PutActor(actor *Actor) {
 	actor.room = r

@@ -8,8 +8,8 @@ melee = room {
             sprites = "resources:sprites/objects",
             pos = {x=260, y=120},
             hotspot = {x=250, y=100, w=20, h=20},
-            usedir = left,
-            usepos = {x=290, y=130},
+            usedir = right,
+            usepos = {x=240, y=120},
             states = {
                 default = {
                     anim = { 

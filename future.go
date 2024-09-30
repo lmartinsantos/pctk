@@ -45,6 +45,14 @@ func (f *Promise) CompleteAfter(v any, d time.Duration) {
 	})
 }
 
+// CompleteWhen completes the future when the other future is completed.
+func (f *Promise) CompleteWhen(other Future) {
+	go func() {
+		v := other.Wait()
+		f.CompleteWithValue(v)
+	}()
+}
+
 // Wait waits for the future to be completed.
 func (f *Promise) Wait() any {
 	<-f.done
@@ -72,6 +80,18 @@ func WithDelay(f Future, d time.Duration) Future {
 		time.AfterFunc(d, func() {
 			done.CompleteWithValue(v)
 		})
+	}()
+	return done
+}
+
+// Sequence returns a future that will be completed after all the given futures are completed.
+func Sequence(futures ...func() Future) Future {
+	done := NewPromise()
+	go func() {
+		for _, f := range futures {
+			f().Wait()
+		}
+		done.Complete()
 	}()
 	return done
 }

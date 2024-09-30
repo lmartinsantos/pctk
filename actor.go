@@ -167,6 +167,37 @@ func (cmd ActorWalkToPosition) Execute(app *App, done *Promise) {
 	})
 }
 
+// ActorWalkToObject is a command that will make an actor walk to an object.
+type ActorWalkToObject struct {
+	ActorID  string
+	ObjectID string
+}
+
+func (cmd ActorWalkToObject) Execute(app *App, done *Promise) {
+	app.withActor(cmd.ActorID, func(a *Actor) {
+		obj := app.room.ObjectByID(cmd.ObjectID)
+		if obj == nil {
+			done.Complete()
+			return
+		}
+		pos, dir := obj.UsePos()
+		done.CompleteWhen(Sequence(
+			func() Future {
+				return app.Do(ActorWalkToPosition{
+					ActorID:  a.name,
+					Position: pos,
+				})
+			},
+			func() Future {
+				return app.Do(ActorStand{
+					ActorID:   a.name,
+					Direction: dir,
+				})
+			},
+		))
+	})
+}
+
 // ActorSpeak is a command that will make an actor speak the given text.
 type ActorSpeak struct {
 	ActorID string
