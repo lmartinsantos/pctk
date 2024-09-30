@@ -66,14 +66,124 @@ func (v VerbSlot) Rect() Rectangle {
 	return NewRect(x, y, w, h)
 }
 
+// ActionSentence is a sentence that represents the action the player is doing.
+type ActionSentence struct {
+	verb Verb
+	args [2]RoomItem
+	fut  Future
+}
+
+// Draw renders the action sentence in the control pane.
+func (s *ActionSentence) Draw(app *App) {
+	pos := NewPos(ScreenWidth/2, ViewportHeight)
+	action := string(s.verb)
+	color := ControlActionColor
+	if s.fut != nil {
+		// Ongoing action.
+		if s.args[0] != nil {
+			action = action + " " + s.args[0].Name()
+		}
+		color = ControlActionOngoingColor
+	} else {
+		if room := app.room; room != nil {
+			item := room.ItemAt(app.MousePosition())
+			if item != nil {
+				action = action + " " + item.Name()
+			}
+		}
+	}
+	DrawDefaultText(action, pos, AlignCenter, color)
+}
+
+// ProcessLeftClick processes a left click in the control pane.
+func (s *ActionSentence) ProcessLeftClick(app *App, click Position, item RoomItem) {
+	if item == nil {
+		if s.verb == VerbWalkTo || s.fut != nil {
+			s.walkToPos(app, click)
+		}
+		return
+	} else if s.args[0] != nil {
+		// TODO: handle the second argument
+		s.Reset(VerbWalkTo)
+		return
+	}
+
+	switch s.verb {
+	case VerbWalkTo:
+		s.walkToItem(app, item)
+	case VerbLookAt:
+		s.lookAtItem(app, item)
+	default:
+		s.Reset(VerbWalkTo)
+	}
+}
+
+// ProcessRightClick processes a right click in the control pane.
+func (s *ActionSentence) ProcessRightClick(app *App, click Position, item RoomItem) {
+	if item != nil {
+		// Execute quick action
+		if item.Class().Is(ObjectClassPerson) {
+			// TODO: do a talk to action
+		} else if item.Class().Is(ObjectClassOpenable) {
+			// TODO: do a open action
+		} else if item.Class().Is(ObjectClassPickable) {
+			// TODO: do a pick up action
+		} else {
+			s.lookAtItem(app, item)
+		}
+		return
+	}
+	// No item there. Only respond if current verb is walk to.
+	if s.verb == VerbWalkTo {
+		s.walkToPos(app, click)
+	}
+}
+
+func (s *ActionSentence) lookAtItem(app *App, item RoomItem) {
+	s.verb = VerbLookAt
+	s.args[0] = item
+	s.fut = app.Do(ActorLookAtObject{
+		ActorID:  app.ego.name,
+		ObjectID: item.Name(),
+	}).AndThen(func(_ any) Future {
+		return app.Do(SyncCommandFunc(func(app *App) { s.Reset(VerbWalkTo) }))
+	})
+}
+
+func (s *ActionSentence) walkToItem(app *App, item RoomItem) {
+	// TODO: the item might be an actor
+	s.verb = VerbWalkTo
+	s.args[0] = item
+	s.fut = app.Do(ActorWalkToObject{
+		ActorID:  app.ego.name,
+		ObjectID: s.args[0].Name(),
+	}).AndThen(func(_ any) Future {
+		return app.Do(SyncCommandFunc(func(app *App) { s.Reset(VerbWalkTo) }))
+	})
+}
+
+func (s *ActionSentence) walkToPos(app *App, click Position) {
+	app.Do(ActorWalkToPosition{
+		ActorID:  app.ego.name,
+		Position: click,
+	})
+	s.Reset(VerbWalkTo)
+}
+
+// Reset resets the action sentence to the given verb.
+func (s *ActionSentence) Reset(verb Verb) {
+	s.verb = verb
+	s.args[0] = nil
+	s.args[1] = nil
+	s.fut = nil
+}
+
 // ControlPane is the screen control pane that shows the action, verbs and inventory.
 type ControlPane struct {
 	Enabled bool
 
-	verbs        []VerbSlot
-	actionVerb   Verb
-	actionArg1   RoomItem
-	actionFuture Future
+	verbs  []VerbSlot
+	action ActionSentence
 }
 
 // Init initializes the control pane.
@@ -95,150 +205,43 @@ func (p *ControlPane) Init() {
 		{Verb: VerbTurnOn, Row: 2, Col: 2},
 		{Verb: VerbTurnOff, Row: 3, Col: 2},
 	}
+	p.action.Reset(VerbWalkTo)
 }
 
 // Draw renders the control panel in the viewport.
-func (p *ControlPane) Draw(a *App) {
+func (p *ControlPane) Draw(app *App) {
 	if p.Enabled {
 		for _, v := range p.verbs {
-			v.Draw(a)
+			v.Draw(app)
 		}
-		p.drawActionLine(a)
+		p.action.Draw(app)
 	}
 }
 
-func (p *ControlPane) drawActionLine(a *App) {
-	pos := NewPos(ScreenWidth/2, ViewportHeight)
-	if p.actionVerb == "" {
-		p.actionVerb = VerbWalkTo
-	}
-	action := string(p.actionVerb)
-	color := ControlActionColor
-	if p.actionFuture != nil {
-		// Ongoing action.
-		if p.actionArg1 != nil {
-			action = action + " " + p.actionArg1.Name()
-		}
-		color = ControlActionOngoingColor
-	} else {
-		if room := a.room; room != nil {
-			item := room.ItemAt(a.MousePosition())
-			if item != nil {
-				action = action + " " + item.Name()
-			}
-		}
-	}
-
-	DrawDefaultText(action, pos, AlignCenter, color)
-}
-
-func (p *ControlPane) processControlInputs(a *App) {
-	if a.ego == nil {
+func (p *ControlPane) processControlInputs(app *App) {
+	if app.ego == nil {
 		return
 	}
-	pos := a.MousePosition()
+	pos := app.MousePosition()
+	item := app.room.ItemAt(pos)
 	if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
 		if ViewportRect.Contains(pos) {
-			p.processViewportLeftClick(a, pos)
+			p.action.ProcessLeftClick(app, pos, item)
 		}
 		if ControlPaneRect.Contains(pos) {
-			p.processControlPaneClick(a, pos)
+			p.processControlPaneClick(app, pos)
 		}
 	} else if rl.IsMouseButtonPressed(rl.MouseButtonRight) {
 		if ViewportRect.Contains(pos) {
-			p.processViewportRightClick(a, pos)
+			p.action.ProcessRightClick(app, pos, item)
 		}
 	}
-}
-
-func (p *ControlPane) processViewportLeftClick(app *App, click Position) {
-	if app.room == nil || app.ego == nil {
-		return
-	}
-	if p.actionVerb == "" {
-		p.actionVerb = VerbWalkTo
-	}
-
-	if item := app.room.ItemAt(click); item == nil {
-		if p.actionVerb == VerbWalkTo || p.actionFuture != nil {
-			app.Do(ActorWalkToPosition{
-				ActorID:  app.ego.name,
-				Position: click,
-			})
-			p.actionVerb = VerbWalkTo
-			p.actionArg1 = nil
-			p.actionFuture = nil
-		}
-
-		return
-	} else {
-		p.actionArg1 = item
-	}
-
-	switch p.actionVerb {
-	case VerbWalkTo:
-		// TODO: the item might be an actor
-		p.actionFuture = app.Do(ActorWalkToObject{
-			ActorID:  app.ego.name,
-			ObjectID: p.actionArg1.Name(),
-		})
-		return
-	case VerbLookAt:
-		p.actionFuture = app.Do(ActorLookAtObject{
-			ActorID:  app.ego.name,
-			ObjectID: p.actionArg1.Name(),
-		}).AndThen(func(_ any) Future {
-			return app.Do(SyncCommandFunc(func(app *App) {
-				p.actionVerb = VerbWalkTo
-				p.actionArg1 = nil
-				p.actionFuture = nil
-			}))
-		})
-	default:
-		p.actionVerb = VerbWalkTo
-		p.actionArg1 = nil
-		p.actionFuture = nil
-	}
-}
-
-func (p *ControlPane) processViewportRightClick(a *App, click Position) {
-	if a.room == nil || a.ego == nil {
-		return
-	}
-	if p.actionVerb == "" || p.actionVerb == VerbWalkTo {
-		if item := a.room.ItemAt(click); item != nil {
-			if item.Class().Is(ObjectClassPerson) {
-				// TODO: do a talk to action
-			} else if item.Class().Is(ObjectClassOpenable) {
-				// TODO: do a open action
-			} else if item.Class().Is(ObjectClassPickable) {
-				// TODO: do a pick up action
-			} else {
-				p.actionVerb = VerbLookAt
-				p.actionArg1 = item
-				p.actionFuture = a.Do(ActorLookAtObject{
-					ActorID:  a.ego.name,
-					ObjectID: item.Name(),
-				}).AndThen(func(_ any) Future {
-					return a.Do(SyncCommandFunc(func(app *App) {
-						p.actionVerb = VerbWalkTo
-						p.actionArg1 = nil
-						p.actionFuture = nil
-					}))
-				})
-				return
-			}
-		}
-	}
-	p.actionVerb = VerbWalkTo
-	p.actionArg1 = nil
-	p.actionFuture = nil
 }
 
 func (p *ControlPane) processControlPaneClick(_ *App, click Position) {
 	for _, v := range p.verbs {
 		if v.Rect().Contains(click) {
-			p.actionVerb = v.Verb
+			p.action.Reset(v.Verb)
 			return
 		}
 	}
