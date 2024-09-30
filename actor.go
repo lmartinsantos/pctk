@@ -18,7 +18,7 @@ var (
 )
 
 type Actor struct {
-	act     action
+	act     *Action
 	costume *Costume
 	elev    int
 	ego     bool
@@ -39,18 +39,36 @@ func NewActor(name string) *Actor {
 	}
 }
 
+// CancelAction cancels the current action of the actor.
+func (a *Actor) CancelAction() {
+	if a.act != nil {
+		a.act.Cancel()
+	}
+	a.act = nil
+}
+
 // Class returns the class of the actor.
 func (a *Actor) Class() ObjectClass {
 	return ObjectClassPerson
 }
 
+// Do executes the action in the actor.
+func (a *Actor) Do(action *Action) Future {
+	if a.act != nil {
+		a.act.Cancel()
+	}
+	a.act = action
+	return a.act.Done()
+}
+
 // Draw renders the actor in the viewport.
 func (a *Actor) Draw() {
 	if a.act == nil {
-		a.stand(a.lookAt)
+		a.act = Standing(a.lookAt)
 	}
-	if a.act() {
-		a.stand(a.lookAt)
+
+	if a.act.RunFrame(a) {
+		a.act = nil
 	}
 }
 
@@ -88,18 +106,74 @@ func (a *Actor) dialogPos() Position {
 	return a.pos.ToPos().Above(a.size.H + 40)
 }
 
-func (a *Actor) stand(dir Direction) *Actor {
-	a.lookAt = dir
-	a.act = func() (completed bool) {
-		if cos := a.costume; cos != nil {
-			cos.draw(CostumeIdle(dir), a.costumePos())
-		}
-		return false
-	}
-	return a
+// Action is an action that an actor is performing.
+type Action struct {
+	prom *Promise
+	f    func(*Actor, *Promise)
 }
 
-type action func() (completed bool)
+// Standing creates a new action that makes an actor stand in the given direction.
+func Standing(dir Direction) *Action {
+	return &Action{
+		prom: NewPromise(),
+		f: func(a *Actor, done *Promise) {
+			if cos := a.costume; cos != nil {
+				cos.draw(CostumeIdle(dir), a.costumePos())
+			}
+		},
+	}
+}
+
+// WalkingTo creates a new action that makes an actor walk to a given position.
+func WalkingTo(pos Position) *Action {
+	return &Action{
+		prom: NewPromise(),
+		f: func(a *Actor, done *Promise) {
+			if cos := a.costume; cos != nil {
+				cos.draw(CostumeWalk(a.lookAt), a.costumePos())
+			}
+
+			if a.pos.ToPos() == pos {
+				done.Complete()
+				return
+			}
+
+			a.lookAt = a.pos.ToPos().DirectionTo(pos)
+			a.pos = a.pos.Move(pos.ToPosf(), a.speed.Scale(rl.GetFrameTime()))
+		},
+	}
+}
+
+// SpeakingTo creates a new action that makes an actor speak to a dialog.
+func SpeakingTo(dialog Future) *Action {
+	return &Action{
+		prom: NewPromise(),
+		f: func(a *Actor, done *Promise) {
+			if cos := a.costume; cos != nil {
+				cos.draw(CostumeSpeak(a.lookAt), a.costumePos())
+			}
+			if dialog.IsCompleted() {
+				done.Complete()
+			}
+		},
+	}
+}
+
+// Cancel cancels the action.
+func (a *Action) Cancel() {
+	a.prom.Break()
+}
+
+// Done returns a future that will be completed when the action is done.
+func (a *Action) Done() Future {
+	return a.prom
+}
+
+// RunFrame runs a frame of the action.
+func (a *Action) RunFrame(actor *Actor) (completed bool) {
+	a.f(actor, a.prom)
+	return a.prom.IsCompleted()
+}
 
 // ActorShow is a command that will show an actor in the room at the given position.
 type ActorShow struct {
@@ -113,7 +187,7 @@ func (cmd ActorShow) Execute(app *App, done *Promise) {
 	actor := app.ensureActor(cmd.ActorID)
 	app.room.PutActor(actor)
 	actor.pos = cmd.Position.ToPosf()
-	actor.stand(cmd.LookAt)
+	actor.Do(Standing(cmd.LookAt))
 	if cmd.CostumeResource != ResourceRefNull {
 		actor.SetCostume(app.res.LoadCostume(cmd.CostumeResource))
 	}
@@ -129,7 +203,7 @@ type ActorLookAtPos struct {
 
 func (cmd ActorLookAtPos) Execute(app *App, done *Promise) {
 	app.withActor(cmd.ActorName, func(a *Actor) {
-		a.stand(a.pos.ToPos().DirectionTo(cmd.Position))
+		done.CompleteWhen(a.Do(Standing(a.pos.ToPos().DirectionTo(cmd.Position))))
 	})
 	done.Complete()
 }
@@ -142,7 +216,7 @@ type ActorStand struct {
 
 func (cmd ActorStand) Execute(app *App, done *Promise) {
 	app.withActor(cmd.ActorID, func(a *Actor) {
-		a.stand(cmd.Direction)
+		a.Do(Standing(cmd.Direction))
 	})
 	done.Complete()
 }
@@ -154,21 +228,8 @@ type ActorWalkToPosition struct {
 }
 
 func (cmd ActorWalkToPosition) Execute(app *App, done *Promise) {
-	app.withActor(cmd.ActorID, func(a *Actor) {
-		a.act = func() (completed bool) {
-			if cos := a.costume; cos != nil {
-				cos.draw(CostumeWalk(a.lookAt), a.costumePos())
-			}
-
-			if a.pos.ToPos() == cmd.Position {
-				done.Complete()
-				return true
-			}
-
-			a.lookAt = a.pos.ToPos().DirectionTo(cmd.Position)
-			a.pos = a.pos.Move(cmd.Position.ToPosf(), a.speed.Scale(rl.GetFrameTime()))
-			return false
-		}
+	app.withActor(cmd.ActorID, func(actor *Actor) {
+		done.CompleteWhen(actor.Do(WalkingTo(cmd.Position)))
 	})
 }
 
@@ -186,20 +247,15 @@ func (cmd ActorWalkToObject) Execute(app *App, done *Promise) {
 			return
 		}
 		pos, dir := obj.UsePos()
-		done.CompleteWhen(Sequence(
-			func() Future {
-				return app.Do(ActorWalkToPosition{
-					ActorID:  a.name,
-					Position: pos,
-				})
-			},
-			func() Future {
-				return app.Do(ActorStand{
-					ActorID:   a.name,
-					Direction: dir,
-				})
-			},
-		))
+		done.CompleteWhen(app.Do(ActorWalkToPosition{
+			ActorID:  a.name,
+			Position: pos,
+		}).AndThen(func(_ any) Future {
+			return app.Do(ActorStand{
+				ActorID:   a.name,
+				Direction: dir,
+			})
+		}))
 	})
 }
 
@@ -216,17 +272,12 @@ func (cmd ActorLookAtObject) Execute(app *App, done *Promise) {
 			done.Complete()
 			return
 		}
-		done.CompleteWhen(Sequence(
-			func() Future {
-				return app.Do(ActorWalkToObject{
-					ActorID:  a.name,
-					ObjectID: obj.name,
-				})
-			},
-			func() Future {
-				return a.room.script.call(app.room.id, "objects", obj.name, "lookat")
-			},
-		))
+		done.CompleteWhen(app.Do(ActorWalkToObject{
+			ActorID:  a.name,
+			ObjectID: obj.name,
+		}).AndThen(func(_ any) Future {
+			return a.room.script.call(app.room.id, "objects", obj.name, "lookat")
+		}))
 	})
 }
 
@@ -254,16 +305,7 @@ func (cmd ActorSpeak) Execute(app *App, done *Promise) {
 			Color:    cmd.Color,
 			Speed:    1.0,
 		})
-		a.act = func() (completed bool) {
-			if cos := a.costume; cos != nil {
-				cos.draw(CostumeSpeak(a.lookAt), a.costumePos())
-			}
-			if dialogDone.IsCompleted() {
-				done.CompleteAfter(nil, cmd.Delay)
-				return true
-			}
-			return false
-		}
+		done.CompleteWhen(a.Do(SpeakingTo(dialogDone)))
 	})
 }
 

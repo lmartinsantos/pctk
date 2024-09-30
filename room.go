@@ -59,6 +59,9 @@ func (r *Room) Draw() {
 
 // ItemAt returns the item at the given position in the room.
 func (r *Room) ItemAt(pos Position) RoomItem {
+	if r == nil {
+		return nil
+	}
 	for _, actor := range r.actors {
 		if !actor.IsEgo() && actor.Hotspot().Contains(pos) {
 			return actor

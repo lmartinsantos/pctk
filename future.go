@@ -1,6 +1,14 @@
 package pctk
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+var (
+	// PromiseBroken is an error that indicates that the promise is broken.
+	PromiseBroken = errors.New("broken promise")
+)
 
 // Future is a value that will be available in the future.
 type Future interface {
@@ -9,6 +17,9 @@ type Future interface {
 
 	// IsCompleted returns true if the future is completed.
 	IsCompleted() bool
+
+	// AndThen returns a future that is chained to this future.
+	AndThen(func(any) Future) Future
 }
 
 // Promise is an instant when some event will be produced.
@@ -32,6 +43,11 @@ func (f *Promise) Complete() {
 func (f *Promise) CompleteWithValue(v any) {
 	f.result = v
 	close(f.done)
+}
+
+// Break breaks the promise. This will complete the future with a PromiseBroken error as value.
+func (f *Promise) Break() {
+	f.CompleteWithValue(PromiseBroken)
 }
 
 // CompleteAfter completes the future after the given duration.
@@ -69,6 +85,20 @@ func (f *Promise) IsCompleted() bool {
 	}
 }
 
+// AndThen returns a future that is chained to this future.
+func (f *Promise) AndThen(g func(any) Future) Future {
+	done := NewPromise()
+	go func() {
+		v := f.Wait()
+		if v == PromiseBroken {
+			done.Break()
+			return
+		}
+		done.CompleteWhen(g(v))
+	}()
+	return done
+}
+
 // WithDelay returns a future that will be completed the given duration after f is completed.
 func WithDelay(f Future, d time.Duration) Future {
 	if d == 0 {
@@ -80,18 +110,6 @@ func WithDelay(f Future, d time.Duration) Future {
 		time.AfterFunc(d, func() {
 			done.CompleteWithValue(v)
 		})
-	}()
-	return done
-}
-
-// Sequence returns a future that will be completed after all the given futures are completed.
-func Sequence(futures ...func() Future) Future {
-	done := NewPromise()
-	go func() {
-		for _, f := range futures {
-			f().Wait()
-		}
-		done.Complete()
 	}()
 	return done
 }

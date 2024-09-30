@@ -5,9 +5,10 @@ import (
 )
 
 var (
-	ControlVerbColor      = Green
-	ControlVerbHoverColor = BrigthGreen
-	ControlActionColor    = Cyan
+	ControlVerbColor          = Green
+	ControlVerbHoverColor     = BrigthGreen
+	ControlActionColor        = Cyan
+	ControlActionOngoingColor = BrigthCyan
 )
 
 // Verb is a type that represents the action verb.
@@ -69,9 +70,10 @@ func (v VerbSlot) Rect() Rectangle {
 type ControlPane struct {
 	Enabled bool
 
-	verbs      []VerbSlot
-	actionVerb Verb
-	actionArg1 RoomItem
+	verbs        []VerbSlot
+	actionVerb   Verb
+	actionArg1   RoomItem
+	actionFuture Future
 }
 
 // Init initializes the control pane.
@@ -106,19 +108,28 @@ func (p *ControlPane) Draw(a *App) {
 }
 
 func (p *ControlPane) drawActionLine(a *App) {
+	pos := NewPos(ScreenWidth/2, ViewportHeight)
 	if p.actionVerb == "" {
 		p.actionVerb = VerbWalkTo
 	}
-	pos := NewPos(ScreenWidth/2, ViewportHeight)
 	action := string(p.actionVerb)
-	if room := a.room; room != nil {
-		item := room.ItemAt(a.MousePosition())
-		if item != nil {
-			action = action + " " + item.Name()
+	color := ControlActionColor
+	if p.actionFuture != nil {
+		// Ongoing action.
+		if p.actionArg1 != nil {
+			action = action + " " + p.actionArg1.Name()
+		}
+		color = ControlActionOngoingColor
+	} else {
+		if room := a.room; room != nil {
+			item := room.ItemAt(a.MousePosition())
+			if item != nil {
+				action = action + " " + item.Name()
+			}
 		}
 	}
 
-	DrawDefaultText(action, pos, AlignCenter, ControlActionColor)
+	DrawDefaultText(action, pos, AlignCenter, color)
 }
 
 func (p *ControlPane) processControlInputs(a *App) {
@@ -140,39 +151,54 @@ func (p *ControlPane) processControlInputs(a *App) {
 	}
 }
 
-func (p *ControlPane) processViewportLeftClick(a *App, click Position) {
-	if a.room == nil || a.ego == nil {
+func (p *ControlPane) processViewportLeftClick(app *App, click Position) {
+	if app.room == nil || app.ego == nil {
 		return
 	}
 	if p.actionVerb == "" {
 		p.actionVerb = VerbWalkTo
 	}
-	p.actionArg1 = a.room.ItemAt(click)
+
+	if item := app.room.ItemAt(click); item == nil {
+		if p.actionVerb == VerbWalkTo || p.actionFuture != nil {
+			app.Do(ActorWalkToPosition{
+				ActorID:  app.ego.name,
+				Position: click,
+			})
+			p.actionVerb = VerbWalkTo
+			p.actionArg1 = nil
+			p.actionFuture = nil
+		}
+
+		return
+	} else {
+		p.actionArg1 = item
+	}
 
 	switch p.actionVerb {
 	case VerbWalkTo:
-		if p.actionArg1 != nil {
-			// TODO: the item might be an actor
-			a.Do(ActorWalkToObject{
-				ActorID:  a.ego.name,
-				ObjectID: p.actionArg1.Name(),
-			})
-		} else {
-			a.Do(ActorWalkToPosition{
-				ActorID:  a.ego.name,
-				Position: NewPos(click.X, click.Y),
-			})
-		}
+		// TODO: the item might be an actor
+		p.actionFuture = app.Do(ActorWalkToObject{
+			ActorID:  app.ego.name,
+			ObjectID: p.actionArg1.Name(),
+		})
+		return
 	case VerbLookAt:
-		if p.actionArg1 != nil {
-			a.Do(ActorLookAtObject{
-				ActorID:  a.ego.name,
-				ObjectID: p.actionArg1.Name(),
-			})
-		}
+		p.actionFuture = app.Do(ActorLookAtObject{
+			ActorID:  app.ego.name,
+			ObjectID: p.actionArg1.Name(),
+		}).AndThen(func(_ any) Future {
+			return app.Do(SyncCommandFunc(func(app *App) {
+				p.actionVerb = VerbWalkTo
+				p.actionArg1 = nil
+				p.actionFuture = nil
+			}))
+		})
+	default:
+		p.actionVerb = VerbWalkTo
+		p.actionArg1 = nil
+		p.actionFuture = nil
 	}
-	p.actionArg1 = nil
-	p.actionVerb = VerbWalkTo
 }
 
 func (p *ControlPane) processViewportRightClick(a *App, click Position) {
@@ -188,15 +214,25 @@ func (p *ControlPane) processViewportRightClick(a *App, click Position) {
 			} else if item.Class().Is(ObjectClassPickable) {
 				// TODO: do a pick up action
 			} else {
-				a.Do(ActorLookAtObject{
+				p.actionVerb = VerbLookAt
+				p.actionArg1 = item
+				p.actionFuture = a.Do(ActorLookAtObject{
 					ActorID:  a.ego.name,
 					ObjectID: item.Name(),
+				}).AndThen(func(_ any) Future {
+					return a.Do(SyncCommandFunc(func(app *App) {
+						p.actionVerb = VerbWalkTo
+						p.actionArg1 = nil
+						p.actionFuture = nil
+					}))
 				})
+				return
 			}
 		}
 	}
 	p.actionVerb = VerbWalkTo
 	p.actionArg1 = nil
+	p.actionFuture = nil
 }
 
 func (p *ControlPane) processControlPaneClick(_ *App, click Position) {

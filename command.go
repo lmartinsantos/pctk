@@ -9,6 +9,21 @@ type Command interface {
 	Execute(*App, *Promise)
 }
 
+// AsyncCommandFunc is an async function that can be used as a command.
+type AsyncCommandFunc func(*App, *Promise)
+
+func (f AsyncCommandFunc) Execute(a *App, done *Promise) {
+	f(a, done)
+}
+
+// SyncCommandFunc is a sync function that can be used as a command.
+type SyncCommandFunc func(*App)
+
+func (f SyncCommandFunc) Execute(a *App, done *Promise) {
+	f(a)
+	done.Complete()
+}
+
 // AppContext is an interface that defines the method to execute a command.
 type AppContext interface {
 	Do(Command) Future
