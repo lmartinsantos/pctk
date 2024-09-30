@@ -1,7 +1,6 @@
 package pctk
 
 import (
-	"slices"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -19,16 +18,15 @@ var (
 )
 
 type Actor struct {
-	name string
-
+	act     action
 	costume *Costume
-
-	lookAt Direction
-	pos    Positionf
-	size   Size
-	speed  Positionf
-	elev   int
-	act    action
+	elev    int
+	lookAt  Direction
+	name    string
+	pos     Positionf
+	room    *Room
+	size    Size
+	speed   Positionf
 }
 
 func NewActor(name string) *Actor {
@@ -38,6 +36,21 @@ func NewActor(name string) *Actor {
 		size:  DefaultActorSize,
 		speed: DefaultActorSpeed,
 	}
+}
+
+// Draw renders the actor in the viewport.
+func (a *Actor) Draw() {
+	if a.act == nil {
+		a.stand(a.lookAt)
+	}
+	if a.act() {
+		a.stand(a.lookAt)
+	}
+}
+
+// Position returns the position of the actor.
+func (a *Actor) Position() Position {
+	return a.pos.ToPos()
 }
 
 // SetCostume sets the costume for the actor.
@@ -65,15 +78,6 @@ func (a *Actor) stand(dir Direction) *Actor {
 	return a
 }
 
-func (a *Actor) draw() {
-	if a.act == nil {
-		a.stand(a.lookAt)
-	}
-	if a.act() {
-		a.stand(a.lookAt)
-	}
-}
-
 type action func() (completed bool)
 
 // ActorShow is a command that will show an actor in the room at the given position.
@@ -86,6 +90,7 @@ type ActorShow struct {
 
 func (cmd ActorShow) Execute(app *App, done *Promise) {
 	actor := app.ensureActor(cmd.ActorID)
+	app.room.PutActor(actor)
 	actor.pos = cmd.Position.ToPosf()
 	actor.stand(cmd.LookAt)
 	if cmd.CostumeResource != ResourceRefNull {
@@ -198,19 +203,6 @@ func (a *App) ensureActor(name string) *Actor {
 		a.actors[name] = actor
 	}
 	return actor
-}
-
-func (a *App) drawActors() {
-	actors := make([]*Actor, 0, len(a.actors))
-	for _, actor := range a.actors {
-		actors = append(actors, actor)
-	}
-	slices.SortFunc(actors, func(a, b *Actor) int {
-		return a.pos.ToPos().Y - b.pos.ToPos().Y
-	})
-	for _, actor := range actors {
-		actor.draw()
-	}
 }
 
 // ActorSelectEgo is a command that will make an actor be the actor under player's control.

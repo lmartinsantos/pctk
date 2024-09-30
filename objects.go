@@ -24,16 +24,21 @@ func (o *Object) CurrentState() *ObjectState {
 	return o.states[o.state]
 }
 
+// Draw renders the object in the viewport.
+func (o *Object) Draw() {
+	if st := o.CurrentState(); st != nil {
+		st.Anim.Draw(o.sprites, o.pos.Sub(NewPos(o.sprites.frameSize.W/2, o.sprites.frameSize.H)))
+	}
+}
+
 // IsVisible returns true if the object is visible in the room, false otherwise.
 func (o *Object) IsVisible() bool {
 	return o.owner == nil
 }
 
-// Draw renders the object in the viewport.
-func (o *Object) Draw() {
-	if st := o.CurrentState(); st != nil {
-		st.Anim.Draw(o.sprites, o.pos)
-	}
+// Position returns the position of the object.
+func (o *Object) Position() Position {
+	return o.pos
 }
 
 // ObjectState represents a state of an object.

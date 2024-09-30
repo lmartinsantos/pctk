@@ -2,10 +2,12 @@ package pctk
 
 import (
 	"log"
+	"slices"
 )
 
 // Room represents a room in the game.
 type Room struct {
+	actors     []*Actor  // The actors in the room
 	background *Image    // The background image of the room
 	objects    []*Object // The objects declared in the room
 	script     *Script   // The script where this room is defined. Used to call the room functions.
@@ -39,11 +41,36 @@ func (r *Room) DeclareObject(obj *Object) {
 // Draw renders the room in the viewport.
 func (r *Room) Draw() {
 	r.background.Draw(NewPos(0, 0), White)
+	items := make([]RoomItem, 0, len(r.actors)+len(r.objects))
+	for _, actor := range r.actors {
+		items = append(items, actor)
+	}
 	for _, obj := range r.objects {
-		if obj.IsVisible() {
-			obj.Draw()
+		items = append(items, obj)
+	}
+	slices.SortFunc(items, func(a, b RoomItem) int {
+		return a.Position().Y - b.Position().Y
+	})
+	for _, item := range items {
+		item.Draw()
+	}
+}
+
+// PutActor puts an actor in the room.
+func (r *Room) PutActor(actor *Actor) {
+	actor.room = r
+	for _, act := range r.actors {
+		if act == actor {
+			return
 		}
 	}
+	r.actors = append(r.actors, actor)
+}
+
+// RoomItem is an item from a room that can be represented in the viewport.
+type RoomItem interface {
+	Position() Position
+	Draw()
 }
 
 // RoomDeclare is a command that will declare a new room with the given properties.

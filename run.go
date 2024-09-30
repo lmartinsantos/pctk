@@ -20,7 +20,6 @@ func (a *App) run() {
 	a.drawViewport()
 	a.drawControlPanel()
 	a.drawDialogs()
-	a.drawActors()
 	a.drawMouseCursor()
 	rl.EndMode2D()
 	rl.EndDrawing()
