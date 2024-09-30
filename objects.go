@@ -16,6 +16,11 @@ type Object struct {
 	usePos  Position       // The position the actor was when using the object
 }
 
+// Class returns the class of the object.
+func (o *Object) Class() ObjectClass {
+	return o.classes
+}
+
 // CurrentState returns the current state of the object.
 func (o *Object) CurrentState() *ObjectState {
 	if o.state < 0 || o.state >= len(o.states) {
@@ -58,8 +63,26 @@ type ObjectState struct {
 
 // ObjectClass represents a class of objects. Classes are aimed to be used as bit flags that can be
 // OR-ed together. As this type is backed by a uint64, there can be up to 64 different classes.
-// Classes are defined in the game scripts, so their meaning is up to the game designer.
+// There are two kind of classes: the built-in classes and the custom classes.
 type ObjectClass uint64
+
+const (
+	// ObjectClassPerson is a built-in class that represents objects that are persons.
+	ObjectClassPerson ObjectClass = 1 << 0
+
+	// ObjectClassPickable is a built-in class that represents objects that can be picked up by the
+	// player.
+	ObjectClassPickable ObjectClass = 1 << 1
+
+	// ObjectClassOpenable is a built-in class that represents objects that can be opened by the
+	// player.
+	ObjectClassOpenable ObjectClass = 1 << 2
+)
+
+// Is returns true if the object class is the given class, false otherwise.
+func (c ObjectClass) Is(other ObjectClass) bool {
+	return c&other != 0
+}
 
 // ObjectDeclare is a command that will declare a new object with the given properties.
 type ObjectDeclare struct {

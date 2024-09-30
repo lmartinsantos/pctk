@@ -39,6 +39,11 @@ func NewActor(name string) *Actor {
 	}
 }
 
+// Class returns the class of the actor.
+func (a *Actor) Class() ObjectClass {
+	return ObjectClassPerson
+}
+
 // Draw renders the actor in the viewport.
 func (a *Actor) Draw() {
 	if a.act == nil {

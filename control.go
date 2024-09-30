@@ -33,6 +33,7 @@ type VerbSlot struct {
 	Verb Verb
 	Row  int
 	Col  int
+	Alt  ObjectClass
 }
 
 // Draw renders the verb slot in the control pane.
@@ -41,6 +42,15 @@ func (s VerbSlot) Draw(a *App) {
 	color := ControlVerbColor
 	if a.MouseIsInto(rect) {
 		color = ControlVerbHoverColor
+	}
+	if room := a.room; room != nil {
+		if item := room.ItemAt(a.MousePosition()); item != nil {
+			if item.Class().Is(s.Alt) {
+				color = ControlVerbHoverColor
+			} else if s.Verb == VerbLookAt {
+				color = ControlVerbHoverColor
+			}
+		}
 	}
 
 	DrawDefaultText(string(s.Verb), rect.Pos, AlignLeft, color)
@@ -68,14 +78,14 @@ type ControlPane struct {
 func (p *ControlPane) Init() {
 	p.Enabled = true
 	p.verbs = []VerbSlot{
-		{Verb: VerbOpen, Row: 0, Col: 0},
+		{Verb: VerbOpen, Row: 0, Col: 0, Alt: ObjectClassOpenable},
 		{Verb: VerbClose, Row: 1, Col: 0},
 		{Verb: VerbPush, Row: 2, Col: 0},
 		{Verb: VerbPull, Row: 3, Col: 0},
 
 		{Verb: VerbWalkTo, Row: 0, Col: 1},
 		{Verb: VerbPickUp, Row: 1, Col: 1},
-		{Verb: VerbTalkTo, Row: 2, Col: 1},
+		{Verb: VerbTalkTo, Row: 2, Col: 1, Alt: ObjectClassPerson},
 		{Verb: VerbGive, Row: 3, Col: 1},
 
 		{Verb: VerbUse, Row: 0, Col: 2},
@@ -112,24 +122,33 @@ func (p *ControlPane) drawActionLine(a *App) {
 }
 
 func (p *ControlPane) processControlInputs(a *App) {
-	if a.ego != nil && rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
-		mouseClick := a.MousePosition()
-		if ViewportRect.Contains(mouseClick) {
-			p.processViewportClick(a, mouseClick)
+	if a.ego == nil {
+		return
+	}
+	pos := a.MousePosition()
+	if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
+		if ViewportRect.Contains(pos) {
+			p.processViewportLeftClick(a, pos)
 		}
-		if ControlPaneRect.Contains(mouseClick) {
-			p.processControlPaneClick(a, mouseClick)
+		if ControlPaneRect.Contains(pos) {
+			p.processControlPaneClick(a, pos)
+		}
+	} else if rl.IsMouseButtonPressed(rl.MouseButtonRight) {
+		if ViewportRect.Contains(pos) {
+			p.processViewportRightClick(a, pos)
 		}
 	}
 }
 
-func (p *ControlPane) processViewportClick(a *App, click Position) {
+func (p *ControlPane) processViewportLeftClick(a *App, click Position) {
+	if a.room == nil || a.ego == nil {
+		return
+	}
 	if p.actionVerb == "" {
 		p.actionVerb = VerbWalkTo
 	}
-	if room := a.room; room != nil {
-		p.actionArg1 = room.ItemAt(click)
-	}
+	p.actionArg1 = a.room.ItemAt(click)
+
 	switch p.actionVerb {
 	case VerbWalkTo:
 		if p.actionArg1 != nil {
@@ -154,6 +173,30 @@ func (p *ControlPane) processViewportClick(a *App, click Position) {
 	}
 	p.actionArg1 = nil
 	p.actionVerb = VerbWalkTo
+}
+
+func (p *ControlPane) processViewportRightClick(a *App, click Position) {
+	if a.room == nil || a.ego == nil {
+		return
+	}
+	if p.actionVerb == "" || p.actionVerb == VerbWalkTo {
+		if item := a.room.ItemAt(click); item != nil {
+			if item.Class().Is(ObjectClassPerson) {
+				// TODO: do a talk to action
+			} else if item.Class().Is(ObjectClassOpenable) {
+				// TODO: do a open action
+			} else if item.Class().Is(ObjectClassPickable) {
+				// TODO: do a pick up action
+			} else {
+				a.Do(ActorLookAtObject{
+					ActorID:  a.ego.name,
+					ObjectID: item.Name(),
+				})
+			}
+		}
+	}
+	p.actionVerb = VerbWalkTo
+	p.actionArg1 = nil
 }
 
 func (p *ControlPane) processControlPaneClick(_ *App, click Position) {

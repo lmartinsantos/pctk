@@ -95,6 +95,7 @@ func (r *Room) PutActor(actor *Actor) {
 
 // RoomItem is an item from a room that can be represented in the viewport.
 type RoomItem interface {
+	Class() ObjectClass
 	Name() string
 	Position() Position
 	Draw()
