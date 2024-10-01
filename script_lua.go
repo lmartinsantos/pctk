@@ -95,6 +95,7 @@ func (s *Script) luaEval(app AppContext, code []byte, include bool) {
 			room.IfTableFieldExists("objects", func(objs luaTableUtils) {
 				objs.ForEach(func(key int, value int) {
 					obj := withLuaTableAtIndex(s.l, value)
+					obj.SetString("id", lua.CheckString(s.l, key))
 					cmd := ObjectDeclare{
 						Classes: ObjectClass(obj.GetIntegerOpt("class", 0)),
 						Hotspot: obj.GetRectangle("hotspot"),
@@ -188,6 +189,17 @@ func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
 				cmd := ActorStand{
 					ActorID:   self.GetString("id"),
 					Direction: opts.GetDirectionOpt("dir", DefaultActorDirection),
+				}
+				done := app.Do(cmd)
+				luaPushFuture(l, done)
+				return 1
+			}))
+			actor.SetFunction("toinventory", lua.Function(func(l *lua.State) int {
+				self := withLuaTableAtIndex(l, 1).CheckObjectType("actor")
+				obj := withLuaTableAtIndex(l, 2)
+				cmd := ActorAddToInventory{
+					ActorID:  self.GetString("id"),
+					ObjectID: obj.GetString("id"),
 				}
 				done := app.Do(cmd)
 				luaPushFuture(l, done)

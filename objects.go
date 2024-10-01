@@ -31,6 +31,9 @@ func (o *Object) CurrentState() *ObjectState {
 
 // Draw renders the object in the viewport.
 func (o *Object) Draw() {
+	if !o.IsVisible() {
+		return
+	}
 	if st := o.CurrentState(); st != nil {
 		st.Anim.Draw(o.sprites, o.pos.Sub(NewPos(o.sprites.frameSize.W/2, o.sprites.frameSize.H)))
 	}

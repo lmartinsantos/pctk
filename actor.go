@@ -1,6 +1,7 @@
 package pctk
 
 import (
+	"log"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -18,16 +19,17 @@ var (
 )
 
 type Actor struct {
-	act     *Action
-	costume *Costume
-	elev    int
-	ego     bool
-	lookAt  Direction
-	name    string
-	pos     Positionf
-	room    *Room
-	size    Size
-	speed   Positionf
+	act       *Action
+	costume   *Costume
+	elev      int
+	ego       bool
+	inventory []*Object
+	lookAt    Direction
+	name      string
+	pos       Positionf
+	room      *Room
+	size      Size
+	speed     Positionf
 }
 
 func NewActor(name string) *Actor {
@@ -37,6 +39,13 @@ func NewActor(name string) *Actor {
 		size:  DefaultActorSize,
 		speed: DefaultActorSpeed,
 	}
+}
+
+// AddToInventory adds an object to the actor's inventory.
+func (a *Actor) AddToInventory(obj *Object) {
+	log.Printf(">>> %s adds %s to inventory", a.name, obj.name)
+	a.inventory = append(a.inventory, obj)
+	obj.owner = a
 }
 
 // CancelAction cancels the current action of the actor.
@@ -75,6 +84,11 @@ func (a *Actor) Draw() {
 // Hotspot returns the hotspot of the actor.
 func (a *Actor) Hotspot() Rectangle {
 	return Rectangle{Pos: a.costumePos(), Size: a.size}
+}
+
+// Inventory returns the inventory of the actor.
+func (a *Actor) Inventory() []*Object {
+	return a.inventory
 }
 
 // IsEgo returns true if the actor is the actor under player's control, false otherwise.
@@ -281,6 +295,28 @@ func (cmd ActorLookAtObject) Execute(app *App, done *Promise) {
 	})
 }
 
+// ActorPickUpObject is a command that will make an actor pick up an object.
+type ActorPickUpObject struct {
+	ActorID  string
+	ObjectID string
+}
+
+func (cmd ActorPickUpObject) Execute(app *App, done *Promise) {
+	app.withActor(cmd.ActorID, func(a *Actor) {
+		obj := app.room.ObjectByID(cmd.ObjectID)
+		if obj == nil || obj.owner != nil {
+			done.Complete()
+			return
+		}
+		done.CompleteWhen(app.Do(ActorWalkToObject{
+			ActorID:  a.name,
+			ObjectID: obj.name,
+		}).AndThen(func(_ any) Future {
+			return a.room.script.call(app.room.id, "objects", obj.name, "pickup")
+		}))
+	})
+}
+
 // ActorSpeak is a command that will make an actor speak the given text.
 type ActorSpeak struct {
 	ActorID string
@@ -340,4 +376,22 @@ func (cmd ActorSelectEgo) Execute(app *App, done *Promise) {
 	app.ego.ego = true
 
 	done.Complete()
+}
+
+// ActorAddToInventory is a command that will add an object to an actor's inventory.
+type ActorAddToInventory struct {
+	ActorID  string
+	ObjectID string
+}
+
+func (cmd ActorAddToInventory) Execute(app *App, done *Promise) {
+	app.withActor(cmd.ActorID, func(actor *Actor) {
+		obj := app.room.ObjectByID(cmd.ObjectID)
+		if obj == nil {
+			done.Complete()
+			return
+		}
+		actor.AddToInventory(obj)
+		done.Complete()
+	})
 }

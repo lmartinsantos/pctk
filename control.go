@@ -5,10 +5,12 @@ import (
 )
 
 var (
-	ControlVerbColor          = Green
-	ControlVerbHoverColor     = BrigthGreen
-	ControlActionColor        = Cyan
-	ControlActionOngoingColor = BrigthCyan
+	ControlActionColor         = Cyan
+	ControlActionOngoingColor  = BrigthCyan
+	ControlInventoryColor      = Magenta
+	ControlInventoryHoverColor = BrigthMagenta
+	ControlVerbColor           = Green
+	ControlVerbHoverColor      = BrigthGreen
 )
 
 // Verb is a type that represents the action verb.
@@ -74,7 +76,7 @@ type ActionSentence struct {
 }
 
 // Draw renders the action sentence in the control pane.
-func (s *ActionSentence) Draw(app *App) {
+func (s *ActionSentence) Draw(app *App, hover RoomItem) {
 	pos := NewPos(ScreenWidth/2, ViewportHeight)
 	action := string(s.verb)
 	color := ControlActionColor
@@ -84,13 +86,9 @@ func (s *ActionSentence) Draw(app *App) {
 			action = action + " " + s.args[0].Name()
 		}
 		color = ControlActionOngoingColor
-	} else {
-		if room := app.room; room != nil {
-			item := room.ItemAt(app.MousePosition())
-			if item != nil {
-				action = action + " " + item.Name()
-			}
-		}
+	} else if hover != nil {
+		action = action + " " + hover.Name()
+
 	}
 	DrawDefaultText(action, pos, AlignCenter, color)
 }
@@ -109,10 +107,12 @@ func (s *ActionSentence) ProcessLeftClick(app *App, click Position, item RoomIte
 	}
 
 	switch s.verb {
-	case VerbWalkTo:
-		s.walkToItem(app, item)
 	case VerbLookAt:
 		s.lookAtItem(app, item)
+	case VerbPickUp:
+		s.pickupItem(app, item)
+	case VerbWalkTo:
+		s.walkToItem(app, item)
 	default:
 		s.Reset(VerbWalkTo)
 	}
@@ -127,7 +127,7 @@ func (s *ActionSentence) ProcessRightClick(app *App, click Position, item RoomIt
 		} else if item.Class().Is(ObjectClassOpenable) {
 			// TODO: do a open action
 		} else if item.Class().Is(ObjectClassPickable) {
-			// TODO: do a pick up action
+			s.pickupItem(app, item)
 		} else {
 			s.lookAtItem(app, item)
 		}
@@ -143,6 +143,17 @@ func (s *ActionSentence) lookAtItem(app *App, item RoomItem) {
 	s.verb = VerbLookAt
 	s.args[0] = item
 	s.fut = app.Do(ActorLookAtObject{
+		ActorID:  app.ego.name,
+		ObjectID: item.Name(),
+	}).AndThen(func(_ any) Future {
+		return app.Do(SyncCommandFunc(func(app *App) { s.Reset(VerbWalkTo) }))
+	})
+}
+
+func (s *ActionSentence) pickupItem(app *App, item RoomItem) {
+	s.verb = VerbPickUp
+	s.args[0] = item
+	s.fut = app.Do(ActorPickUpObject{
 		ActorID:  app.ego.name,
 		ObjectID: item.Name(),
 	}).AndThen(func(_ any) Future {
@@ -178,12 +189,64 @@ func (s *ActionSentence) Reset(verb Verb) {
 	s.fut = nil
 }
 
+// ControlInventory is a screen control that shows the inventory.
+type ControlInventory struct {
+	slotsRect [6]Rectangle
+}
+
+// Draw renders the inventory in the control pane.
+func (c *ControlInventory) Draw(app *App) {
+	if app.ego == nil {
+		return
+	}
+	mpos := app.MousePosition()
+	for i, item := range app.ego.Inventory() {
+		rect := c.slotsRect[i]
+		color := ControlInventoryColor
+		if rect.Contains(mpos) {
+			color = ControlInventoryHoverColor
+		}
+		DrawDefaultText(item.Name(), rect.Pos, AlignLeft, color)
+	}
+}
+
+// Init initializes the control inventory.
+func (c *ControlInventory) Init() {
+	arrowsWidth := 32
+	for i := range c.slotsRect {
+		c.slotsRect[i] = NewRect(
+			2+3*ScreenWidth/6+arrowsWidth,
+			ViewportHeight+FontDefaultSize*(i+1),
+			2*ScreenWidth/6,
+			FontDefaultSize,
+		)
+	}
+}
+
+// ObjectAt returns the object at the given position in the inventory box.
+func (c *ControlInventory) ObjectAt(app *App, pos Position) *Object {
+	if app.ego == nil {
+		return nil
+	}
+	inv := app.ego.Inventory()
+	for i, rect := range c.slotsRect {
+		if rect.Contains(pos) {
+			if i < len(inv) {
+				return inv[i]
+			}
+			return nil
+		}
+	}
+	return nil
+}
+
 // ControlPane is the screen control pane that shows the action, verbs and inventory.
 type ControlPane struct {
 	Enabled bool
 
 	verbs  []VerbSlot
 	action ActionSentence
+	inv    ControlInventory
 }
 
 // Init initializes the control pane.
@@ -206,6 +269,7 @@ func (p *ControlPane) Init() {
 		{Verb: VerbTurnOff, Row: 3, Col: 2},
 	}
 	p.action.Reset(VerbWalkTo)
+	p.inv.Init()
 }
 
 // Draw renders the control panel in the viewport.
@@ -214,8 +278,22 @@ func (p *ControlPane) Draw(app *App) {
 		for _, v := range p.verbs {
 			v.Draw(app)
 		}
-		p.action.Draw(app)
+		hover := p.hover(app, app.MousePosition())
+		p.action.Draw(app, hover)
+		p.inv.Draw(app)
 	}
+}
+
+func (p *ControlPane) hover(app *App, pos Position) RoomItem {
+	var item RoomItem
+	if ViewportRect.Contains(pos) && app.room != nil {
+		item = app.room.ItemAt(pos)
+	} else if ControlPaneRect.Contains(pos) {
+		if obj := p.inv.ObjectAt(app, pos); obj != nil {
+			item = obj
+		}
+	}
+	return item
 }
 
 func (p *ControlPane) processControlInputs(app *App) {
@@ -223,27 +301,30 @@ func (p *ControlPane) processControlInputs(app *App) {
 		return
 	}
 	pos := app.MousePosition()
-	item := app.room.ItemAt(pos)
+	hover := p.hover(app, pos)
 	if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
 		if ViewportRect.Contains(pos) {
-			p.action.ProcessLeftClick(app, pos, item)
+			p.action.ProcessLeftClick(app, pos, hover)
 		}
 		if ControlPaneRect.Contains(pos) {
-			p.processControlPaneClick(app, pos)
+			p.processLeftClick(app, pos)
 		}
 	} else if rl.IsMouseButtonPressed(rl.MouseButtonRight) {
 		if ViewportRect.Contains(pos) {
-			p.action.ProcessRightClick(app, pos, item)
+			p.action.ProcessRightClick(app, pos, hover)
 		}
 	}
 }
 
-func (p *ControlPane) processControlPaneClick(_ *App, click Position) {
+func (p *ControlPane) processLeftClick(app *App, click Position) {
 	for _, v := range p.verbs {
 		if v.Rect().Contains(click) {
 			p.action.Reset(v.Verb)
 			return
 		}
+	}
+	if obj := p.inv.ObjectAt(app, click); obj != nil {
+		p.action.ProcessLeftClick(app, click, obj)
 	}
 }
 

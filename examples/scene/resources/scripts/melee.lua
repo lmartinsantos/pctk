@@ -22,7 +22,7 @@ melee = room {
     }
 }
 
-function melee:enter(self)
+function melee:enter()
     local pirate1_dialog_props = { pos = {x=60, y=20}, color = magenta }
     local pirate2_dialog_props = { pos = {x=60, y=50}, color = yellow }
     local skipintro = true
@@ -70,6 +70,11 @@ function melee:enter(self)
     usercontrol(true)          
 end
 
-function melee.objects.bucket:lookat(self) 
+function melee.objects.bucket:lookat()
     guybrush:say("It's a empty bucket.")
+end
+
+function melee.objects.bucket:pickup()
+    -- guybrush:say("I don't know how this could help\nme to find the keys, but...").wait()
+    guybrush:toinventory(self)
 end

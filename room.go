@@ -68,7 +68,7 @@ func (r *Room) ItemAt(pos Position) RoomItem {
 		}
 	}
 	for _, obj := range r.objects {
-		if obj.hotspot.Contains(pos) {
+		if obj.IsVisible() && obj.hotspot.Contains(pos) {
 			return obj
 		}
 	}
