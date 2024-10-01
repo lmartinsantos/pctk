@@ -148,5 +148,5 @@ func (c ScriptCall) Execute(app *App, prom *Promise) {
 		log.Panicf("Script not found: %s", c.ScriptRef)
 	}
 
-	prom.CompleteWhen(script.Call(c.Method))
+	prom.Bind(script.Call(c.Method))
 }

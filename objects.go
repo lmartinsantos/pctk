@@ -139,13 +139,11 @@ func (cmd ObjectDo) Execute(app *App, done *Promise) {
 		done.Complete()
 		return
 	}
-	done.CompleteWhen(
-		obj.room.script.Call(
-			WithMethod(cmd.RoomID, "objects", cmd.ObjectID, cmd.Action),
-		).IfFails(func(err error) Future {
-			return obj.room.script.Call(WithMethod("default", cmd.Action))
-		}),
-	)
+	call := obj.room.script.Call(WithMethod(cmd.RoomID, "objects", cmd.ObjectID, cmd.Action))
+	call = Recover(call, func(err error) Future {
+		return obj.room.script.Call(WithMethod("default", cmd.Action))
+	})
+	done.Bind(call)
 }
 
 // FindObject returns the object with the given ID in the room, or nil if not found.

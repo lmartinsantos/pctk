@@ -9,59 +9,62 @@ type Command interface {
 	Execute(*App, *Promise)
 }
 
-// AsyncCommandFunc is an async function that can be used as a command.
-type AsyncCommandFunc func(*App, *Promise)
+// CommandFunc is a sync function that can be used as a command.
+type CommandFunc func(*App) (any, error)
 
-func (f AsyncCommandFunc) Execute(a *App, done *Promise) {
-	f(a, done)
+// Execute implements the Command interface.
+func (f CommandFunc) Execute(a *App, done *Promise) {
+	v, err := f(a)
+	done.CompleteWith(v, err)
 }
 
-// SyncCommandFunc is a sync function that can be used as a command.
-type SyncCommandFunc func(*App)
-
-func (f SyncCommandFunc) Execute(a *App, done *Promise) {
-	f(a)
-	done.Complete()
-}
-
-// Do will put the given command in the queue to be executed by the application during the next
-// frame. This function must not be called from a command handler, as it will cause a deadlock.
-// If one command have to execute another command, use doNow function instead.
-func (a *App) Do(c Command) Future {
-	return a.commands.push(c)
-}
-
-func (a *App) doNow(c Command) Future {
-	done := NewPromise()
-	c.Execute(a, done)
-	return done
-}
-
-type commandQueue struct {
+// CommandQueue is a queue of commands that will be executed by the application during the next
+// frame.
+type CommandQueue struct {
 	mutex    sync.Mutex
-	commands []Command
-	promises []*Promise
+	commands []func(*App)
 }
 
-func (q *commandQueue) push(c Command) Future {
+// PushCommand will put the given command in the queue to be executed by the application during the
+// next frame. This function is thread safe and can be called from any goroutine.
+func (q *CommandQueue) PushCommand(c Command) Future {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
-	done := NewPromise()
-	q.commands = append(q.commands, c)
-	q.promises = append(q.promises, done)
-	return done
+	prom := NewPromise()
+	q.commands = append(q.commands, func(app *App) {
+		c.Execute(app, prom)
+	})
+
+	return prom
 }
 
-func (q *commandQueue) execute(a *App) {
+// Execute will execute all the commands in the queue. This function should be called by the
+// application during the frame update.
+func (q *CommandQueue) Execute(app *App) {
 	q.mutex.Lock()
 	commands := q.commands
-	promises := q.promises
 	q.commands = nil
-	q.promises = nil
 	q.mutex.Unlock()
 
-	for i, c := range commands {
-		c.Execute(a, promises[i])
+	for _, c := range commands {
+		c(app)
 	}
+}
+
+// RunCommand will put the given command in the queue to be executed by the application during
+// the next frame. This function is thread safe and can be called from any goroutine.
+func (a *App) RunCommand(c Command) Future {
+	return a.commands.PushCommand(c)
+}
+
+// RunCommandSequence will run a sequence of commands that will be executed one after the other.
+func (a *App) RunCommandSequence(cmd Command, rest ...Command) Future {
+	fut := a.RunCommand(cmd)
+	for _, c := range rest {
+		fut = Continue(fut, func(_ any) Future {
+			return a.RunCommand(c)
+		})
+	}
+	return fut
 }

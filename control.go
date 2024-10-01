@@ -157,39 +157,51 @@ func (s *ActionSentence) ProcessRightClick(app *App, click Position, item RoomIt
 func (s *ActionSentence) lookAtItem(app *App, item RoomItem) {
 	s.verb = VerbLookAt
 	s.args[0] = item
-	s.fut = app.Do(ActorLookAtObject{
-		ActorID:  app.ego.name,
-		ObjectID: item.Name(),
-	}).AndThen(func(_ any) Future {
-		return app.Do(SyncCommandFunc(func(app *App) { s.Reset(VerbWalkTo) }))
-	})
+	s.fut = app.RunCommandSequence(
+		ActorLookAtObject{
+			ActorID:  app.ego.name,
+			ObjectID: item.Name(),
+		},
+		CommandFunc(func(app *App) (any, error) {
+			s.Reset(VerbWalkTo)
+			return nil, nil
+		}),
+	)
 }
 
 func (s *ActionSentence) pickupItem(app *App, item RoomItem) {
 	s.verb = VerbPickUp
 	s.args[0] = item
-	s.fut = app.Do(ActorPickUpObject{
-		ActorID:  app.ego.name,
-		ObjectID: item.Name(),
-	}).AndThen(func(_ any) Future {
-		return app.Do(SyncCommandFunc(func(app *App) { s.Reset(VerbWalkTo) }))
-	})
+	s.fut = app.RunCommandSequence(
+		ActorPickUpObject{
+			ActorID:  app.ego.name,
+			ObjectID: item.Name(),
+		},
+		CommandFunc(func(app *App) (any, error) {
+			s.Reset(VerbWalkTo)
+			return nil, nil
+		}),
+	)
 }
 
 func (s *ActionSentence) walkToItem(app *App, item RoomItem) {
 	// TODO: the item might be an actor
 	s.verb = VerbWalkTo
 	s.args[0] = item
-	s.fut = app.Do(ActorWalkToObject{
-		ActorID:  app.ego.name,
-		ObjectID: s.args[0].Name(),
-	}).AndThen(func(_ any) Future {
-		return app.Do(SyncCommandFunc(func(app *App) { s.Reset(VerbWalkTo) }))
-	})
+	s.fut = app.RunCommandSequence(
+		ActorWalkToObject{
+			ActorID:  app.ego.name,
+			ObjectID: s.args[0].Name(),
+		},
+		CommandFunc(func(app *App) (any, error) {
+			s.Reset(VerbWalkTo)
+			return nil, nil
+		}),
+	)
 }
 
 func (s *ActionSentence) walkToPos(app *App, click Position) {
-	app.Do(ActorWalkToPosition{
+	app.RunCommand(ActorWalkToPosition{
 		ActorID:  app.ego.name,
 		Position: click,
 	})

@@ -24,5 +24,5 @@ func (a *App) run() {
 	rl.EndMode2D()
 	rl.EndDrawing()
 	a.control.processControlInputs(a)
-	a.commands.execute(a)
+	a.commands.Execute(a)
 }

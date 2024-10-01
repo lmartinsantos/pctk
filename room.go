@@ -138,7 +138,7 @@ func (cmd RoomShow) Execute(app *App, done *Promise) {
 	}
 
 	// Call the enter function of the room script.
-	done.CompleteWhen(app.room.script.Call(WithMethod(cmd.RoomID, "enter")))
+	done.Bind(app.room.script.Call(WithMethod(cmd.RoomID, "enter")))
 }
 
 func (a *App) drawViewport() {

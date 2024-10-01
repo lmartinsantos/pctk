@@ -40,7 +40,7 @@ func (s *Script) luaCall(method Method) Future {
 			log.Panic("Script not initialized")
 		}
 
-		prom.CompleteWhen(LuaMethod(method).Call(s.l))
+		prom.Bind(LuaMethod(method).Call(s.l))
 	}()
 	return prom
 }
@@ -66,7 +66,7 @@ func (s *Script) luaEval(app *App, code []byte, include bool) {
 		if typ == "room" && !included {
 			room := obj
 			roomID := key
-			app.Do(RoomDeclare{
+			app.RunCommand(RoomDeclare{
 				RoomID:        roomID,
 				Script:        s,
 				BackgroundRef: room.GetRef("background"),
@@ -109,7 +109,7 @@ func (s *Script) luaEval(app *App, code []byte, include bool) {
 							})
 						})
 					})
-					app.Do(cmd).Wait()
+					app.RunCommand(cmd).Wait()
 				})
 			})
 		}
@@ -152,7 +152,7 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 					Text:    text,
 					Delay:   opts.GetDurationOpt("delay", DefaultActorSpeakDelay),
 				}
-				done := app.Do(cmd)
+				done := app.RunCommand(cmd)
 				luaPushFuture(l, done)
 				return 1
 			}))
@@ -165,7 +165,7 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 					LookAt:          opts.GetDirectionOpt("dir", DefaultActorDirection),
 					CostumeResource: opts.GetRefOpt("costume", ResourceRefNull),
 				}
-				done := app.Do(cmd)
+				done := app.RunCommand(cmd)
 				luaPushFuture(l, done)
 				return 1
 			}))
@@ -174,7 +174,7 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 				cmd := ActorSelectEgo{
 					ActorID: self.GetString("id"),
 				}
-				done := app.Do(cmd)
+				done := app.RunCommand(cmd)
 				luaPushFuture(l, done)
 				return 1
 			}))
@@ -185,7 +185,7 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 					ActorID:   self.GetString("id"),
 					Direction: opts.GetDirectionOpt("dir", DefaultActorDirection),
 				}
-				done := app.Do(cmd)
+				done := app.RunCommand(cmd)
 				luaPushFuture(l, done)
 				return 1
 			}))
@@ -196,7 +196,7 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 					ActorID:  self.GetString("id"),
 					ObjectID: obj.GetString("id"),
 				}
-				done := app.Do(cmd)
+				done := app.RunCommand(cmd)
 				luaPushFuture(l, done)
 				return 1
 			}))
@@ -207,7 +207,7 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 					ActorID:  self.GetString("id"),
 					Position: pos,
 				}
-				done := app.Do(cmd)
+				done := app.RunCommand(cmd)
 				luaPushFuture(l, done)
 				return 1
 			}))
@@ -230,9 +230,13 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 			if luaIsIncluded(l, ref) {
 				return 0
 			}
-			script := app.Do(ScriptRun{
+			script, err := WaitAs[*Script](app.RunCommand(ScriptRun{
 				ScriptRef: ref,
-			}).Wait().(*Script)
+			}))
+			if err != nil {
+				lua.Errorf(l, "Error including script: %s", err)
+				return 0
+			}
 			s.luaEval(app, script.Code, true)
 
 			luaSetIncluded(l, ref)
@@ -244,7 +248,7 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 			music.SetResourceRef("ref", opts.GetRef("ref"))
 			music.SetFunction("play", lua.Function(func(l *lua.State) int {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("music")
-				done := app.Do(MusicPlay{
+				done := app.RunCommand(MusicPlay{
 					MusicResource: self.GetRef("ref"),
 				})
 				luaPushFuture(l, done)
@@ -256,7 +260,7 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 			room := withNewLuaObjectWrapping(l, 1, "room")
 			room.SetFunction("show", lua.Function(func(l *lua.State) int {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("room")
-				done := app.Do(RoomShow{
+				done := app.RunCommand(RoomShow{
 					RoomID: self.GetString("id"),
 				})
 				luaPushFuture(l, done)
@@ -271,7 +275,7 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 			sound.SetResourceRef("ref", opts.GetRef("ref"))
 			sound.SetFunction("play", lua.Function(func(l *lua.State) int {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("sound")
-				done := app.Do(SoundPlay{
+				done := app.RunCommand(SoundPlay{
 					SoundResource: self.GetRef("ref"),
 				})
 				luaPushFuture(l, done)
@@ -307,7 +311,7 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 				Position: opts.GetPositionOpt("pos", DefaultDialogPosition),
 				Color:    opts.GetColorOpt("color", DefaultDialogColor),
 			}
-			done := app.Do(cmd)
+			done := app.RunCommand(cmd)
 			luaPushFuture(l, done)
 			return 1
 		}},
@@ -316,7 +320,7 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 			return 0
 		}},
 		{Name: "usercontrol", Function: func(l *lua.State) int {
-			done := app.Do(EnableControlPanel{Enable: l.ToBoolean(1)})
+			done := app.RunCommand(EnableControlPanel{Enable: l.ToBoolean(1)})
 			luaPushFuture(l, done)
 			return 1
 		}},

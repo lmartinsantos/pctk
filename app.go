@@ -20,7 +20,7 @@ type App struct {
 	scripts map[ResourceRef]*Script
 
 	control  ControlPane
-	commands commandQueue
+	commands CommandQueue
 
 	cam         rl.Camera2D
 	cursorTx    rl.Texture2D

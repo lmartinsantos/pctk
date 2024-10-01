@@ -223,7 +223,8 @@ type ActorLookAtPos struct {
 
 func (cmd ActorLookAtPos) Execute(app *App, done *Promise) {
 	app.withActor(cmd.ActorName, func(a *Actor) {
-		done.CompleteWhen(a.Do(Standing(a.pos.ToPos().DirectionTo(cmd.Position))))
+		action := a.Do(Standing(a.pos.ToPos().DirectionTo(cmd.Position)))
+		done.Bind(action)
 	})
 	done.Complete()
 }
@@ -249,7 +250,7 @@ type ActorWalkToPosition struct {
 
 func (cmd ActorWalkToPosition) Execute(app *App, done *Promise) {
 	app.withActor(cmd.ActorID, func(actor *Actor) {
-		done.CompleteWhen(actor.Do(WalkingTo(cmd.Position)))
+		done.Bind(actor.Do(WalkingTo(cmd.Position)))
 	})
 }
 
@@ -267,15 +268,17 @@ func (cmd ActorWalkToObject) Execute(app *App, done *Promise) {
 			return
 		}
 		pos, dir := obj.UsePos()
-		done.CompleteWhen(app.Do(ActorWalkToPosition{
-			ActorID:  a.name,
-			Position: pos,
-		}).AndThen(func(_ any) Future {
-			return app.Do(ActorStand{
+
+		done.Bind(app.RunCommandSequence(
+			ActorWalkToPosition{
+				ActorID:  a.name,
+				Position: pos,
+			},
+			ActorStand{
 				ActorID:   a.name,
 				Direction: dir,
-			})
-		}))
+			},
+		))
 	})
 }
 
@@ -294,24 +297,25 @@ func (cmd ActorLookAtObject) Execute(app *App, done *Promise) {
 		}
 		if obj.Owner() != nil {
 			// Object in the inventory. Just call the script.
-			done.CompleteWhen(app.Do(ObjectDo{
+			done.Bind(app.RunCommand(ObjectDo{
 				RoomID:   app.room.id,
 				ObjectID: cmd.ObjectID,
 				Action:   "lookat",
 			}))
 			return
 		}
-		// Object in the room. First walk to it, then call the script when
-		done.CompleteWhen(app.Do(ActorWalkToObject{
-			ActorID:  a.name,
-			ObjectID: obj.name,
-		}).AndThen(func(_ any) Future {
-			return app.Do(ObjectDo{
+		// Object in the room. Walk to it and then look at it.
+		done.Bind(app.RunCommandSequence(
+			ActorWalkToObject{
+				ActorID:  a.name,
+				ObjectID: obj.name,
+			},
+			ObjectDo{
 				RoomID:   app.room.id,
 				ObjectID: cmd.ObjectID,
 				Action:   "lookat",
-			})
-		}))
+			},
+		))
 	})
 }
 
@@ -328,16 +332,17 @@ func (cmd ActorPickUpObject) Execute(app *App, done *Promise) {
 			done.Complete()
 			return
 		}
-		done.CompleteWhen(app.Do(ActorWalkToObject{
-			ActorID:  a.name,
-			ObjectID: obj.name,
-		}).AndThen(func(_ any) Future {
-			return app.Do(ObjectDo{
+		done.Bind(app.RunCommandSequence(
+			ActorWalkToObject{
+				ActorID:  a.name,
+				ObjectID: obj.name,
+			},
+			ObjectDo{
 				RoomID:   app.room.id,
 				ObjectID: cmd.ObjectID,
 				Action:   "pickup",
-			})
-		}))
+			},
+		))
 	})
 }
 
@@ -359,13 +364,13 @@ func (cmd ActorSpeak) Execute(app *App, done *Promise) {
 	}
 
 	app.withActor(cmd.ActorID, func(a *Actor) {
-		dialogDone := app.doNow(ShowDialog{
+		dialogDone := app.RunCommand(ShowDialog{
 			Text:     cmd.Text,
 			Position: a.dialogPos(),
 			Color:    cmd.Color,
 			Speed:    1.0,
 		})
-		done.CompleteWhen(a.Do(SpeakingTo(dialogDone)))
+		done.Bind(a.Do(SpeakingTo(dialogDone)))
 	})
 }
 
