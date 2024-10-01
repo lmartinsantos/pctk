@@ -12,20 +12,22 @@ type App struct {
 	screenCaption string
 	screenZoom    int32
 
-	rooms    map[string]*Room
-	room     *Room
-	dialogs  []Dialog
-	actors   map[string]*Actor
-	scripts  map[ResourceRef]*Script
+	actors  map[string]*Actor
+	dialogs []Dialog
+	objects []*Object
+	rooms   map[string]*Room
+	room    *Room
+	scripts map[ResourceRef]*Script
+
+	control  ControlPane
 	commands commandQueue
 
-	cam                 rl.Camera2D
-	cursorTx            rl.Texture2D
-	cursorColor         Color
-	music               *Music
-	sound               *Sound
-	ego                 *Actor
-	controlPanelEnabled bool
+	cam         rl.Camera2D
+	cursorTx    rl.Texture2D
+	cursorColor Color
+	music       *Music
+	sound       *Sound
+	ego         *Actor
 }
 
 // New creates a new pctk application.
@@ -54,6 +56,7 @@ func (a *App) init() {
 
 	a.cam.Zoom = float32(a.screenZoom)
 	a.initMouse()
+	a.control.Init()
 }
 
 func (a *App) Close() {

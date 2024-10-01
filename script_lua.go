@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/Shopify/go-lua"
 )
 
-func (s *Script) luaInit(app AppContext) {
+func (s *Script) luaInit(app *App) {
 	if s.l == nil {
 		s.l = lua.NewState()
 		lua.BaseOpen(s.l)
@@ -23,7 +24,7 @@ func (s *Script) luaInit(app AppContext) {
 	}
 }
 
-func (s *Script) luaRun(app AppContext, prom *Promise) {
+func (s *Script) luaRun(app *App, prom *Promise) {
 	go func() {
 		if s.l == nil {
 			log.Panic("Script not initialized")
@@ -33,27 +34,38 @@ func (s *Script) luaRun(app AppContext, prom *Promise) {
 	}()
 }
 
-func (s *Script) luaCall(object, method string, prom *Promise) {
+func (s *Script) luaCall(chain ...string) Future {
+	prom := NewPromise()
 	go func() {
 		if s.l == nil {
 			log.Panic("Script not initialized")
 		}
-
-		s.l.Global(object)
-		if !s.l.IsTable(-1) {
-			log.Panicf("Object %s not found", object)
+		if len(chain) == 0 {
+			log.Panic("No chain provided")
 		}
-		s.l.Field(-1, method)
+
+		objPath := strings.Join(chain[:len(chain)-1], ".")
+		s.l.PushGlobalTable()
+		for ; len(chain) > 1; chain = chain[1:] {
+			s.l.Field(-1, chain[0])
+			if !s.l.IsTable(-1) {
+				log.Panicf("Object %s not found", objPath)
+			}
+		}
+
+		methodName := chain[0]
+		s.l.Field(-1, methodName)
 		if !s.l.IsFunction(-1) {
-			log.Panicf("Method %s not found in object %s", method, object)
+			log.Panicf("Method %s not found in object %s", methodName, objPath)
 		}
 		s.l.PushValue(-2)
 		s.l.Call(1, 0)
 		prom.Complete()
 	}()
+	return prom
 }
 
-func (s *Script) luaEval(app AppContext, code []byte, include bool) {
+func (s *Script) luaEval(app *App, code []byte, include bool) {
 	prev := s.including
 	s.including = include
 
@@ -83,6 +95,22 @@ func (s *Script) luaEval(app AppContext, code []byte, include bool) {
 			room.IfTableFieldExists("objects", func(objs luaTableUtils) {
 				objs.ForEach(func(key int, value int) {
 					obj := withLuaTableAtIndex(s.l, value)
+
+					// Apply the object stereotype.
+					obj.SetObjectType("object")
+					obj.SetString("room", roomID)
+					obj.SetString("id", lua.CheckString(s.l, key))
+					obj.SetFunction("owner", lua.Function(func(l *lua.State) int {
+						self := withLuaTableAtIndex(l, 1).CheckObjectType("object")
+						obj := app.FindObject(self.GetString("room"), self.GetString("id"))
+						if owner := obj.Owner(); owner == nil {
+							l.PushNil()
+						} else {
+							l.Global(owner.ID())
+						}
+						return 1
+					}))
+
 					cmd := ObjectDeclare{
 						Classes: ObjectClass(obj.GetIntegerOpt("class", 0)),
 						Hotspot: obj.GetRectangle("hotspot"),
@@ -96,7 +124,7 @@ func (s *Script) luaEval(app AppContext, code []byte, include bool) {
 					obj.IfTableFieldExists("states", func(states luaTableUtils) {
 						states.ForEach(func(_ int, value int) {
 							state := withLuaTableAtIndex(s.l, value)
-							cmd.States = append(cmd.States, ObjectState{
+							cmd.States = append(cmd.States, &ObjectState{
 								Anim: state.GetAnimationOpt("anim", nil),
 							})
 						})
@@ -128,7 +156,7 @@ func (s *Script) forEachDeclaredObject(f func(typ, key string, included bool)) {
 	}
 }
 
-func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
+func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 	return []lua.RegistryFunction{
 		//
 		// Resource construction functions
@@ -176,6 +204,17 @@ func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
 				cmd := ActorStand{
 					ActorID:   self.GetString("id"),
 					Direction: opts.GetDirectionOpt("dir", DefaultActorDirection),
+				}
+				done := app.Do(cmd)
+				luaPushFuture(l, done)
+				return 1
+			}))
+			actor.SetFunction("toinventory", lua.Function(func(l *lua.State) int {
+				self := withLuaTableAtIndex(l, 1).CheckObjectType("actor")
+				obj := withLuaTableAtIndex(l, 2)
+				cmd := ActorAddToInventory{
+					ActorID:  self.GetString("id"),
+					ObjectID: obj.GetString("id"),
 				}
 				done := app.Do(cmd)
 				luaPushFuture(l, done)
@@ -381,13 +420,19 @@ func luaCheckResourceRef(l *lua.State, index int) ResourceRef {
 	return ref
 }
 
-func luaCheckAnimation(l *lua.State, index int) *Animation {
+func luaCheckAnimation(l *lua.State, index int) (anim *Animation) {
 	tab := withLuaTableAtIndex(l, index)
-	return NewAnimationEx(
-		tab.GetInteger("index"),
-		tab.GetInteger("frames"),
-		tab.GetDuration("delay"),
-	)
+
+	anim = NewAnimation()
+	tab.ForEach(func(key int, value int) {
+		frame := withLuaTableAtIndex(l, value)
+		anim.AddFrames(
+			frame.GetDuration("delay"),
+			frame.GetInteger("row"),
+			frame.GetIntegers("seq")...,
+		)
+	})
+	return anim
 }
 
 func luaPushColor(l *lua.State, c Color) {
@@ -492,6 +537,16 @@ func (t luaTableUtils) GetInteger(key string) (val int) {
 func (t luaTableUtils) GetIntegerOpt(key string, def int) (val int) {
 	val = def
 	t.getFieldOpt(key, lua.TypeNumber, func() { val = lua.CheckInteger(t.l, -1) })
+	return
+}
+
+func (t luaTableUtils) GetIntegers(key string) (val []int) {
+	t.getField(key, lua.TypeTable, func() {
+		tab := withLuaTableAtIndex(t.l, -1)
+		tab.ForEach(func(_, value int) {
+			val = append(val, lua.CheckInteger(t.l, value))
+		})
+	})
 	return
 }
 
@@ -605,6 +660,11 @@ func (t luaTableUtils) getFieldOpt(key string, expected lua.Type, pull func()) {
 			"field '%s' has type '%s', '%s' expected", key, given, expected))
 	}
 	pull()
+}
+
+func (t luaTableUtils) SetObjectType(typ string) {
+	t.l.PushString(typ)
+	t.l.SetField(t.index, "__type")
 }
 
 func (t luaTableUtils) SetString(key, value string) {

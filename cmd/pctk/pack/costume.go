@@ -35,9 +35,9 @@ func (d *CostumeData) UnmarshalYAML(n *yaml.Node) error {
 			Dir    string
 			Flip   bool
 			Frames []struct {
-				Row      uint
-				Columns  []uint
-				Duration uint
+				Row      int
+				Columns  []int
+				Duration int
 			}
 		}
 	}
@@ -69,9 +69,9 @@ func (d *CostumeData) UnmarshalYAML(n *yaml.Node) error {
 
 		a := pctk.NewAnimation().Flip(anim.Flip)
 		for _, frame := range anim.Frames {
-			a.WithFrames(
-				frame.Row,
+			a.AddFrames(
 				time.Duration(frame.Duration)*time.Millisecond,
+				frame.Row,
 				frame.Columns...,
 			)
 		}

@@ -69,3 +69,11 @@ func (i *Image) BinaryDecode(r io.Reader) error {
 	i.raw = rl.LoadImageFromMemory(".png", bytes, int32(len(bytes)))
 	return nil
 }
+
+// Draw the image in the image on the screen.
+func (i *Image) Draw(pos Position, tint rl.Color) {
+	if i == nil {
+		return
+	}
+	rl.DrawTexture(i.Texture(), int32(pos.X), int32(pos.Y), tint)
+}

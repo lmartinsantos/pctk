@@ -9,9 +9,19 @@ type Command interface {
 	Execute(*App, *Promise)
 }
 
-// AppContext is an interface that defines the method to execute a command.
-type AppContext interface {
-	Do(Command) Future
+// AsyncCommandFunc is an async function that can be used as a command.
+type AsyncCommandFunc func(*App, *Promise)
+
+func (f AsyncCommandFunc) Execute(a *App, done *Promise) {
+	f(a, done)
+}
+
+// SyncCommandFunc is a sync function that can be used as a command.
+type SyncCommandFunc func(*App)
+
+func (f SyncCommandFunc) Execute(a *App, done *Promise) {
+	f(a)
+	done.Complete()
 }
 
 // Do will put the given command in the queue to be executed by the application during the next
@@ -45,12 +55,12 @@ func (q *commandQueue) push(c Command) Future {
 
 func (q *commandQueue) execute(a *App) {
 	q.mutex.Lock()
-	defer q.mutex.Unlock()
-
 	commands := q.commands
 	promises := q.promises
 	q.commands = nil
 	q.promises = nil
+	q.mutex.Unlock()
+
 	for i, c := range commands {
 		c.Execute(a, promises[i])
 	}
