@@ -3,6 +3,7 @@ package pctk
 import (
 	"io"
 	"log"
+	"strings"
 
 	"github.com/Shopify/go-lua"
 )
@@ -33,6 +34,18 @@ func NewScript(lang ScriptLanguage, code []byte) *Script {
 	return &Script{
 		Language: lang,
 		Code:     code,
+	}
+}
+
+// Call a method in the script. The method is a chain of identifiers that references a function in
+// the script.
+func (s *Script) Call(method Method) Future {
+	switch s.Language {
+	case ScriptLua:
+		return s.luaCall(method)
+	default:
+		log.Panicf("Unknown script language: %0x", s.Language)
+		return nil
 	}
 }
 
@@ -81,14 +94,24 @@ func (s *Script) run(app *App, prom *Promise) {
 	}
 }
 
-func (s *Script) call(chain ...string) Future {
-	switch s.Language {
-	case ScriptLua:
-		return s.luaCall(chain...)
-	default:
-		log.Panicf("Unknown script language: %0x", s.Language)
-		return nil
+// Method is a chain of identifiers that references a function in a script.
+type Method []string
+
+// WithMethod creates a new Method with the given parts.
+func WithMethod(head string, tail ...string) Method {
+	return append(Method{head}, tail...)
+}
+
+// ForEach calls the given function for each part of the method.
+func (m Method) ForEach(f func(string)) {
+	for _, part := range m {
+		f(part)
 	}
+}
+
+// String returns the string representation of the method.
+func (m Method) String() string {
+	return strings.Join(m, ".")
 }
 
 // ScriptRun is a command to run a script.
@@ -116,7 +139,7 @@ func (c ScriptRun) Execute(app *App, prom *Promise) {
 // ScriptCall is a command to call a script function.
 type ScriptCall struct {
 	ScriptRef ResourceRef
-	Method    []string
+	Method    Method
 }
 
 func (c ScriptCall) Execute(app *App, prom *Promise) {
@@ -125,5 +148,5 @@ func (c ScriptCall) Execute(app *App, prom *Promise) {
 		log.Panicf("Script not found: %s", c.ScriptRef)
 	}
 
-	prom.CompleteWhen(script.call(c.Method...))
+	prom.CompleteWhen(script.Call(c.Method))
 }

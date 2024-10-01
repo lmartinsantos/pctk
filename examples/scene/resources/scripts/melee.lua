@@ -82,3 +82,4 @@ function melee.objects.bucket:pickup()
     guybrush:say("I don't know how this could help\nme to find the keys, but...").wait()
     guybrush:toinventory(self)
 end
+

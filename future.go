@@ -2,6 +2,7 @@ package pctk
 
 import (
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -14,6 +15,9 @@ var (
 type Future interface {
 	// Wait waits for the future to be completed.
 	Wait() any
+
+	// IfFails returns a future that will be completed with the given value if the future fails.
+	IfFails(func(error) Future) Future
 
 	// IsCompleted returns true if the future is completed.
 	IsCompleted() bool
@@ -39,6 +43,16 @@ func (f *Promise) Complete() {
 	close(f.done)
 }
 
+// CompleteWithError completes the future with an error.
+func (f *Promise) CompleteWithError(err error) {
+	f.CompleteWithValue(err)
+}
+
+// CompleteWithErrorf completes the future with an error formatted with the given format and args.
+func (f *Promise) CompleteWithErrorf(format string, args ...any) {
+	f.CompleteWithError(fmt.Errorf(format, args...))
+}
+
 // CompleteWithValue completes the future with a value.
 func (f *Promise) CompleteWithValue(v any) {
 	f.result = v
@@ -47,7 +61,7 @@ func (f *Promise) CompleteWithValue(v any) {
 
 // Break breaks the promise. This will complete the future with a PromiseBroken error as value.
 func (f *Promise) Break() {
-	f.CompleteWithValue(PromiseBroken)
+	f.CompleteWithError(PromiseBroken)
 }
 
 // CompleteAfter completes the future after the given duration.
@@ -73,6 +87,19 @@ func (f *Promise) CompleteWhen(other Future) {
 func (f *Promise) Wait() any {
 	<-f.done
 	return f.result
+}
+
+// IfFails returns a future that will be completed with the given value if the future fails.
+func (f *Promise) IfFails(other func(error) Future) Future {
+	done := NewPromise()
+	go func() {
+		v := f.Wait()
+		if err, isErr := v.(error); isErr {
+			v = other(err).Wait()
+		}
+		done.CompleteWithValue(v)
+	}()
+	return done
 }
 
 // IsCompleted returns true if the future is completed.

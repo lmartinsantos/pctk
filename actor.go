@@ -294,7 +294,11 @@ func (cmd ActorLookAtObject) Execute(app *App, done *Promise) {
 		}
 		if obj.Owner() != nil {
 			// Object in the inventory. Just call the script.
-			done.CompleteWhen(a.room.script.call(app.room.id, "objects", obj.name, "lookat"))
+			done.CompleteWhen(app.Do(ObjectDo{
+				RoomID:   app.room.id,
+				ObjectID: cmd.ObjectID,
+				Action:   "lookat",
+			}))
 			return
 		}
 		// Object in the room. First walk to it, then call the script when
@@ -302,7 +306,11 @@ func (cmd ActorLookAtObject) Execute(app *App, done *Promise) {
 			ActorID:  a.name,
 			ObjectID: obj.name,
 		}).AndThen(func(_ any) Future {
-			return a.room.script.call(app.room.id, "objects", obj.name, "lookat")
+			return app.Do(ObjectDo{
+				RoomID:   app.room.id,
+				ObjectID: cmd.ObjectID,
+				Action:   "lookat",
+			})
 		}))
 	})
 }
@@ -324,7 +332,11 @@ func (cmd ActorPickUpObject) Execute(app *App, done *Promise) {
 			ActorID:  a.name,
 			ObjectID: obj.name,
 		}).AndThen(func(_ any) Future {
-			return a.room.script.call(app.room.id, "objects", obj.name, "pickup")
+			return app.Do(ObjectDo{
+				RoomID:   app.room.id,
+				ObjectID: cmd.ObjectID,
+				Action:   "pickup",
+			})
 		}))
 	})
 }

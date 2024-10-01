@@ -126,6 +126,28 @@ func (cmd ObjectDeclare) Execute(app *App, done *Promise) {
 	done.Complete()
 }
 
+// ObjectDo is a command that will execute a script function of an object.
+type ObjectDo struct {
+	RoomID   string
+	ObjectID string
+	Action   string
+}
+
+func (cmd ObjectDo) Execute(app *App, done *Promise) {
+	obj := app.FindObject(cmd.RoomID, cmd.ObjectID)
+	if obj == nil {
+		done.Complete()
+		return
+	}
+	done.CompleteWhen(
+		obj.room.script.Call(
+			WithMethod(cmd.RoomID, "objects", cmd.ObjectID, cmd.Action),
+		).IfFails(func(err error) Future {
+			return obj.room.script.Call(WithMethod("default", cmd.Action))
+		}),
+	)
+}
+
 // FindObject returns the object with the given ID in the room, or nil if not found.
 func (a *App) FindObject(roomID, objectID string) *Object {
 	room := a.RoomByID(roomID)

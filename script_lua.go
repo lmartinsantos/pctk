@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/Shopify/go-lua"
@@ -34,33 +33,14 @@ func (s *Script) luaRun(app *App, prom *Promise) {
 	}()
 }
 
-func (s *Script) luaCall(chain ...string) Future {
+func (s *Script) luaCall(method Method) Future {
 	prom := NewPromise()
 	go func() {
 		if s.l == nil {
 			log.Panic("Script not initialized")
 		}
-		if len(chain) == 0 {
-			log.Panic("No chain provided")
-		}
 
-		objPath := strings.Join(chain[:len(chain)-1], ".")
-		s.l.PushGlobalTable()
-		for ; len(chain) > 1; chain = chain[1:] {
-			s.l.Field(-1, chain[0])
-			if !s.l.IsTable(-1) {
-				log.Panicf("Object %s not found", objPath)
-			}
-		}
-
-		methodName := chain[0]
-		s.l.Field(-1, methodName)
-		if !s.l.IsFunction(-1) {
-			log.Panicf("Method %s not found in object %s", methodName, objPath)
-		}
-		s.l.PushValue(-2)
-		s.l.Call(1, 0)
-		prom.Complete()
+		prom.CompleteWhen(LuaMethod(method).Call(s.l))
 	}()
 	return prom
 }
@@ -343,12 +323,41 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 	}
 }
 
+// LuaMethod is a Lua-specific method.
+type LuaMethod Method
+
+// Call the method.
+func (m LuaMethod) Call(l *lua.State) Future {
+	prom := NewPromise()
+	str := Method(m).String()
+	l.PushGlobalTable()
+	for ; len(m) > 1; m = m[1:] {
+		l.Field(-1, m[0])
+		if !l.IsTable(-1) {
+			prom.CompleteWithErrorf("Object %s not found", str)
+			return prom
+		}
+	}
+
+	methodName := m[0]
+	l.Field(-1, methodName)
+	if !l.IsFunction(-1) {
+		prom.CompleteWithErrorf("Method %s not found in object %s", methodName, str)
+		return prom
+	}
+	l.PushValue(-2)
+	l.Call(1, 0)
+	prom.Complete()
+	return prom
+}
+
 func luaDeclareConstants(l *lua.State) {
 	for k, pushFunc := range map[string]func(){
-		"up":    func() { l.PushInteger(int(DirUp)) },
-		"right": func() { l.PushInteger(int(DirRight)) },
-		"down":  func() { l.PushInteger(int(DirDown)) },
-		"left":  func() { l.PushInteger(int(DirLeft)) },
+		"up":      func() { l.PushInteger(int(DirUp)) },
+		"right":   func() { l.PushInteger(int(DirRight)) },
+		"down":    func() { l.PushInteger(int(DirDown)) },
+		"left":    func() { l.PushInteger(int(DirLeft)) },
+		"default": func() { l.NewTable() },
 	} {
 		pushFunc()
 		l.SetGlobal(k)
