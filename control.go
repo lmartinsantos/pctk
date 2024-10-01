@@ -93,6 +93,21 @@ func (s *ActionSentence) Draw(app *App, hover RoomItem) {
 	DrawDefaultText(action, pos, AlignCenter, color)
 }
 
+// ProcessInventoryClick processes a click in the inventory.
+func (s *ActionSentence) ProcessInventoryClick(app *App, obj *Object) {
+	if s.args[0] != nil {
+		// TODO: handle the second argument
+		s.Reset(VerbWalkTo)
+		return
+	}
+	switch s.verb {
+	case VerbLookAt:
+		s.lookAtItem(app, obj)
+	default:
+		s.Reset(VerbWalkTo)
+	}
+}
+
 // ProcessLeftClick processes a left click in the control pane.
 func (s *ActionSentence) ProcessLeftClick(app *App, click Position, item RoomItem) {
 	if item == nil {
@@ -324,7 +339,7 @@ func (p *ControlPane) processLeftClick(app *App, click Position) {
 		}
 	}
 	if obj := p.inv.ObjectAt(app, click); obj != nil {
-		p.action.ProcessLeftClick(app, click, obj)
+		p.action.ProcessInventoryClick(app, obj)
 	}
 }
 

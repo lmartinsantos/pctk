@@ -1,7 +1,6 @@
 package pctk
 
 import (
-	"log"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -23,6 +22,7 @@ type Actor struct {
 	costume   *Costume
 	elev      int
 	ego       bool
+	id        string
 	inventory []*Object
 	lookAt    Direction
 	name      string
@@ -32,8 +32,10 @@ type Actor struct {
 	speed     Positionf
 }
 
-func NewActor(name string) *Actor {
+// NewActor creates a new actor with the given ID and name.
+func NewActor(id, name string) *Actor {
 	return &Actor{
+		id:    id,
 		name:  name,
 		pos:   DefaultActorPosition.ToPosf(),
 		size:  DefaultActorSize,
@@ -43,7 +45,6 @@ func NewActor(name string) *Actor {
 
 // AddToInventory adds an object to the actor's inventory.
 func (a *Actor) AddToInventory(obj *Object) {
-	log.Printf(">>> %s adds %s to inventory", a.name, obj.name)
 	a.inventory = append(a.inventory, obj)
 	obj.owner = a
 }
@@ -84,6 +85,11 @@ func (a *Actor) Draw() {
 // Hotspot returns the hotspot of the actor.
 func (a *Actor) Hotspot() Rectangle {
 	return Rectangle{Pos: a.costumePos(), Size: a.size}
+}
+
+// ID returns the ID of the actor.
+func (a *Actor) ID() string {
+	return a.name
 }
 
 // Inventory returns the inventory of the actor.
@@ -286,6 +292,12 @@ func (cmd ActorLookAtObject) Execute(app *App, done *Promise) {
 			done.Complete()
 			return
 		}
+		if obj.Owner() != nil {
+			// Object in the inventory. Just call the script.
+			done.CompleteWhen(a.room.script.call(app.room.id, "objects", obj.name, "lookat"))
+			return
+		}
+		// Object in the room. First walk to it, then call the script when
 		done.CompleteWhen(app.Do(ActorWalkToObject{
 			ActorID:  a.name,
 			ObjectID: obj.name,
@@ -353,11 +365,11 @@ func (a *App) withActor(name string, f func(*Actor)) {
 	f(actor)
 }
 
-func (a *App) ensureActor(name string) *Actor {
-	actor, ok := a.actors[name]
+func (a *App) ensureActor(id string) *Actor {
+	actor, ok := a.actors[id]
 	if !ok {
-		actor = NewActor(name)
-		a.actors[name] = actor
+		actor = NewActor(id, id)
+		a.actors[id] = actor
 	}
 	return actor
 }

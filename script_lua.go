@@ -10,7 +10,7 @@ import (
 	"github.com/Shopify/go-lua"
 )
 
-func (s *Script) luaInit(app AppContext) {
+func (s *Script) luaInit(app *App) {
 	if s.l == nil {
 		s.l = lua.NewState()
 		lua.BaseOpen(s.l)
@@ -24,7 +24,7 @@ func (s *Script) luaInit(app AppContext) {
 	}
 }
 
-func (s *Script) luaRun(app AppContext, prom *Promise) {
+func (s *Script) luaRun(app *App, prom *Promise) {
 	go func() {
 		if s.l == nil {
 			log.Panic("Script not initialized")
@@ -65,7 +65,7 @@ func (s *Script) luaCall(chain ...string) Future {
 	return prom
 }
 
-func (s *Script) luaEval(app AppContext, code []byte, include bool) {
+func (s *Script) luaEval(app *App, code []byte, include bool) {
 	prev := s.including
 	s.including = include
 
@@ -95,7 +95,22 @@ func (s *Script) luaEval(app AppContext, code []byte, include bool) {
 			room.IfTableFieldExists("objects", func(objs luaTableUtils) {
 				objs.ForEach(func(key int, value int) {
 					obj := withLuaTableAtIndex(s.l, value)
+
+					// Apply the object stereotype.
+					obj.SetObjectType("object")
+					obj.SetString("room", roomID)
 					obj.SetString("id", lua.CheckString(s.l, key))
+					obj.SetFunction("owner", lua.Function(func(l *lua.State) int {
+						self := withLuaTableAtIndex(l, 1).CheckObjectType("object")
+						obj := app.FindObject(self.GetString("room"), self.GetString("id"))
+						if owner := obj.Owner(); owner == nil {
+							l.PushNil()
+						} else {
+							l.Global(owner.ID())
+						}
+						return 1
+					}))
+
 					cmd := ObjectDeclare{
 						Classes: ObjectClass(obj.GetIntegerOpt("class", 0)),
 						Hotspot: obj.GetRectangle("hotspot"),
@@ -141,7 +156,7 @@ func (s *Script) forEachDeclaredObject(f func(typ, key string, included bool)) {
 	}
 }
 
-func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
+func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 	return []lua.RegistryFunction{
 		//
 		// Resource construction functions
@@ -645,6 +660,11 @@ func (t luaTableUtils) getFieldOpt(key string, expected lua.Type, pull func()) {
 			"field '%s' has type '%s', '%s' expected", key, given, expected))
 	}
 	pull()
+}
+
+func (t luaTableUtils) SetObjectType(typ string) {
+	t.l.PushString(typ)
+	t.l.SetField(t.index, "__type")
 }
 
 func (t luaTableUtils) SetString(key, value string) {

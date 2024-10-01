@@ -62,7 +62,7 @@ func (s *Script) BinaryDecode(r io.Reader) error {
 	return nil
 }
 
-func (s *Script) init(app AppContext, ref ResourceRef) {
+func (s *Script) init(app *App, ref ResourceRef) {
 	s.ref = ref
 	switch s.Language {
 	case ScriptLua:
@@ -72,7 +72,7 @@ func (s *Script) init(app AppContext, ref ResourceRef) {
 	}
 }
 
-func (s *Script) run(app AppContext, prom *Promise) {
+func (s *Script) run(app *App, prom *Promise) {
 	switch s.Language {
 	case ScriptLua:
 		s.luaRun(app, prom)

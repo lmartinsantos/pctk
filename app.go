@@ -12,12 +12,14 @@ type App struct {
 	screenCaption string
 	screenZoom    int32
 
+	actors  map[string]*Actor
+	dialogs []Dialog
+	objects []*Object
+	rooms   map[string]*Room
+	room    *Room
+	scripts map[ResourceRef]*Script
+
 	control  ControlPane
-	rooms    map[string]*Room
-	room     *Room
-	dialogs  []Dialog
-	actors   map[string]*Actor
-	scripts  map[ResourceRef]*Script
 	commands commandQueue
 
 	cam         rl.Camera2D

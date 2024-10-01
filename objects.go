@@ -49,6 +49,14 @@ func (o *Object) Name() string {
 	return o.name
 }
 
+// Owner returns the actor that owns the object, or nil if not picked up.
+func (o *Object) Owner() *Actor {
+	if o == nil {
+		return nil
+	}
+	return o.owner
+}
+
 // Position returns the position of the object.
 func (o *Object) Position() Position {
 	return o.pos
@@ -116,4 +124,13 @@ func (cmd ObjectDeclare) Execute(app *App, done *Promise) {
 	}
 	room.DeclareObject(obj)
 	done.Complete()
+}
+
+// FindObject returns the object with the given ID in the room, or nil if not found.
+func (a *App) FindObject(roomID, objectID string) *Object {
+	room := a.RoomByID(roomID)
+	if room == nil {
+		return nil
+	}
+	return room.ObjectByID(objectID)
 }

@@ -24,11 +24,6 @@ func (f SyncCommandFunc) Execute(a *App, done *Promise) {
 	done.Complete()
 }
 
-// AppContext is an interface that defines the method to execute a command.
-type AppContext interface {
-	Do(Command) Future
-}
-
 // Do will put the given command in the queue to be executed by the application during the next
 // frame. This function must not be called from a command handler, as it will cause a deadlock.
 // If one command have to execute another command, use doNow function instead.
