@@ -96,22 +96,11 @@ func (s *Script) declareRoom(app *App, roomID string, room luaTableUtils) {
 	room.IfTableFieldExists("objects", func(objs luaTableUtils) {
 		objs.ForEach(func(key int, value int) {
 			objID := lua.CheckString(s.l, key)
-			obj := withLuaTableAtIndex(s.l, value)
+			obj := withLuaTableAtIndex(s.l, value).CheckObjectType("object")
 
-			// Apply the object stereotype.
-			obj.SetObjectType("object")
+			// Set the related IDs
 			obj.SetString("room", roomID)
 			obj.SetString("id", objID)
-			obj.SetFunction("owner", lua.Function(func(l *lua.State) int {
-				self := withLuaTableAtIndex(l, 1).CheckObjectType("object")
-				obj := app.FindObject(self.GetString("room"), self.GetString("id"))
-				if owner := obj.Owner(); owner == nil {
-					l.PushNil()
-				} else {
-					l.Global(owner.ID())
-				}
-				return 1
-			}))
 
 			cmd := ObjectDeclare{
 				Classes:  ObjectClass(obj.GetIntegerOpt("class", 0)),
@@ -243,23 +232,6 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 			cost.SetResourceRef("ref", opts.GetRef("ref"))
 			return 1
 		}},
-		{Name: "include", Function: func(l *lua.State) int {
-			ref := luaCheckResourceRef(l, 1)
-			if luaIsIncluded(l, ref) {
-				return 0
-			}
-			script, err := WaitAs[*Script](app.RunCommand(ScriptRun{
-				ScriptRef: ref,
-			}))
-			if err != nil {
-				lua.Errorf(l, "Error including script: %s", err)
-				return 0
-			}
-			s.luaEval(app, script.Code, true)
-
-			luaSetIncluded(l, ref)
-			return 0
-		}},
 		{Name: "music", Function: func(l *lua.State) int {
 			opts := withLuaTableAtIndex(l, 1)
 			music := withNewLuaObject(l, "music")
@@ -270,6 +242,20 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 					MusicResource: self.GetRef("ref"),
 				})
 				luaPushFuture(l, done)
+				return 1
+			}))
+			return 1
+		}},
+		{Name: "object", Function: func(l *lua.State) int {
+			obj := withNewLuaObjectWrapping(l, 1, "object")
+			obj.SetFunction("owner", lua.Function(func(l *lua.State) int {
+				self := withLuaTableAtIndex(l, 1).CheckObjectType("object")
+				obj := app.FindObject(self.GetString("room"), self.GetString("id"))
+				if owner := obj.Owner(); owner == nil {
+					l.PushNil()
+				} else {
+					l.Global(owner.ID())
+				}
 				return 1
 			}))
 			return 1
@@ -318,6 +304,23 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 		//
 		// API functions
 		//
+		{Name: "include", Function: func(l *lua.State) int {
+			ref := luaCheckResourceRef(l, 1)
+			if luaIsIncluded(l, ref) {
+				return 0
+			}
+			script, err := WaitAs[*Script](app.RunCommand(ScriptRun{
+				ScriptRef: ref,
+			}))
+			if err != nil {
+				lua.Errorf(l, "Error including script: %s", err)
+				return 0
+			}
+			s.luaEval(app, script.Code, true)
+
+			luaSetIncluded(l, ref)
+			return 0
+		}},
 
 		// TODO: this function uses the ShowDialog. It must be replaced by a function that
 		// prints with some selected font.

@@ -3,7 +3,7 @@ include("resources:scripts/common")
 melee = room {
     background = "resources:backgrounds/Melee",
     objects = {
-        bucket = {
+        bucket = object {
             name = "bucket",
             sprites = "resources:sprites/objects",
             pos = {x=260, y=120},
