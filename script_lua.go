@@ -320,10 +320,25 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 			time.Sleep(luaCheckDurationMillis(l, 1))
 			return 0
 		}},
-		{Name: "usercontrol", Function: func(l *lua.State) int {
-			done := app.RunCommand(EnableControlPanel{Enable: l.ToBoolean(1)})
-			luaPushFuture(l, done)
-			return 1
+		{Name: "userputon", Function: func(l *lua.State) int {
+			done := app.RunCommand(EnableControlPanel{Enable: true})
+			done.Wait()
+			return 0
+		}},
+		{Name: "userputoff", Function: func(l *lua.State) int {
+			done := app.RunCommand(EnableControlPanel{Enable: false})
+			done.Wait()
+			return 0
+		}},
+		{Name: "cursoron", Function: func(l *lua.State) int {
+			done := app.RunCommand(EnableMouseCursor{Enable: true})
+			done.Wait()
+			return 0
+		}},
+		{Name: "cursoroff", Function: func(l *lua.State) int {
+			done := app.RunCommand(EnableMouseCursor{Enable: false})
+			done.Wait()
+			return 0
 		}},
 	}
 }

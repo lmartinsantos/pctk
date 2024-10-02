@@ -49,18 +49,42 @@ func New(resources ResourceLoader, opts ...AppOption) *App {
 	return app
 }
 
-func (a *App) init() {
-	rl.InitWindow(ScreenWidth*a.screenZoom, ScreenHeight*a.screenZoom, a.screenCaption)
-	rl.InitAudioDevice()
-	rl.SetTargetFPS(60)
-
-	a.cam.Zoom = float32(a.screenZoom)
-	a.initMouse()
-	a.control.Init()
-}
-
+// Close closes the application.
 func (a *App) Close() {
 	a.unloadMusic()
 	rl.CloseAudioDevice()
 	rl.CloseWindow()
+}
+
+// Run starts the application.
+func (a *App) Run() {
+	defer a.Close()
+
+	for !rl.WindowShouldClose() {
+		a.run()
+	}
+}
+
+func (a *App) init() {
+	rl.InitWindow(ScreenWidth*a.screenZoom, ScreenHeight*a.screenZoom, a.screenCaption)
+	rl.InitAudioDevice()
+	rl.SetTargetFPS(60)
+	rl.HideCursor()
+
+	a.cam.Zoom = float32(a.screenZoom)
+	a.control.Init(&a.cam)
+}
+
+func (a *App) run() {
+	a.updateMusic()
+	rl.BeginDrawing()
+	rl.ClearBackground(rl.Black)
+	rl.BeginMode2D(a.cam)
+	a.drawViewport()
+	a.control.Draw(a)
+	a.drawDialogs()
+	rl.EndMode2D()
+	rl.EndDrawing()
+	a.control.processControlInputs(a)
+	a.commands.Execute(a)
 }

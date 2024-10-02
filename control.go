@@ -49,14 +49,14 @@ type VerbSlot struct {
 }
 
 // Draw renders the verb slot in the control pane.
-func (s VerbSlot) Draw(a *App) {
+func (s VerbSlot) Draw(app *App, m *MouseCursor) {
 	rect := s.Rect()
 	color := ControlVerbColor
-	if a.MouseIsInto(rect) {
+	if m.IsInto(rect) {
 		color = ControlVerbHoverColor
 	}
-	if room := a.room; room != nil {
-		if item := room.ItemAt(a.MousePosition()); item != nil {
+	if room := app.room; room != nil {
+		if item := room.ItemAt(m.Position()); item != nil {
 			if item.Class().Is(s.Alt) {
 				color = ControlVerbHoverColor
 			} else if s.Verb == VerbLookAt {
@@ -187,11 +187,11 @@ type ControlInventory struct {
 }
 
 // Draw renders the inventory in the control pane.
-func (c *ControlInventory) Draw(app *App) {
+func (c *ControlInventory) Draw(app *App, m *MouseCursor) {
 	if app.ego == nil {
 		return
 	}
-	mpos := app.MousePosition()
+	mpos := m.Position()
 	for i, item := range app.ego.Inventory() {
 		rect := c.slotsRect[i]
 		color := ControlInventoryColor
@@ -239,11 +239,11 @@ type ControlPane struct {
 	verbs  []VerbSlot
 	action ActionSentence
 	inv    ControlInventory
+	cursor *MouseCursor
 }
 
 // Init initializes the control pane.
-func (p *ControlPane) Init() {
-	p.Enabled = true
+func (p *ControlPane) Init(cam *rl.Camera2D) {
 	p.verbs = []VerbSlot{
 		{Verb: VerbOpen, Row: 0, Col: 0, Alt: ObjectClassOpenable},
 		{Verb: VerbClose, Row: 1, Col: 0},
@@ -262,17 +262,19 @@ func (p *ControlPane) Init() {
 	}
 	p.action.Reset(VerbWalkTo)
 	p.inv.Init()
+	p.cursor = NewMouseCursor(cam)
 }
 
 // Draw renders the control panel in the viewport.
 func (p *ControlPane) Draw(app *App) {
 	if p.Enabled {
 		for _, v := range p.verbs {
-			v.Draw(app)
+			v.Draw(app, p.cursor)
 		}
-		hover := p.hover(app, app.MousePosition())
+		hover := p.hover(app, p.cursor.Position())
 		p.action.Draw(app, hover)
-		p.inv.Draw(app)
+		p.inv.Draw(app, p.cursor)
+		p.cursor.Draw()
 	}
 }
 
@@ -289,10 +291,10 @@ func (p *ControlPane) hover(app *App, pos Position) RoomItem {
 }
 
 func (p *ControlPane) processControlInputs(app *App) {
-	if app.ego == nil {
+	if !p.cursor.Enabled || app.ego == nil {
 		return
 	}
-	pos := app.MousePosition()
+	pos := p.cursor.Position()
 	hover := p.hover(app, pos)
 	if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
 		if ViewportRect.Contains(pos) {
@@ -327,5 +329,15 @@ type EnableControlPanel struct {
 
 func (cmd EnableControlPanel) Execute(app *App, done *Promise) {
 	app.control.Enabled = cmd.Enable
+	done.Complete()
+}
+
+// EnableMouseCursor is a command that will enable or disable the mouse control.
+type EnableMouseCursor struct {
+	Enable bool
+}
+
+func (cmd EnableMouseCursor) Execute(app *App, done *Promise) {
+	app.control.cursor.Enabled = cmd.Enable
 	done.Complete()
 }

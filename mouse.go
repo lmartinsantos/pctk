@@ -6,34 +6,55 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-// MousePosition returns the current mouse position in the screen.
-func (a *App) MousePosition() Position {
+// MouseCursor is a custom mouse cursor.
+type MouseCursor struct {
+	Enabled bool
+
+	cam *rl.Camera2D
+	col Color
+	tx  rl.Texture2D
+}
+
+// NewMouseCursor creates a new mouse cursor.
+func NewMouseCursor(cam *rl.Camera2D) *MouseCursor {
+	return &MouseCursor{
+		cam: cam,
+		col: rl.NewColor(0xAA, 0xAA, 0xAA, 0xFF),
+		tx: rl.LoadTextureFromImage(
+			rl.NewImage(mouseCursorData(), 15, 15, 1, rl.UncompressedR8g8b8a8),
+		),
+	}
+}
+
+// Draw renders the mouse cursor at the current position.
+func (m *MouseCursor) Draw() {
+	pos := m.Position()
+	if m.Enabled && rl.IsCursorOnScreen() {
+		rl.DrawTexture(m.tx, int32(pos.X-7), int32(pos.Y-7), m.col)
+		m.col.R = max(0xAA, m.col.R+6)
+		m.col.G = max(0xAA, m.col.G+6)
+		m.col.B = max(0xAA, m.col.B+6)
+	}
+}
+
+// OnScreen returns true if the mouse is on the screen.
+func (m *MouseCursor) OnScreen() bool {
+	return rl.IsCursorOnScreen()
+}
+
+// Position returns the current mouse position in the screen.
+func (m *MouseCursor) Position() Position {
+	if !m.Enabled {
+		return Position{-1, -1}
+	}
 	return positionFromRaylib(
-		rl.GetScreenToWorld2D(rl.GetMousePosition(), a.cam),
+		rl.GetScreenToWorld2D(rl.GetMousePosition(), *m.cam),
 	)
 }
 
 // MouseIsInto returns true if the mouse is into the given region.
-func (a *App) MouseIsInto(rect Rectangle) bool {
-	return rl.CheckCollisionPointRec(a.MousePosition().toRaylib(), rect.toRaylib())
-}
-
-func (a *App) initMouse() {
-	a.cursorTx = rl.LoadTextureFromImage(
-		rl.NewImage(mouseCursorData(), 15, 15, 1, rl.UncompressedR8g8b8a8),
-	)
-	a.cursorColor = rl.NewColor(0xAA, 0xAA, 0xAA, 0xFF)
-	rl.HideCursor()
-}
-
-func (a *App) drawMouseCursor() {
-	if rl.IsCursorOnScreen() {
-		pos := a.MousePosition()
-		rl.DrawTexture(a.cursorTx, int32(pos.X-7), int32(pos.Y-7), a.cursorColor)
-		a.cursorColor.R = max(0xAA, a.cursorColor.R+6)
-		a.cursorColor.G = max(0xAA, a.cursorColor.G+6)
-		a.cursorColor.B = max(0xAA, a.cursorColor.B+6)
-	}
+func (m *MouseCursor) IsInto(rect Rectangle) bool {
+	return rl.CheckCollisionPointRec(m.Position().toRaylib(), rect.toRaylib())
 }
 
 func mouseCursorData() []byte {
