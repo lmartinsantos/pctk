@@ -30,7 +30,6 @@ function melee:enter()
     guybrush:show{
         pos={x=340, y=140}, 
         dir=left,
-        costume="resources:costumes/Guybrush" -- TODO: this must be a variable
     }
     
     music1:play()

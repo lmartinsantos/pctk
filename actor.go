@@ -1,6 +1,7 @@
 package pctk
 
 import (
+	"log"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -100,6 +101,13 @@ func (a *Actor) Inventory() []*Object {
 // IsEgo returns true if the actor is the actor under player's control, false otherwise.
 func (a *Actor) IsEgo() bool {
 	return a.ego
+}
+
+// Locate the actor in the given room, position and direction.
+func (a *Actor) Locate(room *Room, pos Position, dir Direction) {
+	a.room = room
+	a.pos = pos.ToPosf()
+	a.Do(Standing(dir))
 }
 
 // Name returns the name of the actor.
@@ -206,20 +214,13 @@ func (a *Action) RunFrame(actor *Actor) (completed bool) {
 	return a.prom.IsCompleted()
 }
 
-func (a *App) withActor(name string, f func(*Actor)) {
-	actor, ok := a.actors[name]
-	if !ok {
-		return
+// DeclareActor declares a new actor with the given ID and name.
+func (a *App) DeclareActor(id, name string) *Actor {
+	if _, ok := a.actors[id]; ok {
+		log.Fatalf("Actor %s already exists", id)
 	}
-	f(actor)
-}
-
-func (a *App) ensureActor(id string) *Actor {
-	actor, ok := a.actors[id]
-	if !ok {
-		actor = NewActor(id, id)
-		a.actors[id] = actor
-	}
+	actor := NewActor(id, name)
+	a.actors[id] = actor
 	return actor
 }
 

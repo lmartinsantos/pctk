@@ -7,23 +7,36 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
+// ActorDeclare is a command that will declare an actor.
+type ActorDeclare struct {
+	ActorID   string
+	ActorName string
+	Costume   ResourceRef
+}
+
+func (cmd ActorDeclare) Execute(app *App, done *Promise) {
+	actor := app.DeclareActor(cmd.ActorID, cmd.ActorName)
+	if cmd.Costume != ResourceRefNull {
+		actor.SetCostume(app.res.LoadCostume(cmd.Costume))
+	}
+	done.CompleteWithValue(cmd)
+}
+
 // ActorShow is a command that will show an actor in the room at the given position.
 type ActorShow struct {
-	CostumeResource ResourceRef
-	ActorID         string
-	Position        Position
-	LookAt          Direction
+	Actor    *Actor
+	Position Position
+	LookAt   Direction
 }
 
 func (cmd ActorShow) Execute(app *App, done *Promise) {
-	actor := app.ensureActor(cmd.ActorID)
-	app.room.PutActor(actor)
-	actor.pos = cmd.Position.ToPosf()
-	actor.Do(Standing(cmd.LookAt))
-	if cmd.CostumeResource != ResourceRefNull {
-		actor.SetCostume(app.res.LoadCostume(cmd.CostumeResource))
+	if app.room == nil {
+		done.CompleteWithErrorf("no active room to show actor %s", cmd.Actor.Name())
+		return
 	}
-	app.actors[cmd.ActorID] = actor
+
+	app.room.PutActor(cmd.Actor)
+	cmd.Actor.Locate(app.room, cmd.Position, cmd.LookAt)
 	done.Complete()
 }
 
