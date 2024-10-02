@@ -172,3 +172,20 @@ func (wm *WalkBoxMatrix) EnableWalkBox(id int, enabled bool) {
 		wm.itineraryMatrix = calculateItineraryMatrix(wm.walkBoxes)
 	}
 }
+
+// WalkBoxAt returns the walk box identifier at the given position or the closest one,
+// along with a boolean indicating inclusion.
+func (wm *WalkBoxMatrix) WalkBoxAt(p *Positionf) (id int, included bool) {
+	panic("Not implemented yet!")
+}
+
+// ClosestPositionToWalkBox returns the closest point to the specified walkbox identifiers from
+// the origin.
+func (wm *WalkBoxMatrix) ClosestPositionToWalkBox(from, to int) *Positionf {
+	panic("Not implemented yet!")
+}
+
+// ClosestPositionOnWalkBox returns the closest point on the walk box at a given position.
+func (wm *WalkBoxMatrix) ClosestPositionOnWalkBox(p *Positionf) *Positionf {
+	panic("Not implemented yet!")
+}
