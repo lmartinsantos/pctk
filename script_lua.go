@@ -83,7 +83,10 @@ func (s *Script) declareActor(app *App, actorID string, actor luaTableUtils) {
 		ActorID:   actorID,
 		ActorName: actor.GetString("name"),
 		Costume:   actor.GetRefOpt("costume", ResourceRefNull),
+		Size:      actor.GetSizeOpt("size", DefaultActorSize),
 		TalkColor: actor.GetColorOpt("talkcolor", DefaultActorTalkColor),
+		UsePos:    actor.GetPositionOpt("usepos", DefaultActorUsePos),
+		UseDir:    actor.GetDirectionOpt("usedir", DefaultActorDirection),
 	}).Wait()
 }
 
@@ -452,6 +455,13 @@ func luaCheckPosition(l *lua.State, index int) (pos Position) {
 	return
 }
 
+func luaCheckSize(l *lua.State, index int) (size Size) {
+	tab := withLuaTableAtIndex(l, index)
+	size.W = tab.GetInteger("w")
+	size.H = tab.GetInteger("h")
+	return
+}
+
 func luaCheckRectangle(l *lua.State, index int) (rect Rectangle) {
 	tab := withLuaTableAtIndex(l, index)
 	rect.Pos.X = tab.GetInteger("x")
@@ -661,6 +671,17 @@ func (t luaTableUtils) GetPosition(key string) (val Position) {
 func (t luaTableUtils) GetPositionOpt(key string, def Position) (val Position) {
 	val = def
 	t.getFieldOpt(key, lua.TypeTable, func() { val = luaCheckPosition(t.l, -1) })
+	return
+}
+
+func (t luaTableUtils) GetSize(key string) (val Size) {
+	t.getField(key, lua.TypeTable, func() { val = luaCheckSize(t.l, -1) })
+	return
+}
+
+func (t luaTableUtils) GetSizeOpt(key string, def Size) (val Size) {
+	val = def
+	t.getFieldOpt(key, lua.TypeTable, func() { val = luaCheckSize(t.l, -1) })
 	return
 }
 
