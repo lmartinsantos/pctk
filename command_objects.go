@@ -39,15 +39,23 @@ func (cmd ObjectDeclare) Execute(app *App, done *Promise) {
 
 // ObjectCall is a command that will execute a script function of an object.
 type ObjectCall struct {
-	Object *Object
-	Action string
+	Object   *Object
+	Function string
 }
 
 func (cmd ObjectCall) Execute(app *App, done *Promise) {
 	obj := cmd.Object
-	call := obj.room.script.Call(WithMethod(obj.room.id, "objects", obj.id, cmd.Action))
+	call := obj.room.script.Call(
+		WithField(obj.room.id, "objects", obj.id, cmd.Function),
+		nil,
+		true,
+	)
 	call = Recover(call, func(err error) Future {
-		return obj.room.script.Call(WithMethod("default", cmd.Action))
+		return obj.room.script.Call(
+			WithField("default", cmd.Function),
+			[]any{WithField(obj.room.id, "objects", obj.id)},
+			false,
+		)
 	})
 	done.Bind(call)
 }

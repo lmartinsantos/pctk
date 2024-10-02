@@ -39,10 +39,10 @@ func NewScript(lang ScriptLanguage, code []byte) *Script {
 
 // Call a method in the script. The method is a chain of identifiers that references a function in
 // the script.
-func (s *Script) Call(method Method) Future {
+func (s *Script) Call(f FieldAccessor, args []any, method bool) Future {
 	switch s.Language {
 	case ScriptLua:
-		return s.luaCall(method)
+		return s.luaCall(f, args, method)
 	default:
 		log.Panicf("Unknown script language: %0x", s.Language)
 		return nil
@@ -94,22 +94,31 @@ func (s *Script) run(app *App, prom *Promise) {
 	}
 }
 
-// Method is a chain of identifiers that references a function in a script.
-type Method []string
+// FieldAccessor is a sequence of identifiers that references a field in a chain of tables.
+type FieldAccessor []string
 
-// WithMethod creates a new Method with the given parts.
-func WithMethod(head string, tail ...string) Method {
-	return append(Method{head}, tail...)
+// WithField creates a new FieldAccessor with the given parts.
+func WithField(global string, fields ...string) FieldAccessor {
+	return append(FieldAccessor{global}, fields...)
 }
 
-// ForEach calls the given function for each part of the method.
-func (m Method) ForEach(f func(string)) {
+// ForEach calls the given function for each element of the accessor.
+func (m FieldAccessor) ForEach(f func(string)) {
 	for _, part := range m {
 		f(part)
 	}
 }
 
-// String returns the string representation of the method.
-func (m Method) String() string {
+// Base returns the base accessor of the accessor. This is the accessor without the last element.
+// If the accessor points to a global variable, it returns itself.
+func (m FieldAccessor) Base() FieldAccessor {
+	if len(m) == 1 {
+		return m
+	}
+	return m[:len(m)-1]
+}
+
+// String returns the string representation of the fields accessor.
+func (m FieldAccessor) String() string {
 	return strings.Join(m, ".")
 }

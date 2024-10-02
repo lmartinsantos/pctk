@@ -1,5 +1,13 @@
 include("resources:scripts/common")
 
+pirates = actor {
+    name = "men of low moral fiber (pirates)",
+    size = {w=60, h=64},
+    talkcolor = magenta,
+    usepos = {x=90, y=128},
+    usedir = left
+}
+
 melee = room {
     background = "resources:backgrounds/Melee",
     objects = {
@@ -32,6 +40,11 @@ function melee:enter()
     local pirate1_dialog_props = { pos = {x=60, y=20}, color = magenta }
     local pirate2_dialog_props = { pos = {x=60, y=50}, color = yellow }
     local skipintro = true
+
+    pirates:show{
+        pos={x=38, y=137},         
+        dir=right,
+    }
 
     guybrush:show{
         pos={x=340, y=140}, 
@@ -96,4 +109,13 @@ end
 
 function melee.objects.clock:lookat()
     guybrush:say("It's weird. I have the feeling\nthat the time is not passing.").wait()
+end
+
+function pirates:lookat() 
+    guybrush:say("They didn't move since I arrived\nin Monkey Island I.").wait()
+    guybrush:say("I guess they are waiting for\nsomething...").wait()
+end
+
+function pirates:talkto()
+    guybrush:say("Now they are busy.\nI will not disturb them.")
 end

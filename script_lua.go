@@ -33,14 +33,14 @@ func (s *Script) luaRun(app *App, prom *Promise) {
 	}()
 }
 
-func (s *Script) luaCall(method Method) Future {
+func (s *Script) luaCall(f FieldAccessor, args []any, method bool) Future {
 	prom := NewPromise()
 	go func() {
 		if s.l == nil {
 			log.Panic("Script not initialized")
 		}
 
-		prom.Bind(LuaMethod(method).Call(s.l))
+		prom.Bind(CallFunction(s.l, f, args, method))
 	}()
 	return prom
 }
@@ -83,6 +83,10 @@ func (s *Script) declareActor(app *App, actorID string, actor luaTableUtils) {
 		ActorID:   actorID,
 		ActorName: actor.GetString("name"),
 		Costume:   actor.GetRefOpt("costume", ResourceRefNull),
+		Size:      actor.GetSizeOpt("size", DefaultActorSize),
+		TalkColor: actor.GetColorOpt("talkcolor", DefaultActorTalkColor),
+		UsePos:    actor.GetPositionOpt("usepos", DefaultActorUsePos),
+		UseDir:    actor.GetDirectionOpt("usedir", DefaultActorDirection),
 	}).Wait()
 }
 
@@ -363,30 +367,28 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 	}
 }
 
-// LuaMethod is a Lua-specific method.
-type LuaMethod Method
-
-// Call the method.
-func (m LuaMethod) Call(l *lua.State) Future {
+// Call the function pointed by f with the given arguments. If method is true, the first argument
+// is the object that has the method.
+func CallFunction(l *lua.State, f FieldAccessor, args []any, method bool) Future {
 	prom := NewPromise()
-	str := Method(m).String()
-	l.PushGlobalTable()
-	for ; len(m) > 1; m = m[1:] {
-		l.Field(-1, m[0])
-		if !l.IsTable(-1) {
-			prom.CompleteWithErrorf("Object %s not found", str)
-			return prom
-		}
-	}
-
-	methodName := m[0]
-	l.Field(-1, methodName)
-	if !l.IsFunction(-1) {
-		prom.CompleteWithErrorf("Method %s not found in object %s", methodName, str)
+	err := luaPushField(l, f)
+	if err != nil {
+		prom.CompleteWithError(err)
 		return prom
 	}
-	l.PushValue(-2)
-	l.Call(1, 0)
+	if !l.IsFunction(-1) {
+		prom.CompleteWithErrorf("Field %s is not a function", f)
+		return prom
+	}
+	nargs := len(args)
+	if method {
+		luaPushValue(l, f.Base())
+		nargs++
+	}
+	for _, arg := range args {
+		luaPushValue(l, arg)
+	}
+	l.Call(nargs, 0)
 	prom.Complete()
 	return prom
 }
@@ -451,6 +453,13 @@ func luaCheckPosition(l *lua.State, index int) (pos Position) {
 	return
 }
 
+func luaCheckSize(l *lua.State, index int) (size Size) {
+	tab := withLuaTableAtIndex(l, index)
+	size.W = tab.GetInteger("w")
+	size.H = tab.GetInteger("h")
+	return
+}
+
 func luaCheckRectangle(l *lua.State, index int) (rect Rectangle) {
 	tab := withLuaTableAtIndex(l, index)
 	rect.Pos.X = tab.GetInteger("x")
@@ -509,6 +518,50 @@ func luaPushFuture(l *lua.State, f Future) {
 		}},
 	})
 	return
+}
+
+func luaPushField(l *lua.State, f FieldAccessor) error {
+	var n int
+	str := FieldAccessor(f).String()
+	l.PushGlobalTable()
+	n++
+	for ; len(f) > 1; f = f[1:] {
+		l.Field(-1, f[0])
+		n++
+		if !l.IsTable(-1) {
+			l.Pop(n)
+			return fmt.Errorf("Object %s not found", str)
+		}
+	}
+	l.Field(-1, f[0])
+	n++
+	if l.IsNil(-1) {
+		l.Pop(n)
+		return fmt.Errorf("Field %s not found in object %s", f[0], str)
+	}
+	for i := 1; i < n; i++ {
+		l.Remove(-2)
+	}
+	return nil
+}
+
+func luaPushValue(l *lua.State, val any) {
+	switch v := val.(type) {
+	case bool:
+		l.PushBoolean(v)
+	case int:
+		l.PushInteger(v)
+	case string:
+		l.PushString(v)
+	case time.Duration:
+		l.PushInteger(int(v / time.Millisecond))
+	case FieldAccessor:
+		if err := luaPushField(l, v); err != nil {
+			lua.ArgumentError(l, 1, err.Error())
+		}
+	default:
+		log.Panicf("Unsupported value type: %T", val)
+	}
 }
 
 type luaTableUtils struct {
@@ -660,6 +713,17 @@ func (t luaTableUtils) GetPosition(key string) (val Position) {
 func (t luaTableUtils) GetPositionOpt(key string, def Position) (val Position) {
 	val = def
 	t.getFieldOpt(key, lua.TypeTable, func() { val = luaCheckPosition(t.l, -1) })
+	return
+}
+
+func (t luaTableUtils) GetSize(key string) (val Size) {
+	t.getField(key, lua.TypeTable, func() { val = luaCheckSize(t.l, -1) })
+	return
+}
+
+func (t luaTableUtils) GetSizeOpt(key string, def Size) (val Size) {
+	val = def
+	t.getFieldOpt(key, lua.TypeTable, func() { val = luaCheckSize(t.l, -1) })
 	return
 }
 

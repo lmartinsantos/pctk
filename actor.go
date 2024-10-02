@@ -16,9 +16,16 @@ var (
 	DefaultActorSpeed     = NewPosf(80, 20)
 	DefaultActorSize      = NewSize(32, 48)
 	DefaultActorDirection = DirRight
+	DefaultActorTalkColor = BrigthGrey
+	DefaultActorUsePos    = NewPos(rl.GetScreenWidth()/2, 120)
 )
 
 type Actor struct {
+	Size      Size      // Size of the actor
+	TalkColor Color     // Color of the text when the actor talks
+	UsePos    Position  // Position where other actors interact with this actor
+	UseDir    Direction // Direction where other actors interact with this actor
+
 	act       *Action
 	costume   *Costume
 	elev      int
@@ -29,17 +36,20 @@ type Actor struct {
 	name      string
 	pos       Positionf
 	room      *Room
-	size      Size
 	speed     Positionf
 }
 
 // NewActor creates a new actor with the given ID and name.
 func NewActor(id, name string) *Actor {
 	return &Actor{
+		TalkColor: DefaultActorTalkColor,
+		Size:      DefaultActorSize,
+		UsePos:    DefaultActorUsePos,
+		UseDir:    DefaultActorDirection,
+
 		id:    id,
 		name:  name,
 		pos:   DefaultActorPosition.ToPosf(),
-		size:  DefaultActorSize,
 		speed: DefaultActorSpeed,
 	}
 }
@@ -85,7 +95,7 @@ func (a *Actor) Draw() {
 
 // Hotspot returns the hotspot of the actor.
 func (a *Actor) Hotspot() Rectangle {
-	return Rectangle{Pos: a.costumePos(), Size: a.size}
+	return Rectangle{Pos: a.costumePos(), Size: a.Size}
 }
 
 // ID returns the ID of the actor.
@@ -133,16 +143,15 @@ func (a *Actor) SetCostume(costume *Costume) *Actor {
 
 // UsePosition returns the position where actors interact with the actor.
 func (a *Actor) UsePosition() (Position, Direction) {
-	// TODO: this might be wrong, specially if the actor is looking to the edge of a walking box
-	return a.pos.ToPos(), a.lookAt
+	return a.UsePos, a.UseDir
 }
 
 func (a *Actor) costumePos() Position {
-	return a.pos.ToPos().Sub(NewPos(a.size.W/2, a.size.H-a.elev))
+	return a.pos.ToPos().Sub(NewPos(a.Size.W/2, a.Size.H-a.elev))
 }
 
 func (a *Actor) dialogPos() Position {
-	return a.pos.ToPos().Above(a.size.H + 40)
+	return a.pos.ToPos().Above(a.Size.H + 40)
 }
 
 // Action is an action that an actor is performing.

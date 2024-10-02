@@ -45,7 +45,6 @@ type VerbSlot struct {
 	Verb Verb
 	Row  int
 	Col  int
-	Alt  ObjectClass
 }
 
 // Draw renders the verb slot in the control pane.
@@ -57,10 +56,23 @@ func (s VerbSlot) Draw(app *App, m *MouseCursor) {
 	}
 	if room := app.room; room != nil {
 		if item := room.ItemAt(m.Position()); item != nil {
-			if item.Class().Is(s.Alt) {
-				color = ControlVerbHoverColor
-			} else if s.Verb == VerbLookAt {
-				color = ControlVerbHoverColor
+			switch s.Verb {
+			case VerbOpen:
+				if item.Class().IsOneOf(ObjectClassOpenable) {
+					color = ControlVerbHoverColor
+				}
+			case VerbClose:
+				if item.Class().IsOneOf(ObjectClassCloseable) {
+					color = ControlVerbHoverColor
+				}
+			case VerbTalkTo:
+				if item.Class().IsOneOf(ObjectClassPerson) {
+					color = ControlVerbHoverColor
+				}
+			case VerbLookAt:
+				if item.Class().IsNoneOf(ObjectClassOpenable, ObjectClassCloseable, ObjectClassPerson) {
+					color = ControlVerbHoverColor
+				}
 			}
 		}
 	}
@@ -132,12 +144,12 @@ func (s *ActionSentence) ProcessLeftClick(app *App, click Position, item RoomIte
 func (s *ActionSentence) ProcessRightClick(app *App, click Position, item RoomItem) {
 	if item != nil {
 		// Execute quick action
-		if item.Class().Is(ObjectClassPerson) {
-			// TODO: do a talk to action
-		} else if item.Class().Is(ObjectClassOpenable) {
-			// TODO: do a open action
-		} else if item.Class().Is(ObjectClassPickable) {
-			s.interactWith(app, VerbPickUp, item)
+		if item.Class().IsOneOf(ObjectClassPerson) {
+			s.interactWith(app, VerbTalkTo, item)
+		} else if item.Class().IsOneOf(ObjectClassOpenable) {
+			s.interactWith(app, VerbOpen, item)
+		} else if item.Class().IsOneOf(ObjectClassCloseable) {
+			s.interactWith(app, VerbClose, item)
 		} else {
 			s.interactWith(app, VerbLookAt, item)
 		}
@@ -245,14 +257,14 @@ type ControlPane struct {
 // Init initializes the control pane.
 func (p *ControlPane) Init(cam *rl.Camera2D) {
 	p.verbs = []VerbSlot{
-		{Verb: VerbOpen, Row: 0, Col: 0, Alt: ObjectClassOpenable},
+		{Verb: VerbOpen, Row: 0, Col: 0},
 		{Verb: VerbClose, Row: 1, Col: 0},
 		{Verb: VerbPush, Row: 2, Col: 0},
 		{Verb: VerbPull, Row: 3, Col: 0},
 
 		{Verb: VerbWalkTo, Row: 0, Col: 1},
 		{Verb: VerbPickUp, Row: 1, Col: 1},
-		{Verb: VerbTalkTo, Row: 2, Col: 1, Alt: ObjectClassPerson},
+		{Verb: VerbTalkTo, Row: 2, Col: 1},
 		{Verb: VerbGive, Row: 3, Col: 1},
 
 		{Verb: VerbUse, Row: 0, Col: 2},

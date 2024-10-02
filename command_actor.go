@@ -12,6 +12,10 @@ type ActorDeclare struct {
 	ActorID   string
 	ActorName string
 	Costume   ResourceRef
+	TalkColor Color
+	Size      Size
+	UsePos    Position
+	UseDir    Direction
 }
 
 func (cmd ActorDeclare) Execute(app *App, done *Promise) {
@@ -19,6 +23,10 @@ func (cmd ActorDeclare) Execute(app *App, done *Promise) {
 	if cmd.Costume != ResourceRefNull {
 		actor.SetCostume(app.res.LoadCostume(cmd.Costume))
 	}
+	actor.Size = cmd.Size
+	actor.TalkColor = cmd.TalkColor
+	actor.UsePos = cmd.UsePos
+	actor.UseDir = cmd.UseDir
 	done.CompleteWithValue(cmd)
 }
 
@@ -124,7 +132,10 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 				Actor: cmd.Actor,
 				Item:  cmd.Target,
 			},
-			// TODO: implement ActorCall
+			ActorCall{
+				Actor:    item,
+				Function: cmd.Verb.Action(),
+			},
 		)
 	case *Object:
 		if item.Owner() != nil {
@@ -136,8 +147,8 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 			default:
 				// It is in the inventory. Do not walk to it, just call.
 				completed = app.RunCommand(ObjectCall{
-					Object: item,
-					Action: cmd.Verb.Action(),
+					Object:   item,
+					Function: cmd.Verb.Action(),
 				})
 			}
 		} else {
@@ -148,8 +159,8 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 					Item:  cmd.Target,
 				},
 				ObjectCall{
-					Object: item,
-					Action: cmd.Verb.Action(),
+					Object:   item,
+					Function: cmd.Verb.Action(),
 				},
 			)
 		}
@@ -177,7 +188,7 @@ func (cmd ActorSpeak) Execute(app *App, done *Promise) {
 	}
 
 	if cmd.Color == rl.Blank {
-		cmd.Color = rl.White
+		cmd.Color = cmd.Actor.TalkColor
 	}
 
 	dialogDone := app.RunCommand(ShowDialog{
@@ -214,4 +225,34 @@ func (cmd ActorAddToInventory) Execute(app *App, done *Promise) {
 func (a *App) ActorByID(id string) *Actor {
 	actor, _ := a.actors[id]
 	return actor
+}
+
+// ActorCall is a command that will call a method on an actor.
+type ActorCall struct {
+	Actor    *Actor
+	Function string
+}
+
+func (cmd ActorCall) Execute(app *App, done *Promise) {
+	// We call this in the script of the current room. If the actor is imported from a include, it
+	// will still have the methods for the actions no matter the room where it is evaluated. In
+	// addition, this allows the script of the room to override the default behavior of the actor
+	// when it is in the room.
+	if app.room == nil {
+		done.CompleteWithErrorf("no active room to call actor %s", cmd.Actor.Name())
+		return
+	}
+	call := app.room.script.Call(
+		WithField(cmd.Actor.id, cmd.Function),
+		nil,
+		true,
+	)
+	call = Recover(call, func(err error) Future {
+		return app.room.script.Call(
+			WithField("default", cmd.Function),
+			[]any{WithField(cmd.Actor.id)},
+			false,
+		)
+	})
+	done.Bind(call)
 }

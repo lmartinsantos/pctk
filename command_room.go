@@ -31,13 +31,13 @@ func (cmd RoomShow) Execute(app *App, done *Promise) {
 	var job Future
 
 	if app.room != nil {
-		job = IgnoreError(app.room.script.Call(WithMethod(app.room.id, "exit")), nil)
+		job = IgnoreError(app.room.script.Call(WithField(app.room.id, "exit"), nil, true), nil)
 	}
 
 	// Call the enter function of the room script.
 	app.room = cmd.Room
 	job = Continue(job, func(a any) Future {
-		return IgnoreError(cmd.Room.script.Call(WithMethod(cmd.Room.id, "enter")), nil)
+		return IgnoreError(cmd.Room.script.Call(WithField(cmd.Room.id, "enter"), nil, true), nil)
 	})
 
 	done.Bind(job)
