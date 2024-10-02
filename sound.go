@@ -63,30 +63,16 @@ func (a *App) isSoundReady() bool {
 	return a.sound != nil && rl.IsSoundReady(a.sound.raw)
 }
 
-// SoundPlay is a command that will play the sound with the given resource reference.
-type SoundPlay struct {
-	SoundResource ResourceRef
-}
-
-func (cmd SoundPlay) Execute(app *App, done *Promise) {
-	app.sound = app.res.LoadSound(cmd.SoundResource)
-	if app.isSoundReady() {
-		rl.PlaySound(app.sound.raw)
+// PlaySound loads and plays the sound from the given resource reference.
+func (a *App) PlaySound(ref ResourceRef) {
+	a.sound = a.res.LoadSound(ref)
+	if a.isSoundReady() {
+		rl.PlaySound(a.sound.raw)
 	}
-	done.Complete()
 }
 
-// SoundStop is a command that will stop the sound with the given resource reference.
-type SoundStop struct {
-	SoundResource ResourceRef
-}
-
-func (cmd SoundStop) Execute(app *App, done *Promise) {
-	app.stopSound()
-	done.Complete()
-}
-
-func (a *App) stopSound() {
+// StopSound stops the current sound.
+func (a *App) StopSound() {
 	if a.isSoundReady() {
 		rl.StopSound(a.sound.raw)
 	}
