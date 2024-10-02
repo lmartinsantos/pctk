@@ -58,46 +58,33 @@ func (m *Music) BinaryDecode(r io.Reader) error {
 	return nil
 }
 
-// MusicPlay is a command that will play the music with the given resource reference.
-type MusicPlay struct {
-	MusicResource ResourceRef
-}
-
-func (cmd MusicPlay) Execute(app *App, done *Promise) {
-	app.music = app.res.LoadMusic(cmd.MusicResource)
-	if app.isMusicReady() {
-		rl.PlayMusicStream(app.music.raw)
+// PlayMusic plays the music from the given resource.
+func (a *App) PlayMusic(ref ResourceRef) {
+	a.music = a.res.LoadMusic(ref)
+	if a.isMusicReady() {
+		rl.PlayMusicStream(a.music.raw)
 	}
-	// TODO: determine if future is bounded to the music stream end or just the play begin.
-	done.Complete()
 }
 
-// MusicStop is a command that will stop the music.
-type MusicStop struct{}
-
-func (cmd MusicStop) Execute(app *App, done *Promise) {
-	app.stopMusic()
-	done.Complete()
+// PauseMusic pauses the music being played.
+func (a *App) PauseMusic() {
+	if a.isMusicReady() {
+		rl.PauseMusicStream(a.music.raw)
+	}
 }
 
-// MusicPause is a command that will pause the music.
-type MusicPause struct{}
-
-func (cmd MusicPause) Execute(app *App, done *Promise) {
-	app.pauseMusic()
-	done.Complete()
+// ResumeMusic resumes the music being played. It must be paused first.
+func (a *App) ResumeMusic() {
+	if a.isMusicReady() {
+		rl.ResumeMusicStream(a.music.raw)
+	}
 }
 
-// MusicResume is a command that will resume the music.
-type MusicResume struct{}
-
-func (cmd MusicResume) Execute(app *App, done *Promise) {
-	app.resumeMusic()
-	done.Complete()
-}
-
-func (a *App) isMusicReady() bool {
-	return a.music != nil && rl.IsMusicReady(a.music.raw)
+// StopMusic stops the music being played.
+func (a *App) StopMusic() {
+	if a.isMusicReady() {
+		rl.StopMusicStream(a.music.raw)
+	}
 }
 
 func (a *App) updateMusic() {
@@ -106,26 +93,11 @@ func (a *App) updateMusic() {
 	}
 }
 
-func (a *App) pauseMusic() {
-	if a.isMusicReady() {
-		rl.PauseMusicStream(a.music.raw)
-	}
-}
-
-func (a *App) resumeMusic() {
-	if a.isMusicReady() {
-		rl.ResumeMusicStream(a.music.raw)
-	}
-}
-
-func (a *App) stopMusic() {
-	if a.isMusicReady() {
-		rl.StopMusicStream(a.music.raw)
-	}
-}
-
 func (a *App) unloadMusic() {
 	if a.isMusicReady() {
 		rl.UnloadMusicStream(a.music.raw)
 	}
+}
+func (a *App) isMusicReady() bool {
+	return a.music != nil && rl.IsMusicReady(a.music.raw)
 }

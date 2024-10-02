@@ -3,7 +3,7 @@ include("resources:scripts/common")
 melee = room {
     background = "resources:backgrounds/Melee",
     objects = {
-        bucket = {
+        bucket = object {
             name = "bucket",
             sprites = "resources:sprites/objects",
             pos = {x=260, y=120},
@@ -18,6 +18,12 @@ melee = room {
                 },
                 pickup = {}
             }
+        },
+        clock = object {
+            name = "clock",
+            hotspot = {x=150, y=25, w=24, h=18},
+            usedir = up,
+            usepos = {x=161, y=116}
         }
     }
 }
@@ -30,7 +36,6 @@ function melee:enter()
     guybrush:show{
         pos={x=340, y=140}, 
         dir=left,
-        costume="resources:costumes/Guybrush" -- TODO: this must be a variable
     }
     
     music1:play()
@@ -89,3 +94,6 @@ function melee.objects.bucket:pickup()
     cursoron()
 end
 
+function melee.objects.clock:lookat()
+    guybrush:say("It's weird. I have the feeling\nthat the time is not passing.").wait()
+end

@@ -1,4 +1,7 @@
-guybrush = actor { }
+guybrush = actor {
+    name = "guybrush",
+    costume = "resources:costumes/Guybrush"
+}
 
 music1 = music { ref = "resources:audio/OnTheHill" }
 music2 = music { ref = "resources:audio/GuitarNoodling" }

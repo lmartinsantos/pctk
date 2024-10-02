@@ -56,68 +56,74 @@ func (s *Script) luaEval(app *App, code []byte, include bool) {
 	if err := s.l.ProtectedCall(0, lua.MultipleReturns, 0); err != nil {
 		log.Panicf("Error running script: %s", err)
 	}
+	s.declareGlobalObjects(app)
+	s.including = prev
+}
 
+func (s *Script) declareGlobalObjects(app *App) {
 	s.forEachDeclaredObject(func(typ, key string, included bool) {
 		obj := withLuaTableAtIndex(s.l, -1)
-		// Define the ID from the object key
 		obj.SetString("id", key)
 
-		// For rooms that are not included, declare them in the app
-		if typ == "room" && !included {
-			room := obj
-			roomID := key
-			app.RunCommand(RoomDeclare{
-				RoomID:        roomID,
-				Script:        s,
-				BackgroundRef: room.GetRef("background"),
-			}).Wait()
+		if included {
+			return
+		}
 
-			room.IfTableFieldExists("objects", func(objs luaTableUtils) {
-				objs.ForEach(func(key int, value int) {
-					id := lua.CheckString(s.l, key)
-					obj := withLuaTableAtIndex(s.l, value)
-
-					// Apply the object stereotype.
-					obj.SetObjectType("object")
-					obj.SetString("room", roomID)
-					obj.SetString("id", id)
-					obj.SetFunction("owner", lua.Function(func(l *lua.State) int {
-						self := withLuaTableAtIndex(l, 1).CheckObjectType("object")
-						obj := app.FindObject(self.GetString("room"), self.GetString("id"))
-						if owner := obj.Owner(); owner == nil {
-							l.PushNil()
-						} else {
-							l.Global(owner.ID())
-						}
-						return 1
-					}))
-
-					cmd := ObjectDeclare{
-						Classes:  ObjectClass(obj.GetIntegerOpt("class", 0)),
-						Hotspot:  obj.GetRectangle("hotspot"),
-						Name:     lua.CheckString(s.l, key),
-						ObjectID: id,
-						Pos:      obj.GetPosition("pos"),
-						RoomID:   roomID,
-						Sprites:  obj.GetRef("sprites"),
-						UseDir:   obj.GetDirection("usedir"),
-						UsePos:   obj.GetPosition("usepos"),
-					}
-					obj.IfTableFieldExists("states", func(states luaTableUtils) {
-						states.ForEach(func(_ int, value int) {
-							state := withLuaTableAtIndex(s.l, value)
-							cmd.States = append(cmd.States, &ObjectState{
-								Anim: state.GetAnimationOpt("anim", nil),
-							})
-						})
-					})
-					app.RunCommand(cmd).Wait()
-				})
-			})
+		switch typ {
+		case "actor":
+			s.declareActor(app, key, obj)
+		case "room":
+			s.declareRoom(app, key, obj)
 		}
 	})
+}
 
-	s.including = prev
+func (s *Script) declareActor(app *App, actorID string, actor luaTableUtils) {
+	app.RunCommand(ActorDeclare{
+		ActorID:   actorID,
+		ActorName: actor.GetString("name"),
+		Costume:   actor.GetRefOpt("costume", ResourceRefNull),
+	}).Wait()
+}
+
+func (s *Script) declareRoom(app *App, roomID string, room luaTableUtils) {
+	app.RunCommand(RoomDeclare{
+		RoomID:        roomID,
+		Script:        s,
+		BackgroundRef: room.GetRef("background"),
+	}).Wait()
+
+	room.IfTableFieldExists("objects", func(objs luaTableUtils) {
+		objs.ForEach(func(key int, value int) {
+			objID := lua.CheckString(s.l, key)
+			obj := withLuaTableAtIndex(s.l, value).CheckObjectType("object")
+
+			// Set the related IDs
+			obj.SetString("room", roomID)
+			obj.SetString("id", objID)
+
+			cmd := ObjectDeclare{
+				Classes:  ObjectClass(obj.GetIntegerOpt("class", 0)),
+				Hotspot:  obj.GetRectangle("hotspot"),
+				Name:     lua.CheckString(s.l, key),
+				ObjectID: objID,
+				Pos:      obj.GetPositionOpt("pos", NewPos(0, 0)),
+				RoomID:   roomID,
+				Sprites:  obj.GetRefOpt("sprites", ResourceRefNull),
+				UseDir:   obj.GetDirection("usedir"),
+				UsePos:   obj.GetPosition("usepos"),
+			}
+			obj.IfTableFieldExists("states", func(states luaTableUtils) {
+				states.ForEach(func(_ int, value int) {
+					state := withLuaTableAtIndex(s.l, value)
+					cmd.States = append(cmd.States, &ObjectState{
+						Anim: state.GetAnimationOpt("anim", nil),
+					})
+				})
+			})
+			app.RunCommand(cmd).Wait()
+		})
+	})
 }
 
 func (s *Script) forEachDeclaredObject(f func(typ, key string, included bool)) {
@@ -144,7 +150,8 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 		// Resource construction functions
 		//
 		{Name: "actor", Function: func(l *lua.State) int {
-			actor := withNewLuaObject(l, "actor")
+			actor := withNewLuaObjectWrapping(l, 1, "actor")
+			actor.SetBoolean("included", s.including)
 			actor.SetFunction("say", lua.Function(func(l *lua.State) int {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("actor")
 				text := lua.CheckString(l, 2)
@@ -162,10 +169,9 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("actor")
 				opts := withLuaTableAtIndex(l, 2)
 				cmd := ActorShow{
-					ActorID:         self.GetString("id"),
-					Position:        opts.GetPositionOpt("pos", DefaultActorPosition),
-					LookAt:          opts.GetDirectionOpt("dir", DefaultActorDirection),
-					CostumeResource: opts.GetRefOpt("costume", ResourceRefNull),
+					Actor:    self.GetActorByID(app, "id"),
+					Position: opts.GetPositionOpt("pos", DefaultActorPosition),
+					LookAt:   opts.GetDirectionOpt("dir", DefaultActorDirection),
 				}
 				app.RunCommand(cmd).Wait()
 				return 0
@@ -226,23 +232,6 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 			cost.SetResourceRef("ref", opts.GetRef("ref"))
 			return 1
 		}},
-		{Name: "include", Function: func(l *lua.State) int {
-			ref := luaCheckResourceRef(l, 1)
-			if luaIsIncluded(l, ref) {
-				return 0
-			}
-			script, err := WaitAs[*Script](app.RunCommand(ScriptRun{
-				ScriptRef: ref,
-			}))
-			if err != nil {
-				lua.Errorf(l, "Error including script: %s", err)
-				return 0
-			}
-			s.luaEval(app, script.Code, true)
-
-			luaSetIncluded(l, ref)
-			return 0
-		}},
 		{Name: "music", Function: func(l *lua.State) int {
 			opts := withLuaTableAtIndex(l, 1)
 			music := withNewLuaObject(l, "music")
@@ -257,8 +246,23 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 			}))
 			return 1
 		}},
+		{Name: "object", Function: func(l *lua.State) int {
+			obj := withNewLuaObjectWrapping(l, 1, "object")
+			obj.SetFunction("owner", lua.Function(func(l *lua.State) int {
+				self := withLuaTableAtIndex(l, 1).CheckObjectType("object")
+				obj := app.FindObject(self.GetString("room"), self.GetString("id"))
+				if owner := obj.Owner(); owner == nil {
+					l.PushNil()
+				} else {
+					l.Global(owner.ID())
+				}
+				return 1
+			}))
+			return 1
+		}},
 		{Name: "room", Function: func(l *lua.State) int {
 			room := withNewLuaObjectWrapping(l, 1, "room")
+			room.SetBoolean("included", s.including)
 			room.SetFunction("show", lua.Function(func(l *lua.State) int {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("room")
 				done := app.RunCommand(RoomShow{
@@ -267,7 +271,6 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 				luaPushFuture(l, done)
 				return 1
 			}))
-			room.SetBoolean("included", s.including)
 			return 1
 		}},
 		{Name: "sound", Function: func(l *lua.State) int {
@@ -301,6 +304,23 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 		//
 		// API functions
 		//
+		{Name: "include", Function: func(l *lua.State) int {
+			ref := luaCheckResourceRef(l, 1)
+			if luaIsIncluded(l, ref) {
+				return 0
+			}
+			script, err := WaitAs[*Script](app.RunCommand(ScriptRun{
+				ScriptRef: ref,
+			}))
+			if err != nil {
+				lua.Errorf(l, "Error including script: %s", err)
+				return 0
+			}
+			s.luaEval(app, script.Code, true)
+
+			luaSetIncluded(l, ref)
+			return 0
+		}},
 
 		// TODO: this function uses the ShowDialog. It must be replaced by a function that
 		// prints with some selected font.
