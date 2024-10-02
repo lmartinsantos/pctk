@@ -1,14 +1,16 @@
+magenta = { r = 0xAA, g = 0x00, b = 0xAA }
+yellow = { r = 0xFF, g = 0xFF, b = 0x55 }
+white = { r = 0xFF, g = 0xFF, b = 0xFF }
+
 guybrush = actor {
     name = "guybrush",
-    costume = "resources:costumes/Guybrush"
+    costume = "resources:costumes/Guybrush",
+    talkcolor = white
 }
 
 music1 = music { ref = "resources:audio/OnTheHill" }
 music2 = music { ref = "resources:audio/GuitarNoodling" }
 cricket = sound { ref = "resources:audio/Cricket" }
-
-magenta = { r = 0xAA, g = 0x00, b = 0xAA }
-yellow = { r = 0xFF, g = 0xFF, b = 0x55 }
 
 function default.pickup()
     guybrush:say("I can't pick that up.")

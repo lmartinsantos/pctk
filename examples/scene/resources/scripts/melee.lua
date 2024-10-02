@@ -1,5 +1,10 @@
 include("resources:scripts/common")
 
+pirates = actor {
+    name = "men of low moral fiber (pirates)",
+    talkcolor = magenta
+}
+
 melee = room {
     background = "resources:backgrounds/Melee",
     objects = {

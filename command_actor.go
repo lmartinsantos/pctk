@@ -12,12 +12,16 @@ type ActorDeclare struct {
 	ActorID   string
 	ActorName string
 	Costume   ResourceRef
+	TalkColor Color
 }
 
 func (cmd ActorDeclare) Execute(app *App, done *Promise) {
 	actor := app.DeclareActor(cmd.ActorID, cmd.ActorName)
 	if cmd.Costume != ResourceRefNull {
 		actor.SetCostume(app.res.LoadCostume(cmd.Costume))
+	}
+	if cmd.TalkColor != rl.Blank {
+		actor.TalkColor = cmd.TalkColor
 	}
 	done.CompleteWithValue(cmd)
 }
@@ -177,7 +181,7 @@ func (cmd ActorSpeak) Execute(app *App, done *Promise) {
 	}
 
 	if cmd.Color == rl.Blank {
-		cmd.Color = rl.White
+		cmd.Color = cmd.Actor.TalkColor
 	}
 
 	dialogDone := app.RunCommand(ShowDialog{

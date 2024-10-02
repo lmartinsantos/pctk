@@ -83,6 +83,7 @@ func (s *Script) declareActor(app *App, actorID string, actor luaTableUtils) {
 		ActorID:   actorID,
 		ActorName: actor.GetString("name"),
 		Costume:   actor.GetRefOpt("costume", ResourceRefNull),
+		TalkColor: actor.GetColorOpt("talkcolor", DefaultActorTalkColor),
 	}).Wait()
 }
 

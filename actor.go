@@ -16,9 +16,12 @@ var (
 	DefaultActorSpeed     = NewPosf(80, 20)
 	DefaultActorSize      = NewSize(32, 48)
 	DefaultActorDirection = DirRight
+	DefaultActorTalkColor = BrigthGrey
 )
 
 type Actor struct {
+	TalkColor Color
+
 	act       *Action
 	costume   *Costume
 	elev      int
@@ -36,6 +39,8 @@ type Actor struct {
 // NewActor creates a new actor with the given ID and name.
 func NewActor(id, name string) *Actor {
 	return &Actor{
+		TalkColor: DefaultActorTalkColor,
+
 		id:    id,
 		name:  name,
 		pos:   DefaultActorPosition.ToPosf(),
