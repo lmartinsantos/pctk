@@ -95,5 +95,5 @@ function melee.objects.bucket:pickup()
 end
 
 function melee.objects.clock:lookat()
-    guybrush:say("It's weird. I have the feeling\nthat the time is not passing.")
+    guybrush:say("It's weird. I have the feeling\nthat the time is not passing.").wait()
 end

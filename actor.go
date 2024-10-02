@@ -156,6 +156,7 @@ func Standing(dir Direction) *Action {
 	return &Action{
 		prom: NewPromise(),
 		f: func(a *Actor, done *Promise) {
+			a.lookAt = dir
 			if cos := a.costume; cos != nil {
 				cos.draw(CostumeIdle(dir), a.costumePos())
 			}
