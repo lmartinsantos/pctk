@@ -37,6 +37,7 @@ function melee:enter()
     cricket:play()
     guybrush:walkto({x=290, y=140}).wait()
     if not skipintro then
+        usercontrol(false)
         guybrush:say("Hello, I'm Guybrush Threepwood,\nmighty pirate!").wait()
         sayline("**Oh no! This guy again!**", pirate1_dialog_props)
         guybrush:walkto({x=120, y=140}).wait()

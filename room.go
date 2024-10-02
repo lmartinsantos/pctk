@@ -99,9 +99,33 @@ func (r *Room) PutActor(actor *Actor) {
 // RoomItem is an item from a room that can be represented in the viewport.
 type RoomItem interface {
 	Class() ObjectClass
+	Draw()
 	Name() string
 	Position() Position
-	Draw()
+	UsePosition() (Position, Direction)
+}
+
+// FindRoom returns the room with the given ID, or nil if not found.
+func (a *App) FindRoom(id string) *Room {
+	room, ok := a.rooms[id]
+	if !ok {
+		return nil
+	}
+	return room
+}
+
+// StartRoom starts the given room in the application.
+func (a *App) StartRoom(room *Room) {
+	if room == nil {
+		log.Fatal("Room is nil")
+	}
+	for _, r := range a.rooms {
+		if r == room {
+			a.room = room
+			return
+		}
+	}
+	log.Fatalf("Room %s not declared", room.id)
 }
 
 // RoomDeclare is a command that will declare a new room with the given properties.
@@ -126,19 +150,23 @@ func (cmd RoomDeclare) Execute(app *App, done *Promise) {
 
 // RoomShow is a command that will show the room with the given resource.
 type RoomShow struct {
-	RoomID string
+	Room *Room
 }
 
 func (cmd RoomShow) Execute(app *App, done *Promise) {
-	// TODO: execute exit function and dispose the previous room if any.
-	var ok bool
-	app.room, ok = app.rooms[cmd.RoomID]
-	if !ok {
-		log.Fatalf("Room %s not found", cmd.RoomID)
+	var job Future
+
+	if app.room != nil {
+		job = IgnoreError(app.room.script.Call(WithMethod(app.room.id, "exit")), nil)
 	}
 
 	// Call the enter function of the room script.
-	done.Bind(app.room.script.Call(WithMethod(cmd.RoomID, "enter")))
+	app.room = cmd.Room
+	job = Continue(job, func(a any) Future {
+		return IgnoreError(cmd.Room.script.Call(WithMethod(cmd.Room.id, "enter")), nil)
+	})
+
+	done.Bind(job)
 }
 
 func (a *App) drawViewport() {

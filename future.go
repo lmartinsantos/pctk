@@ -20,8 +20,14 @@ type Future interface {
 	IsCompleted() bool
 }
 
-// Continue continues a future with another future.
+// Continue continues a future with another future. This will wait for future f and call g once f is
+// completed, returning the result of g. If f is nil, g will be called with nil and its future will
+// be returned. If f fails with an error, the resulting future will fail without calling g.
 func Continue(f Future, g func(any) Future) Future {
+	if f == nil {
+		return g(nil)
+	}
+
 	prom := NewPromise()
 	go func() {
 		v, err := f.Wait()
@@ -33,6 +39,12 @@ func Continue(f Future, g func(any) Future) Future {
 		prom.CompleteWith(v, err)
 	}()
 	return prom
+}
+
+// IgnoreError returns a future that will ignore the error of the given future f, replacing it with
+// val if fails.
+func IgnoreError(f Future, val any) Future {
+	return RecoverWithValue(f, func(error) any { return val })
 }
 
 // Recover recovers from an error in a future. If the given future fails, the given function will be
@@ -48,6 +60,15 @@ func Recover(f Future, g func(error) Future) Future {
 		prom.CompleteWith(v, err)
 	}()
 	return prom
+}
+
+// RecoverWithValue recovers from an error in a future.
+func RecoverWithValue(f Future, g func(error) any) Future {
+	return Recover(f, func(err error) Future {
+		prom := NewPromise()
+		prom.CompleteWithValue(g(err))
+		return prom
+	})
 }
 
 // WaitAs waits for the future and returns the value as the given type.

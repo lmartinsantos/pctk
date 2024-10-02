@@ -1,6 +1,8 @@
 package pctk
 
 import (
+	"strings"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -30,6 +32,13 @@ const (
 	VerbTurnOn  Verb = "Turn on"
 	VerbTurnOff Verb = "Turn off"
 )
+
+// Action returns the action codename for the verb.
+func (v Verb) Action() string {
+	action := strings.ToLower(string(v))
+	action = strings.ReplaceAll(action, " ", "")
+	return action
+}
 
 // VerbSlot is a slot in the control panel that holds a verb.
 type VerbSlot struct {
@@ -100,12 +109,7 @@ func (s *ActionSentence) ProcessInventoryClick(app *App, obj *Object) {
 		s.Reset(VerbWalkTo)
 		return
 	}
-	switch s.verb {
-	case VerbLookAt:
-		s.lookAtItem(app, obj)
-	default:
-		s.Reset(VerbWalkTo)
-	}
+	s.interactWith(app, s.verb, obj)
 }
 
 // ProcessLeftClick processes a left click in the control pane.
@@ -121,16 +125,7 @@ func (s *ActionSentence) ProcessLeftClick(app *App, click Position, item RoomIte
 		return
 	}
 
-	switch s.verb {
-	case VerbLookAt:
-		s.lookAtItem(app, item)
-	case VerbPickUp:
-		s.pickupItem(app, item)
-	case VerbWalkTo:
-		s.walkToItem(app, item)
-	default:
-		s.Reset(VerbWalkTo)
-	}
+	s.interactWith(app, s.verb, item)
 }
 
 // ProcessRightClick processes a right click in the control pane.
@@ -142,9 +137,9 @@ func (s *ActionSentence) ProcessRightClick(app *App, click Position, item RoomIt
 		} else if item.Class().Is(ObjectClassOpenable) {
 			// TODO: do a open action
 		} else if item.Class().Is(ObjectClassPickable) {
-			s.pickupItem(app, item)
+			s.interactWith(app, VerbPickUp, item)
 		} else {
-			s.lookAtItem(app, item)
+			s.interactWith(app, VerbLookAt, item)
 		}
 		return
 	}
@@ -154,44 +149,14 @@ func (s *ActionSentence) ProcessRightClick(app *App, click Position, item RoomIt
 	}
 }
 
-func (s *ActionSentence) lookAtItem(app *App, item RoomItem) {
-	s.verb = VerbLookAt
+func (s *ActionSentence) interactWith(app *App, verb Verb, item RoomItem) {
+	s.verb = verb
 	s.args[0] = item
 	s.fut = app.RunCommandSequence(
-		ActorLookAtObject{
-			ActorID:  app.ego.name,
-			ObjectID: item.Name(),
-		},
-		CommandFunc(func(app *App) (any, error) {
-			s.Reset(VerbWalkTo)
-			return nil, nil
-		}),
-	)
-}
-
-func (s *ActionSentence) pickupItem(app *App, item RoomItem) {
-	s.verb = VerbPickUp
-	s.args[0] = item
-	s.fut = app.RunCommandSequence(
-		ActorPickUpObject{
-			ActorID:  app.ego.name,
-			ObjectID: item.Name(),
-		},
-		CommandFunc(func(app *App) (any, error) {
-			s.Reset(VerbWalkTo)
-			return nil, nil
-		}),
-	)
-}
-
-func (s *ActionSentence) walkToItem(app *App, item RoomItem) {
-	// TODO: the item might be an actor
-	s.verb = VerbWalkTo
-	s.args[0] = item
-	s.fut = app.RunCommandSequence(
-		ActorWalkToObject{
-			ActorID:  app.ego.name,
-			ObjectID: s.args[0].Name(),
+		ActorInteractWith{
+			Actor:  app.ego,
+			Target: item,
+			Verb:   verb,
 		},
 		CommandFunc(func(app *App) (any, error) {
 			s.Reset(VerbWalkTo)
@@ -202,7 +167,7 @@ func (s *ActionSentence) walkToItem(app *App, item RoomItem) {
 
 func (s *ActionSentence) walkToPos(app *App, click Position) {
 	app.RunCommand(ActorWalkToPosition{
-		ActorID:  app.ego.name,
+		Actor:    app.ego,
 		Position: click,
 	})
 	s.Reset(VerbWalkTo)

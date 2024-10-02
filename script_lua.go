@@ -74,12 +74,13 @@ func (s *Script) luaEval(app *App, code []byte, include bool) {
 
 			room.IfTableFieldExists("objects", func(objs luaTableUtils) {
 				objs.ForEach(func(key int, value int) {
+					id := lua.CheckString(s.l, key)
 					obj := withLuaTableAtIndex(s.l, value)
 
 					// Apply the object stereotype.
 					obj.SetObjectType("object")
 					obj.SetString("room", roomID)
-					obj.SetString("id", lua.CheckString(s.l, key))
+					obj.SetString("id", id)
 					obj.SetFunction("owner", lua.Function(func(l *lua.State) int {
 						self := withLuaTableAtIndex(l, 1).CheckObjectType("object")
 						obj := app.FindObject(self.GetString("room"), self.GetString("id"))
@@ -92,14 +93,15 @@ func (s *Script) luaEval(app *App, code []byte, include bool) {
 					}))
 
 					cmd := ObjectDeclare{
-						Classes: ObjectClass(obj.GetIntegerOpt("class", 0)),
-						Hotspot: obj.GetRectangle("hotspot"),
-						Name:    lua.CheckString(s.l, key),
-						Pos:     obj.GetPosition("pos"),
-						RoomID:  roomID,
-						Sprites: obj.GetRef("sprites"),
-						UseDir:  obj.GetDirection("usedir"),
-						UsePos:  obj.GetPosition("usepos"),
+						Classes:  ObjectClass(obj.GetIntegerOpt("class", 0)),
+						Hotspot:  obj.GetRectangle("hotspot"),
+						Name:     lua.CheckString(s.l, key),
+						ObjectID: id,
+						Pos:      obj.GetPosition("pos"),
+						RoomID:   roomID,
+						Sprites:  obj.GetRef("sprites"),
+						UseDir:   obj.GetDirection("usedir"),
+						UsePos:   obj.GetPosition("usepos"),
 					}
 					obj.IfTableFieldExists("states", func(states luaTableUtils) {
 						states.ForEach(func(_ int, value int) {
@@ -148,9 +150,9 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 				text := lua.CheckString(l, 2)
 				opts := withLuaTableAtIndex(l, 3)
 				cmd := ActorSpeak{
-					ActorID: self.GetString("id"),
-					Text:    text,
-					Delay:   opts.GetDurationOpt("delay", DefaultActorSpeakDelay),
+					Actor: self.GetActorByID(app, "id"),
+					Text:  text,
+					Delay: opts.GetDurationOpt("delay", DefaultActorSpeakDelay),
 				}
 				done := app.RunCommand(cmd)
 				luaPushFuture(l, done)
@@ -165,14 +167,13 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 					LookAt:          opts.GetDirectionOpt("dir", DefaultActorDirection),
 					CostumeResource: opts.GetRefOpt("costume", ResourceRefNull),
 				}
-				done := app.RunCommand(cmd)
-				luaPushFuture(l, done)
-				return 1
+				app.RunCommand(cmd).Wait()
+				return 0
 			}))
 			actor.SetFunction("select", lua.Function(func(l *lua.State) int {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("actor")
 				cmd := ActorSelectEgo{
-					ActorID: self.GetString("id"),
+					Actor: self.GetActorByID(app, "id"),
 				}
 				done := app.RunCommand(cmd)
 				luaPushFuture(l, done)
@@ -182,7 +183,7 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("actor")
 				opts := withLuaTableAtIndex(l, 2)
 				cmd := ActorStand{
-					ActorID:   self.GetString("id"),
+					Actor:     app.ActorByID(self.GetString("id")),
 					Direction: opts.GetDirectionOpt("dir", DefaultActorDirection),
 				}
 				done := app.RunCommand(cmd)
@@ -193,8 +194,8 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("actor")
 				obj := withLuaTableAtIndex(l, 2)
 				cmd := ActorAddToInventory{
-					ActorID:  self.GetString("id"),
-					ObjectID: obj.GetString("id"),
+					Actor:  self.GetActorByID(app, "id"),
+					Object: obj.GetObjectByID(app, "room", "id"),
 				}
 				done := app.RunCommand(cmd)
 				luaPushFuture(l, done)
@@ -204,7 +205,7 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("actor")
 				pos := luaCheckPosition(l, 2)
 				cmd := ActorWalkToPosition{
-					ActorID:  self.GetString("id"),
+					Actor:    self.GetActorByID(app, "id"),
 					Position: pos,
 				}
 				done := app.RunCommand(cmd)
@@ -261,7 +262,7 @@ func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 			room.SetFunction("show", lua.Function(func(l *lua.State) int {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("room")
 				done := app.RunCommand(RoomShow{
-					RoomID: self.GetString("id"),
+					Room: self.GetRoomByID(app, "id"),
 				})
 				luaPushFuture(l, done)
 				return 1
@@ -646,6 +647,33 @@ func (t luaTableUtils) GetAnimationOpt(key string, def *Animation) (val *Animati
 	t.getFieldOpt(key, lua.TypeTable, func() {
 		val = luaCheckAnimation(t.l, -1)
 	})
+	return
+}
+func (t luaTableUtils) GetActorByID(app *App, key string) (val *Actor) {
+	actorID := t.GetString(key)
+	val = app.ActorByID(actorID)
+	if val == nil {
+		lua.ArgumentError(t.l, 1, fmt.Sprintf("actor %s not found", actorID))
+	}
+	return
+}
+
+func (t luaTableUtils) GetObjectByID(app *App, roomk, idk string) (val *Object) {
+	roomID := t.GetString(roomk)
+	objID := t.GetString(idk)
+	val = app.FindObject(roomID, objID)
+	if val == nil {
+		lua.ArgumentError(t.l, 1, fmt.Sprintf("object %s not found in room %s", objID, roomID))
+	}
+	return
+}
+
+func (t luaTableUtils) GetRoomByID(app *App, key string) (val *Room) {
+	roomID := t.GetString(key)
+	val = app.FindRoom(roomID)
+	if val == nil {
+		lua.ArgumentError(t.l, 1, fmt.Sprintf("room %s not found", roomID))
+	}
 	return
 }
 
