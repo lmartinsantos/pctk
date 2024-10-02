@@ -1,6 +1,8 @@
 package pctk
 
-import "log"
+import (
+	"log"
+)
 
 // Walkbox refers to a convex polygonal area that defines the walkable space for actors.
 type WalkBox struct {
@@ -57,14 +59,14 @@ func (w *WalkBox) isConvex() bool {
 	return totalCrossProduct != 0
 }
 
-// Enable sets the enabled state of the WalkBox.
-func (w *WalkBox) Enable(enable bool) *WalkBox {
-	w.enabled = enable
-	return w
-}
-
 // ContainsPoint check if the provided position is in the boundaries defined by the WalkBox.
 func (w *WalkBox) ContainsPoint(p *Positionf) bool {
+	// Check if the position is one of the vertices
+	for _, vertex := range w.vertices {
+		if p.Equals(vertex) {
+			return true
+		}
+	}
 	numberOfIntersections := 0
 	numVertices := len(w.vertices)
 
@@ -80,57 +82,95 @@ func (w *WalkBox) ContainsPoint(p *Positionf) bool {
 	return numberOfIntersections%2 == 1 // Odd count means inside
 }
 
-// IsConnected checks if WalkBoxes are connected.
-func (w *WalkBox) IsConnected(otherWalkBox *WalkBox) bool {
-	for _, vertex := range otherWalkBox.vertices {
-		if w.ContainsPoint(vertex) {
-			return true
+// IsAdjacent checks if two WalkBoxes are adjacent. It returns false if either WalkBox is disabled.
+func (w *WalkBox) IsAdjacent(otherWalkBox *WalkBox) bool {
+	if w.enabled && otherWalkBox.enabled {
+		for _, vertex := range otherWalkBox.vertices {
+			if w.ContainsPoint(vertex) {
+				return true
+			}
 		}
 	}
+
 	return false
 }
 
 // WalkBoxMatrix represents a collection of WalkBoxes and their adjacency relationships.
 type WalkBoxMatrix struct {
-	walkBoxes     map[string]*WalkBox
-	adjacencyList map[string][]*WalkBox
+	walkBoxes       []*WalkBox
+	itineraryMatrix [][]int
 }
+
+const (
+	// infinityDistance represents a maximum distance value used for unconnected paths.
+	infinityDistance = 255
+	// InvalidWalkBox indicates an invalid WalkBox ID, typically used to signify non-existence.
+	InvalidWalkBox = -1
+)
 
 // NewWalkBoxMatrix creates and returns a new WalkBoxMatrix instance
-func NewWalkBoxMatrix() *WalkBoxMatrix {
+func NewWalkBoxMatrix(walkboxes []*WalkBox) *WalkBoxMatrix {
 	return &WalkBoxMatrix{
-		walkBoxes:     make(map[string]*WalkBox),
-		adjacencyList: make(map[string][]*WalkBox),
+		walkBoxes:       walkboxes,
+		itineraryMatrix: calculateItineraryMatrix(walkboxes),
 	}
 }
 
-// Add adds a new WalkBox to the WalkBoxMatrix.
-// The new WalkBox must be connected to at least one existing WalkBox in the matrix
-// ensuring that there are no isolated walkable areas.
-func (wm *WalkBoxMatrix) Add(w *WalkBox) {
-	if _, exists := wm.adjacencyList[w.walkBoxID]; !exists {
-		wm.adjacencyList[w.walkBoxID] = []*WalkBox{}
-	}
+// calculateItineraryMatrix computes the shortest paths between WalkBoxes and returns the resulting itinerary matrix.
+func calculateItineraryMatrix(walkboxes []*WalkBox) [][]int {
+	distanceMatrix := make([][]int, len(walkboxes))
+	itineraryMatrix := make([][]int, len(walkboxes))
 
-	for _, otherWalkBox := range wm.walkBoxes {
-		if w.IsConnected(otherWalkBox) {
-			wm.adjacencyList[w.walkBoxID] = append(wm.adjacencyList[w.walkBoxID], otherWalkBox)
-			wm.adjacencyList[otherWalkBox.walkBoxID] = append(wm.adjacencyList[otherWalkBox.walkBoxID], w)
+	for i, walkbox := range walkboxes {
+		itineraryMatrix[i] = make([]int, len(walkboxes))
+		distanceMatrix[i] = make([]int, len(walkboxes))
+
+		// Initialize the distance matrix: each box has distance 0 to itself,
+		// and distance 1 to its direct neighbors. Initially, it has distance
+		// 255 (= infinityDistance) to all other boxes.
+		for j, otherWalkBox := range walkboxes {
+			if i == j {
+				distanceMatrix[i][j] = 0
+				itineraryMatrix[i][j] = i
+			} else if walkbox.IsAdjacent(otherWalkBox) {
+				distanceMatrix[i][j] = 1
+				itineraryMatrix[i][j] = j
+			} else {
+				distanceMatrix[i][j] = infinityDistance
+				itineraryMatrix[i][j] = InvalidWalkBox
+			}
 		}
 	}
 
-	wm.walkBoxes[w.walkBoxID] = w
-
-	if len(wm.walkBoxes) > 1 && len(wm.adjacencyList[w.walkBoxID]) < 1 {
-		log.Panicf("walkbox %s is not connected", w.walkBoxID)
+	// Compute the shortest routes between boxes via Kleene's algorithm.
+	for i := range walkboxes {
+		for j := range walkboxes {
+			for k := range walkboxes {
+				distIK := distanceMatrix[i][k]
+				distKJ := distanceMatrix[k][j]
+				if distanceMatrix[i][j] > distIK+distKJ {
+					distanceMatrix[i][j] = distIK + distKJ
+					itineraryMatrix[i][j] = k
+				}
+			}
+		}
 	}
+
+	return itineraryMatrix
 }
 
-// Adjacents returns a slice of WalkBoxes that are adjacent to the WalkBox with the specified walkBoxID.
-// If no adjacencies are found, it returns an empty slice.
-func (wm *WalkBoxMatrix) Adjacents(walkBoxID string) []*WalkBox {
-	if adjacents, ok := wm.adjacencyList[walkBoxID]; ok {
-		return adjacents
+// NextWalkBox returns the next walk box in the path from the source to the destination.
+func (wm *WalkBoxMatrix) NextWalkBox(from, to int) int {
+	if from < 0 || from >= len(wm.walkBoxes) || to < 0 || to >= len(wm.walkBoxes) {
+		return InvalidWalkBox
 	}
-	return []*WalkBox{}
+	return wm.itineraryMatrix[from][to]
+}
+
+// EnableWalkBox enables or disables the specified walk box and recalculates the itinerary matrix.
+func (wm *WalkBoxMatrix) EnableWalkBox(id int, enabled bool) {
+	if id >= 0 && id < len(wm.walkBoxes) {
+		wm.walkBoxes[id].enabled = enabled
+		wm.itineraryMatrix = calculateItineraryMatrix(wm.walkBoxes)
+	}
 }

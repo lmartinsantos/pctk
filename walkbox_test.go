@@ -111,94 +111,77 @@ func TestContainsPoint(t *testing.T) {
 	}
 }
 
-func TestWalkBoxMatrixAdd(t *testing.T) {
-	testCases := []struct {
-		name        string
-		walkBoxes   []*pctk.WalkBox
-		shouldPanic bool
-		message     string
-	}{
-		{
-			name: "Add connected WalkBoxes",
-			walkBoxes: []*pctk.WalkBox{
-				pctk.NewWalkBox("WalkBoxA", [4]*pctk.Positionf{{X: 0, Y: 0}, {X: 2, Y: 0}, {X: 2, Y: 2}, {X: 0, Y: 2}}),
-				pctk.NewWalkBox("WalkBoxB", [4]*pctk.Positionf{{X: 1.5, Y: 0}, {X: 3, Y: 0}, {X: 3, Y: 2}, {X: 1.5, Y: 2}}),
-			},
-			shouldPanic: false,
-			message:     "Expected WalkBoxes A and B to be connected without panic!",
-		},
-		{
-			name: "Add disconnected WalkBox should panic",
-			walkBoxes: []*pctk.WalkBox{
-				pctk.NewWalkBox("WalkBoxA", [4]*pctk.Positionf{{X: 0, Y: 0}, {X: 2, Y: 0}, {X: 2, Y: 2}, {X: 0, Y: 2}}),
-				pctk.NewWalkBox("WalkBoxB", [4]*pctk.Positionf{{X: 5, Y: 5}, {X: 6, Y: 5}, {X: 6, Y: 6}, {X: 5, Y: 6}}),
-			},
-			shouldPanic: true,
-			message:     "Expected panic because WalkBoxB is not connected!",
-		},
-	}
+func TestWalkBoxMatrix(t *testing.T) {
+	/*
+		Polygons disposition:
 
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			wm := pctk.NewWalkBoxMatrix()
+		  +-------+-------+-------+
+		  |       |       |       |
+		  | box3  | box4  | box5  |
+		  |       |       |       |
+		  +-------+-------+-------+
+		  |       |       |       |
+		  | box0  | box1  | box2  |
+		  |       |       |       |
+		  +-------+-------+-------+
 
-			if testCase.shouldPanic {
-				assert.Panics(t, func() {
-					for _, wb := range testCase.walkBoxes {
-						wm.Add(wb)
-					}
-				}, testCase.message)
-			} else {
-				assert.NotPanics(t, func() {
-					for _, wb := range testCase.walkBoxes {
-						wm.Add(wb)
-					}
-				}, testCase.message)
+		Each box represents a square, with adjacent connections:
+		- box0 is adjacent to box1, box3
+		- box1 is adjacent to box0, box2, box3, box4
+		- box2 is adjacent to box1, box4, box5
+		- box3 is adjacent to box0, box1, box4
+		- box4 is adjacent to box1, box2, box3, box5
+		- box5 is adjacent to box2, box4
+	*/
 
-				// Verifying connections of WalkBoxA
-				adjacents := wm.Adjacents("WalkBoxA")
-				assert.True(t, len(adjacents) == 1, "WalkBoxA should be connected to 1 WalkBox")
-			}
-		})
-	}
-}
+	box0 := pctk.NewWalkBox("walkbox0", [4]*pctk.Positionf{{0, 0}, {1, 0}, {1, 1}, {0, 1}})
+	box1 := pctk.NewWalkBox("walkbox1", [4]*pctk.Positionf{{1, 0}, {2, 0}, {2, 1}, {1, 1}})
+	box2 := pctk.NewWalkBox("walkbox2", [4]*pctk.Positionf{{2, 0}, {3, 0}, {3, 1}, {2, 1}})
+	box3 := pctk.NewWalkBox("walkbox3", [4]*pctk.Positionf{{0, 1}, {1, 1}, {1, 2}, {0, 2}})
+	box4 := pctk.NewWalkBox("walkbox4", [4]*pctk.Positionf{{1, 1}, {2, 1}, {2, 2}, {1, 2}})
+	box5 := pctk.NewWalkBox("walkbox5", [4]*pctk.Positionf{{2, 1}, {3, 1}, {3, 2}, {2, 2}})
 
-func TestWalkBoxMatrixAdjacents(t *testing.T) {
-	wbA := pctk.NewWalkBox("WalkBoxA", [4]*pctk.Positionf{{X: 0, Y: 0}, {X: 2, Y: 0}, {X: 2, Y: 2}, {X: 0, Y: 2}})
-	wbB := pctk.NewWalkBox("WalkBoxB", [4]*pctk.Positionf{{X: 1.5, Y: 0}, {X: 3.5, Y: 0}, {X: 3.5, Y: 2}, {X: 1.5, Y: 2}})
-	wbC := pctk.NewWalkBox("WalkBoxC", [4]*pctk.Positionf{{X: 3, Y: 0}, {X: 5, Y: 0}, {X: 5, Y: 2}, {X: 3, Y: 2}})
-	wbD := pctk.NewWalkBox("WalkBoxD", [4]*pctk.Positionf{{X: 4.5, Y: 0}, {X: 6.5, Y: 0}, {X: 6.5, Y: 2}, {X: 4.5, Y: 2}})
+	wm := pctk.NewWalkBoxMatrix([]*pctk.WalkBox{box0, box1, box2, box3, box4, box5})
 
-	wm := pctk.NewWalkBoxMatrix()
+	assert.True(t, box0.IsAdjacent(box1), "box0 should be adjacent to box1")
+	assert.True(t, box1.IsAdjacent(box2), "box1 should be adjacent to box2")
+	assert.True(t, box1.IsAdjacent(box3), "box1 should be adjacent to box3")
+	assert.True(t, box0.IsAdjacent(box3), "box0 should be adjacent to box3")
+	assert.True(t, box0.IsAdjacent(box4), "box0 should be adjacent to box4")
+	assert.True(t, box1.IsAdjacent(box4), "box1 should be adjacent to box4")
+	assert.True(t, box3.IsAdjacent(box4), "box3 should be adjacent to box4")
+	assert.True(t, box2.IsAdjacent(box4), "box2 should be adjacent to box4")
+	assert.True(t, box2.IsAdjacent(box5), "box2 should be adjacent to box5")
+	assert.True(t, box4.IsAdjacent(box5), "box4 should be adjacent to box5")
+	// Test non-adjacency
+	assert.False(t, box0.IsAdjacent(box2), "box0 should not be adjacent to box2")
+	assert.False(t, box3.IsAdjacent(box2), "box3 should not be adjacent to box2")
+	assert.False(t, box0.IsAdjacent(box5), "box0 should not be adjacent to box5")
 
-	wm.Add(wbA)
-	wm.Add(wbB)
-	wm.Add(wbC)
-	wm.Add(wbD)
+	// Test pathfinding from box0 to box2 via box1
+	from := 0
+	to := 2
+	next := wm.NextWalkBox(from, to)
+	assert.Equal(t, 1, next, "Next walk box from 0 to 2 should be 1")
 
-	t.Run("Check WalkBoxA adjacency", func(t *testing.T) {
-		adjacents := wm.Adjacents("WalkBoxA")
-		assert.Equal(t, 1, len(adjacents), "WalkBoxA should be adjacent to 1 WalkBox")
-		assert.Contains(t, adjacents, wbB, "WalkBoxA should be adjacent to WalkBoxB")
-	})
+	next = wm.NextWalkBox(next, to)
+	assert.Equal(t, to, next, "Next walk box from 1 to 2 should be 2")
 
-	t.Run("Check WalkBoxB adjacency", func(t *testing.T) {
-		adjacents := wm.Adjacents("WalkBoxB")
-		assert.Equal(t, 2, len(adjacents), "WalkBoxB should be adjacent to 2 WalkBoxes")
-		assert.Contains(t, adjacents, wbA, "WalkBoxB should be adjacent to WalkBoxA")
-		assert.Contains(t, adjacents, wbC, "WalkBoxB should be adjacent to WalkBoxC")
-	})
+	// Disable box1 and test new path from box0 to box2
+	wm.EnableWalkBox(1, false)
+	next = wm.NextWalkBox(from, to)
+	assert.Equal(t, 4, next, "Next walk box from 0 to 2 with box1 disabled should be 4")
 
-	t.Run("Check WalkBoxC adjacency", func(t *testing.T) {
-		adjacents := wm.Adjacents("WalkBoxC")
-		assert.Equal(t, 2, len(adjacents), "WalkBoxC should be adjacent to 2 WalkBoxes")
-		assert.Contains(t, adjacents, wbB, "WalkBoxC should be adjacent to WalkBoxB")
-		assert.Contains(t, adjacents, wbD, "WalkBoxC should be adjacent to WalkBoxD")
-	})
+	next = wm.NextWalkBox(next, to)
+	assert.Equal(t, to, next, "Next walk box from 4 to 2 should be 2")
 
-	t.Run("Check WalkBoxD adjacency", func(t *testing.T) {
-		adjacents := wm.Adjacents("WalkBoxD")
-		assert.Equal(t, 1, len(adjacents), "WalkBoxD should be adjacent to 1 WalkBox")
-		assert.Contains(t, adjacents, wbC, "WalkBoxD should be adjacent to WalkBoxC")
-	})
+	// Test path when destination (box1) is disabled
+	to = 1
+	next = wm.NextWalkBox(from, to)
+	assert.Equal(t, pctk.InvalidWalkBox, next, "Next walk box from 0 to 1 should be invalid since box1 is disabled")
+
+	// Re-enable box1 and test path again
+	wm.EnableWalkBox(1, true)
+	next = wm.NextWalkBox(from, to)
+	assert.Equal(t, to, next, "Next walk box from 0 to 1 should be 1 after re-enabling box1")
 }
