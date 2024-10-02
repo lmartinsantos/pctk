@@ -158,14 +158,6 @@ func calculateItineraryMatrix(walkboxes []*WalkBox) [][]int {
 	return itineraryMatrix
 }
 
-// NextWalkBox returns the next walk box in the path from the source to the destination.
-func (wm *WalkBoxMatrix) NextWalkBox(from, to int) int {
-	if from < 0 || from >= len(wm.walkBoxes) || to < 0 || to >= len(wm.walkBoxes) {
-		return InvalidWalkBox
-	}
-	return wm.itineraryMatrix[from][to]
-}
-
 // EnableWalkBox enables or disables the specified walk box and recalculates the itinerary matrix.
 func (wm *WalkBoxMatrix) EnableWalkBox(id int, enabled bool) {
 	if id >= 0 && id < len(wm.walkBoxes) {
@@ -174,19 +166,34 @@ func (wm *WalkBoxMatrix) EnableWalkBox(id int, enabled bool) {
 	}
 }
 
-// WalkBoxAt returns the walk box identifier at the given position or the closest one,
+// FindPath calculates and returns a path as a sequence of positions from the
+// starting point 'from' to the destination 'to' within the walk box matrix.
+// The path is returned as a slice of positions representing waypoints.
+func (wm *WalkBoxMatrix) FindPath(from, to *Positionf) []*Positionf {
+	panic("Not implemented yet!")
+}
+
+// nextWalkBox returns the next walk box in the path from the source to the destination.
+func (wm *WalkBoxMatrix) nextWalkBox(from, to int) int {
+	if from < 0 || from >= len(wm.walkBoxes) || to < 0 || to >= len(wm.walkBoxes) {
+		return InvalidWalkBox
+	}
+	return wm.itineraryMatrix[from][to]
+}
+
+// walkBoxAt returns the walk box identifier at the given position or the closest one,
 // along with a boolean indicating inclusion.
-func (wm *WalkBoxMatrix) WalkBoxAt(p *Positionf) (id int, included bool) {
+func (wm *WalkBoxMatrix) walkBoxAt(p *Positionf) (id int, included bool) {
 	panic("Not implemented yet!")
 }
 
 // ClosestPositionToWalkBox returns the closest point to the specified walkbox identifiers from
 // the origin.
-func (wm *WalkBoxMatrix) ClosestPositionToWalkBox(from, to int) *Positionf {
+func (wm *WalkBoxMatrix) cllosestPositionToWalkBox(from, to int) *Positionf {
 	panic("Not implemented yet!")
 }
 
 // ClosestPositionOnWalkBox returns the closest point on the walk box at a given position.
-func (wm *WalkBoxMatrix) ClosestPositionOnWalkBox(p *Positionf) *Positionf {
+func (wm *WalkBoxMatrix) closestPositionOnWalkBox(p *Positionf) *Positionf {
 	panic("Not implemented yet!")
 }
