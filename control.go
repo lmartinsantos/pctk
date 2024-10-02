@@ -1,6 +1,8 @@
 package pctk
 
 import (
+	"strings"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -31,6 +33,13 @@ const (
 	VerbTurnOff Verb = "Turn off"
 )
 
+// Action returns the action codename for the verb.
+func (v Verb) Action() string {
+	action := strings.ToLower(string(v))
+	action = strings.ReplaceAll(action, " ", "")
+	return action
+}
+
 // VerbSlot is a slot in the control panel that holds a verb.
 type VerbSlot struct {
 	Verb Verb
@@ -40,14 +49,14 @@ type VerbSlot struct {
 }
 
 // Draw renders the verb slot in the control pane.
-func (s VerbSlot) Draw(a *App) {
+func (s VerbSlot) Draw(app *App, m *MouseCursor) {
 	rect := s.Rect()
 	color := ControlVerbColor
-	if a.MouseIsInto(rect) {
+	if m.IsInto(rect) {
 		color = ControlVerbHoverColor
 	}
-	if room := a.room; room != nil {
-		if item := room.ItemAt(a.MousePosition()); item != nil {
+	if room := app.room; room != nil {
+		if item := room.ItemAt(m.Position()); item != nil {
 			if item.Class().Is(s.Alt) {
 				color = ControlVerbHoverColor
 			} else if s.Verb == VerbLookAt {
@@ -100,12 +109,7 @@ func (s *ActionSentence) ProcessInventoryClick(app *App, obj *Object) {
 		s.Reset(VerbWalkTo)
 		return
 	}
-	switch s.verb {
-	case VerbLookAt:
-		s.lookAtItem(app, obj)
-	default:
-		s.Reset(VerbWalkTo)
-	}
+	s.interactWith(app, s.verb, obj)
 }
 
 // ProcessLeftClick processes a left click in the control pane.
@@ -121,16 +125,7 @@ func (s *ActionSentence) ProcessLeftClick(app *App, click Position, item RoomIte
 		return
 	}
 
-	switch s.verb {
-	case VerbLookAt:
-		s.lookAtItem(app, item)
-	case VerbPickUp:
-		s.pickupItem(app, item)
-	case VerbWalkTo:
-		s.walkToItem(app, item)
-	default:
-		s.Reset(VerbWalkTo)
-	}
+	s.interactWith(app, s.verb, item)
 }
 
 // ProcessRightClick processes a right click in the control pane.
@@ -142,9 +137,9 @@ func (s *ActionSentence) ProcessRightClick(app *App, click Position, item RoomIt
 		} else if item.Class().Is(ObjectClassOpenable) {
 			// TODO: do a open action
 		} else if item.Class().Is(ObjectClassPickable) {
-			s.pickupItem(app, item)
+			s.interactWith(app, VerbPickUp, item)
 		} else {
-			s.lookAtItem(app, item)
+			s.interactWith(app, VerbLookAt, item)
 		}
 		return
 	}
@@ -154,43 +149,25 @@ func (s *ActionSentence) ProcessRightClick(app *App, click Position, item RoomIt
 	}
 }
 
-func (s *ActionSentence) lookAtItem(app *App, item RoomItem) {
-	s.verb = VerbLookAt
+func (s *ActionSentence) interactWith(app *App, verb Verb, item RoomItem) {
+	s.verb = verb
 	s.args[0] = item
-	s.fut = app.Do(ActorLookAtObject{
-		ActorID:  app.ego.name,
-		ObjectID: item.Name(),
-	}).AndThen(func(_ any) Future {
-		return app.Do(SyncCommandFunc(func(app *App) { s.Reset(VerbWalkTo) }))
-	})
-}
-
-func (s *ActionSentence) pickupItem(app *App, item RoomItem) {
-	s.verb = VerbPickUp
-	s.args[0] = item
-	s.fut = app.Do(ActorPickUpObject{
-		ActorID:  app.ego.name,
-		ObjectID: item.Name(),
-	}).AndThen(func(_ any) Future {
-		return app.Do(SyncCommandFunc(func(app *App) { s.Reset(VerbWalkTo) }))
-	})
-}
-
-func (s *ActionSentence) walkToItem(app *App, item RoomItem) {
-	// TODO: the item might be an actor
-	s.verb = VerbWalkTo
-	s.args[0] = item
-	s.fut = app.Do(ActorWalkToObject{
-		ActorID:  app.ego.name,
-		ObjectID: s.args[0].Name(),
-	}).AndThen(func(_ any) Future {
-		return app.Do(SyncCommandFunc(func(app *App) { s.Reset(VerbWalkTo) }))
-	})
+	s.fut = app.RunCommandSequence(
+		ActorInteractWith{
+			Actor:  app.ego,
+			Target: item,
+			Verb:   verb,
+		},
+		CommandFunc(func(app *App) (any, error) {
+			s.Reset(VerbWalkTo)
+			return nil, nil
+		}),
+	)
 }
 
 func (s *ActionSentence) walkToPos(app *App, click Position) {
-	app.Do(ActorWalkToPosition{
-		ActorID:  app.ego.name,
+	app.RunCommand(ActorWalkToPosition{
+		Actor:    app.ego,
 		Position: click,
 	})
 	s.Reset(VerbWalkTo)
@@ -210,11 +187,11 @@ type ControlInventory struct {
 }
 
 // Draw renders the inventory in the control pane.
-func (c *ControlInventory) Draw(app *App) {
+func (c *ControlInventory) Draw(app *App, m *MouseCursor) {
 	if app.ego == nil {
 		return
 	}
-	mpos := app.MousePosition()
+	mpos := m.Position()
 	for i, item := range app.ego.Inventory() {
 		rect := c.slotsRect[i]
 		color := ControlInventoryColor
@@ -262,11 +239,11 @@ type ControlPane struct {
 	verbs  []VerbSlot
 	action ActionSentence
 	inv    ControlInventory
+	cursor *MouseCursor
 }
 
 // Init initializes the control pane.
-func (p *ControlPane) Init() {
-	p.Enabled = true
+func (p *ControlPane) Init(cam *rl.Camera2D) {
 	p.verbs = []VerbSlot{
 		{Verb: VerbOpen, Row: 0, Col: 0, Alt: ObjectClassOpenable},
 		{Verb: VerbClose, Row: 1, Col: 0},
@@ -285,17 +262,19 @@ func (p *ControlPane) Init() {
 	}
 	p.action.Reset(VerbWalkTo)
 	p.inv.Init()
+	p.cursor = NewMouseCursor(cam)
 }
 
 // Draw renders the control panel in the viewport.
 func (p *ControlPane) Draw(app *App) {
 	if p.Enabled {
 		for _, v := range p.verbs {
-			v.Draw(app)
+			v.Draw(app, p.cursor)
 		}
-		hover := p.hover(app, app.MousePosition())
+		hover := p.hover(app, p.cursor.Position())
 		p.action.Draw(app, hover)
-		p.inv.Draw(app)
+		p.inv.Draw(app, p.cursor)
+		p.cursor.Draw()
 	}
 }
 
@@ -312,10 +291,10 @@ func (p *ControlPane) hover(app *App, pos Position) RoomItem {
 }
 
 func (p *ControlPane) processControlInputs(app *App) {
-	if app.ego == nil {
+	if !p.cursor.Enabled || app.ego == nil {
 		return
 	}
-	pos := app.MousePosition()
+	pos := p.cursor.Position()
 	hover := p.hover(app, pos)
 	if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
 		if ViewportRect.Contains(pos) {
@@ -350,5 +329,15 @@ type EnableControlPanel struct {
 
 func (cmd EnableControlPanel) Execute(app *App, done *Promise) {
 	app.control.Enabled = cmd.Enable
+	done.Complete()
+}
+
+// EnableMouseCursor is a command that will enable or disable the mouse control.
+type EnableMouseCursor struct {
+	Enable bool
+}
+
+func (cmd EnableMouseCursor) Execute(app *App, done *Promise) {
+	app.control.cursor.Enabled = cmd.Enable
 	done.Complete()
 }

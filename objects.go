@@ -5,6 +5,7 @@ package pctk
 type Object struct {
 	classes ObjectClass    // The classes the object belongs to as OR-ed bit flags
 	hotspot Rectangle      // The hotspot of the object (for mouse interaction)
+	id      string         // The ID of the object
 	name    string         // The name of the object as seen by the player
 	owner   *Actor         // The actor that owns the object, or nil if not picked up
 	pos     Position       // The position of the object in its room (for rendering)
@@ -39,6 +40,11 @@ func (o *Object) Draw() {
 	}
 }
 
+// ID returns the ID of the object.
+func (o *Object) ID() string {
+	return o.id
+}
+
 // IsVisible returns true if the object is visible in the room, false otherwise.
 func (o *Object) IsVisible() bool {
 	return o.owner == nil
@@ -62,8 +68,8 @@ func (o *Object) Position() Position {
 	return o.pos
 }
 
-// UsePos returns the position where actors interact with the object.
-func (o *Object) UsePos() (Position, Direction) {
+// UsePosition returns the position where actors interact with the object.
+func (o *Object) UsePosition() (Position, Direction) {
 	return o.usePos, o.useDir
 }
 
@@ -97,15 +103,16 @@ func (c ObjectClass) Is(other ObjectClass) bool {
 
 // ObjectDeclare is a command that will declare a new object with the given properties.
 type ObjectDeclare struct {
-	Classes ObjectClass
-	Hotspot Rectangle
-	Name    string
-	Pos     Position
-	RoomID  string
-	Sprites ResourceRef
-	States  []*ObjectState
-	UseDir  Direction
-	UsePos  Position
+	Classes  ObjectClass
+	Hotspot  Rectangle
+	Name     string
+	ObjectID string
+	Pos      Position
+	RoomID   string
+	Sprites  ResourceRef
+	States   []*ObjectState
+	UseDir   Direction
+	UsePos   Position
 }
 
 func (cmd ObjectDeclare) Execute(app *App, done *Promise) {
@@ -114,6 +121,7 @@ func (cmd ObjectDeclare) Execute(app *App, done *Promise) {
 	obj := &Object{
 		classes: cmd.Classes,
 		hotspot: cmd.Hotspot,
+		id:      cmd.ObjectID,
 		name:    cmd.Name,
 		pos:     cmd.Pos,
 		room:    room,
@@ -124,6 +132,21 @@ func (cmd ObjectDeclare) Execute(app *App, done *Promise) {
 	}
 	room.DeclareObject(obj)
 	done.Complete()
+}
+
+// ObjectCall is a command that will execute a script function of an object.
+type ObjectCall struct {
+	Object *Object
+	Action string
+}
+
+func (cmd ObjectCall) Execute(app *App, done *Promise) {
+	obj := cmd.Object
+	call := obj.room.script.Call(WithMethod(obj.room.id, "objects", obj.id, cmd.Action))
+	call = Recover(call, func(err error) Future {
+		return obj.room.script.Call(WithMethod("default", cmd.Action))
+	})
+	done.Bind(call)
 }
 
 // FindObject returns the object with the given ID in the room, or nil if not found.

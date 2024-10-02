@@ -1,6 +1,7 @@
 package pctk
 
 import (
+	"log"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -112,10 +113,21 @@ func (a *Actor) Position() Position {
 	return a.pos.ToPos()
 }
 
+// Room returns the room where the actor is.
+func (a *Actor) Room() *Room {
+	return a.room
+}
+
 // SetCostume sets the costume for the actor.
 func (a *Actor) SetCostume(costume *Costume) *Actor {
 	a.costume = costume
 	return a
+}
+
+// UsePosition returns the position where actors interact with the actor.
+func (a *Actor) UsePosition() (Position, Direction) {
+	// TODO: this might be wrong, specially if the actor is looking to the edge of a walking box
+	return a.pos.ToPos(), a.lookAt
 }
 
 func (a *Actor) costumePos() Position {
@@ -217,124 +229,133 @@ func (cmd ActorShow) Execute(app *App, done *Promise) {
 
 // ActorLookAtPos is a command that will make an actor look at a given position.
 type ActorLookAtPos struct {
-	ActorName string
-	Position  Position
+	Actor    *Actor
+	Position Position
 }
 
 func (cmd ActorLookAtPos) Execute(app *App, done *Promise) {
-	app.withActor(cmd.ActorName, func(a *Actor) {
-		done.CompleteWhen(a.Do(Standing(a.pos.ToPos().DirectionTo(cmd.Position))))
-	})
-	done.Complete()
+	done.Bind(cmd.Actor.Do(Standing(cmd.Actor.pos.ToPos().DirectionTo(cmd.Position))))
 }
 
 // ActorStand is a command that will make an actor stand in the given direction.
 type ActorStand struct {
-	ActorID   string
+	Actor     *Actor
 	Direction Direction
 }
 
 func (cmd ActorStand) Execute(app *App, done *Promise) {
-	app.withActor(cmd.ActorID, func(a *Actor) {
-		a.Do(Standing(cmd.Direction))
-	})
+	cmd.Actor.Do(Standing(cmd.Direction))
 	done.Complete()
 }
 
 // ActorWalkToPosition is a command that will make an actor walk to a given position.
 type ActorWalkToPosition struct {
-	ActorID  string
+	Actor    *Actor
 	Position Position
 }
 
 func (cmd ActorWalkToPosition) Execute(app *App, done *Promise) {
-	app.withActor(cmd.ActorID, func(actor *Actor) {
-		done.CompleteWhen(actor.Do(WalkingTo(cmd.Position)))
-	})
+	if cmd.Actor.Room() != app.room {
+		done.CompleteWithErrorf("actor %s is not in the room", cmd.Actor.Name())
+		return
+	}
+	done.Bind(cmd.Actor.Do(WalkingTo(cmd.Position)))
 }
 
-// ActorWalkToObject is a command that will make an actor walk to an object.
-type ActorWalkToObject struct {
-	ActorID  string
-	ObjectID string
+// ActorWalkToItem is a command that will make an actor walk to a room item.
+type ActorWalkToItem struct {
+	Actor *Actor
+	Item  RoomItem
 }
 
-func (cmd ActorWalkToObject) Execute(app *App, done *Promise) {
-	app.withActor(cmd.ActorID, func(a *Actor) {
-		obj := app.room.ObjectByID(cmd.ObjectID)
-		if obj == nil {
-			done.Complete()
+func (cmd ActorWalkToItem) Execute(app *App, done *Promise) {
+	switch item := cmd.Item.(type) {
+	case *Actor:
+		if item.Room() != app.room {
+			done.CompleteWithErrorf("actor %s is not in the room", item.Name())
 			return
 		}
-		pos, dir := obj.UsePos()
-		done.CompleteWhen(app.Do(ActorWalkToPosition{
-			ActorID:  a.name,
+	case *Object:
+		if item.Owner() != nil {
+			done.CompleteWithErrorf("object %s is in the inventory", item.Name())
+		}
+	}
+	pos, dir := cmd.Item.UsePosition()
+
+	done.Bind(app.RunCommandSequence(
+		ActorWalkToPosition{
+			Actor:    cmd.Actor,
 			Position: pos,
-		}).AndThen(func(_ any) Future {
-			return app.Do(ActorStand{
-				ActorID:   a.name,
-				Direction: dir,
-			})
-		}))
-	})
+		},
+		ActorStand{
+			Actor:     cmd.Actor,
+			Direction: dir,
+		},
+	))
+
 }
 
-// ActorLookAtObject is a command that will make an actor look at an object.
-type ActorLookAtObject struct {
-	ActorID  string
-	ObjectID string
+// ActorInteractWith is a command that will make an actor interact with an object.
+type ActorInteractWith struct {
+	Actor  *Actor
+	Target RoomItem
+	Verb   Verb
 }
 
-func (cmd ActorLookAtObject) Execute(app *App, done *Promise) {
-	app.withActor(cmd.ActorID, func(a *Actor) {
-		obj := app.room.ObjectByID(cmd.ObjectID)
-		if obj == nil {
-			done.Complete()
-			return
+func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
+	var completed Future
+	switch item := cmd.Target.(type) {
+	case *Actor:
+		completed = app.RunCommandSequence(
+			ActorWalkToItem{
+				Actor: cmd.Actor,
+				Item:  cmd.Target,
+			},
+			// TODO: implement ActorCall
+		)
+	case *Object:
+		if item.Owner() != nil {
+			switch cmd.Verb {
+			case VerbWalkTo, VerbPickUp:
+				// Verb not applicable to inventory item
+				done.Complete()
+				return
+			default:
+				// It is in the inventory. Do not walk to it, just call.
+				completed = app.RunCommand(ObjectCall{
+					Object: item,
+					Action: cmd.Verb.Action(),
+				})
+			}
+		} else {
+			// It is in the room. Walk to it and then interact.
+			completed = app.RunCommandSequence(
+				ActorWalkToItem{
+					Actor: cmd.Actor,
+					Item:  cmd.Target,
+				},
+				ObjectCall{
+					Object: item,
+					Action: cmd.Verb.Action(),
+				},
+			)
 		}
-		if obj.Owner() != nil {
-			// Object in the inventory. Just call the script.
-			done.CompleteWhen(a.room.script.call(app.room.id, "objects", obj.name, "lookat"))
-			return
-		}
-		// Object in the room. First walk to it, then call the script when
-		done.CompleteWhen(app.Do(ActorWalkToObject{
-			ActorID:  a.name,
-			ObjectID: obj.name,
-		}).AndThen(func(_ any) Future {
-			return a.room.script.call(app.room.id, "objects", obj.name, "lookat")
-		}))
+	default:
+		log.Fatalf("unknown room item type %T", item)
+	}
+	completed = RecoverWithValue(completed, func(err error) any {
+		log.Printf("Actor interaction failed: %v", err)
+		return nil
 	})
-}
-
-// ActorPickUpObject is a command that will make an actor pick up an object.
-type ActorPickUpObject struct {
-	ActorID  string
-	ObjectID string
-}
-
-func (cmd ActorPickUpObject) Execute(app *App, done *Promise) {
-	app.withActor(cmd.ActorID, func(a *Actor) {
-		obj := app.room.ObjectByID(cmd.ObjectID)
-		if obj == nil || obj.owner != nil {
-			done.Complete()
-			return
-		}
-		done.CompleteWhen(app.Do(ActorWalkToObject{
-			ActorID:  a.name,
-			ObjectID: obj.name,
-		}).AndThen(func(_ any) Future {
-			return a.room.script.call(app.room.id, "objects", obj.name, "pickup")
-		}))
-	})
+	done.Bind(completed)
 }
 
 // ActorSpeak is a command that will make an actor speak the given text.
 type ActorSpeak struct {
-	ActorID string
-	Text    string
-	Delay   time.Duration
-	Color   Color
+	Actor *Actor
+	Text  string
+	Delay time.Duration
+	Color Color
 }
 
 func (cmd ActorSpeak) Execute(app *App, done *Promise) {
@@ -346,15 +367,13 @@ func (cmd ActorSpeak) Execute(app *App, done *Promise) {
 		cmd.Color = rl.White
 	}
 
-	app.withActor(cmd.ActorID, func(a *Actor) {
-		dialogDone := app.doNow(ShowDialog{
-			Text:     cmd.Text,
-			Position: a.dialogPos(),
-			Color:    cmd.Color,
-			Speed:    1.0,
-		})
-		done.CompleteWhen(a.Do(SpeakingTo(dialogDone)))
+	dialogDone := app.RunCommand(ShowDialog{
+		Text:     cmd.Text,
+		Position: cmd.Actor.dialogPos(),
+		Color:    cmd.Color,
+		Speed:    1.0,
 	})
+	done.Bind(cmd.Actor.Do(SpeakingTo(dialogDone)))
 }
 
 func (a *App) withActor(name string, f func(*Actor)) {
@@ -374,36 +393,40 @@ func (a *App) ensureActor(id string) *Actor {
 	return actor
 }
 
+// SelectEgo sets actor as the ego.
+func (a *App) SelectEgo(actor *Actor) {
+	if a.ego != nil {
+		a.ego.ego = false
+	}
+	a.ego = actor
+	if a.ego != nil {
+		a.ego.ego = true
+	}
+}
+
 // ActorSelectEgo is a command that will make an actor be the actor under player's control.
 type ActorSelectEgo struct {
-	// Using an empty ActorID allows deselecting the previous ego
-	ActorID string
+	Actor *Actor
 }
 
 func (cmd ActorSelectEgo) Execute(app *App, done *Promise) {
-	if app.ego != nil {
-		app.ego.ego = false
-	}
-	app.ego = app.ensureActor(cmd.ActorID)
-	app.ego.ego = true
-
-	done.Complete()
+	app.SelectEgo(cmd.Actor)
+	done.CompleteWithValue(cmd.Actor)
 }
 
 // ActorAddToInventory is a command that will add an object to an actor's inventory.
 type ActorAddToInventory struct {
-	ActorID  string
-	ObjectID string
+	Actor  *Actor
+	Object *Object
 }
 
 func (cmd ActorAddToInventory) Execute(app *App, done *Promise) {
-	app.withActor(cmd.ActorID, func(actor *Actor) {
-		obj := app.room.ObjectByID(cmd.ObjectID)
-		if obj == nil {
-			done.Complete()
-			return
-		}
-		actor.AddToInventory(obj)
-		done.Complete()
-	})
+	cmd.Actor.AddToInventory(cmd.Object)
+	done.CompleteWithValue(cmd)
+}
+
+// ActorByID returns the actor with the given ID, or nil if not found.
+func (a *App) ActorByID(id string) *Actor {
+	actor, _ := a.actors[id]
+	return actor
 }

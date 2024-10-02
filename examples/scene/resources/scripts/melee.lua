@@ -37,6 +37,9 @@ function melee:enter()
     cricket:play()
     guybrush:walkto({x=290, y=140}).wait()
     if not skipintro then
+        userputoff()
+        cursoroff()
+
         guybrush:say("Hello, I'm Guybrush Threepwood,\nmighty pirate!").wait()
         sayline("**Oh no! This guy again!**", pirate1_dialog_props)
         guybrush:walkto({x=120, y=140}).wait()
@@ -67,7 +70,8 @@ function melee:enter()
     end
 
     guybrush:select()
-    usercontrol(true)          
+    userputon()
+    cursoron()
 end
 
 function melee.objects.bucket:lookat()
@@ -79,6 +83,9 @@ function melee.objects.bucket:lookat()
 end
 
 function melee.objects.bucket:pickup()
+    cursoroff()
     guybrush:say("I don't know how this could help\nme to find the keys, but...").wait()
     guybrush:toinventory(self)
+    cursoron()
 end
+
