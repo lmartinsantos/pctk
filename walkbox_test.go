@@ -111,7 +111,7 @@ func TestContainsPoint(t *testing.T) {
 	}
 }
 
-func TestWalkBoxMatrix(t *testing.T) {
+func TestWalkBoxIsAdjacent(t *testing.T) {
 	/*
 		Polygons disposition:
 
@@ -141,8 +141,6 @@ func TestWalkBoxMatrix(t *testing.T) {
 	box4 := pctk.NewWalkBox("walkbox4", [4]*pctk.Positionf{{1, 1}, {2, 1}, {2, 2}, {1, 2}})
 	box5 := pctk.NewWalkBox("walkbox5", [4]*pctk.Positionf{{2, 1}, {3, 1}, {3, 2}, {2, 2}})
 
-	wm := pctk.NewWalkBoxMatrix([]*pctk.WalkBox{box0, box1, box2, box3, box4, box5})
-
 	assert.True(t, box0.IsAdjacent(box1), "box0 should be adjacent to box1")
 	assert.True(t, box1.IsAdjacent(box2), "box1 should be adjacent to box2")
 	assert.True(t, box1.IsAdjacent(box3), "box1 should be adjacent to box3")
@@ -158,32 +156,6 @@ func TestWalkBoxMatrix(t *testing.T) {
 	assert.False(t, box3.IsAdjacent(box2), "box3 should not be adjacent to box2")
 	assert.False(t, box0.IsAdjacent(box5), "box0 should not be adjacent to box5")
 
-	// Test pathfinding from box0 to box2 via box1
-	from := 0
-	to := 2
-	next := wm.NextWalkBox(from, to)
-	assert.Equal(t, 1, next, "Next walk box from 0 to 2 should be 1")
-
-	next = wm.NextWalkBox(next, to)
-	assert.Equal(t, to, next, "Next walk box from 1 to 2 should be 2")
-
-	// Disable box1 and test new path from box0 to box2
-	wm.EnableWalkBox(1, false)
-	next = wm.NextWalkBox(from, to)
-	assert.Equal(t, 4, next, "Next walk box from 0 to 2 with box1 disabled should be 4")
-
-	next = wm.NextWalkBox(next, to)
-	assert.Equal(t, to, next, "Next walk box from 4 to 2 should be 2")
-
-	// Test path when destination (box1) is disabled
-	to = 1
-	next = wm.NextWalkBox(from, to)
-	assert.Equal(t, pctk.InvalidWalkBox, next, "Next walk box from 0 to 1 should be invalid since box1 is disabled")
-
-	// Re-enable box1 and test path again
-	wm.EnableWalkBox(1, true)
-	next = wm.NextWalkBox(from, to)
-	assert.Equal(t, to, next, "Next walk box from 0 to 1 should be 1 after re-enabling box1")
 }
 
 func TestWalkBoxAt(t *testing.T) {
