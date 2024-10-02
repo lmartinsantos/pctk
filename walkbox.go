@@ -116,12 +116,13 @@ func NewWalkBoxMatrix(walkboxes []*WalkBox) *WalkBoxMatrix {
 
 // calculateItineraryMatrix computes the shortest paths between WalkBoxes and returns the resulting itinerary matrix.
 func calculateItineraryMatrix(walkboxes []*WalkBox) [][]int {
-	distanceMatrix := make([][]int, len(walkboxes))
-	itineraryMatrix := make([][]int, len(walkboxes))
+	numBoxes := len(walkboxes)
+	distanceMatrix := make([][]int, numBoxes)
+	itineraryMatrix := make([][]int, numBoxes)
 
 	for i, walkbox := range walkboxes {
-		itineraryMatrix[i] = make([]int, len(walkboxes))
-		distanceMatrix[i] = make([]int, len(walkboxes))
+		itineraryMatrix[i] = make([]int, numBoxes)
+		distanceMatrix[i] = make([]int, numBoxes)
 
 		// Initialize the distance matrix: each box has distance 0 to itself,
 		// and distance 1 to its direct neighbors. Initially, it has distance
