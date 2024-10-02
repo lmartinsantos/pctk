@@ -1,6 +1,9 @@
 package pctk
 
-import "log"
+import (
+	"log"
+	"math"
+)
 
 // Walkbox refers to a convex polygonal area that defines the walkable space for actors.
 type WalkBox struct {
@@ -93,6 +96,24 @@ func (w *WalkBox) IsAdjacent(otherWalkBox *WalkBox) bool {
 	return false
 }
 
+// Distance calculates the shortest distance from the WalkBox to the given position.
+func (wb *WalkBox) Distance(p *Positionf) float32 {
+	numVertices := len(wb.vertices)
+
+	var minDistance float32 = math.MaxFloat32
+	for i := 0; i < numVertices; i++ {
+		p1 := wb.vertices[i]
+		p2 := wb.vertices[(i+1)%numVertices]
+		currentDistance := p.DistanceToSegment(p1, p2)
+
+		if currentDistance < minDistance {
+			minDistance = currentDistance
+		}
+	}
+
+	return minDistance
+}
+
 // WalkBoxMatrix represents a collection of WalkBoxes and their adjacency relationships.
 type WalkBoxMatrix struct {
 	walkBoxes       []*WalkBox
@@ -175,9 +196,24 @@ func (wm *WalkBoxMatrix) EnableWalkBox(id int, enabled bool) {
 }
 
 // WalkBoxAt returns the walk box identifier at the given position or the closest one,
-// along with a boolean indicating inclusion.
+// along with a boolean indicating inclusion. If the point is located between two or more
+// boxes, it returns the lowest walk box ID among them.
 func (wm *WalkBoxMatrix) WalkBoxAt(p *Positionf) (id int, included bool) {
-	panic("Not implemented yet!")
+	var minDistance float32 = math.MaxFloat32
+	id = InvalidWalkBox
+	for i, wb := range wm.walkBoxes {
+		if included = wb.ContainsPoint(p); included {
+			return i, included
+		}
+
+		current := wb.Distance(p)
+		if current < minDistance {
+			id = i
+			minDistance = current
+		}
+	}
+
+	return id, false
 }
 
 // ClosestPositionToWalkBox returns the closest point to the specified walkbox identifiers from

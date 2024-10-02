@@ -2,6 +2,7 @@ package pctk
 
 import (
 	"fmt"
+	"math"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -180,6 +181,40 @@ func (p *Positionf) IsIntersecting(p1, p2 *Positionf) bool {
 	}
 
 	return false
+}
+
+// Distance calculates the Euclidean distance between two points.
+func (p *Positionf) Distance(p1 *Positionf) float32 {
+	dx := p.X - p1.X
+	dy := p.Y - p1.Y
+	return float32(math.Sqrt(float64(dx*dx + dy*dy)))
+}
+
+// DistanceToSegment calculates the shortest distance from the point to the
+// line segment defined by its endpoints p1 and p2.
+func (p *Positionf) DistanceToSegment(p1, p2 *Positionf) float32 {
+	if p1.Equals(p2) {
+		return p.Distance(p1)
+	}
+
+	px := p.X - p1.X
+	py := p.Y - p1.Y
+
+	vx := p2.X - p1.X
+	vy := p2.Y - p1.Y
+
+	lengthSq := vx*vx + vy*vy // how long the segment is, squared.
+
+	// calculate point's position on the segment.
+	// If t is less than 0, it’s closer to the start of the segment.
+	// If it’s greater than 1, it’s closer to the end.
+	t := float32(math.Max(0, math.Min(1, float64((px*vx+py*vy)/lengthSq))))
+
+	// Find the closest point on the segment.
+	closestX := p1.X + t*vx
+	closestY := p1.Y + t*vy
+
+	return p.Distance(&Positionf{closestX, closestY})
 }
 
 // Equals returns true if both Positionf instances have the same X and Y coordinates.
