@@ -1,8 +1,6 @@
 package pctk
 
-import (
-	"log"
-)
+import "log"
 
 // Walkbox refers to a convex polygonal area that defines the walkable space for actors.
 type WalkBox struct {
