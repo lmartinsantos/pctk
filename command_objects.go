@@ -16,7 +16,11 @@ type ObjectDeclare struct {
 
 func (cmd ObjectDeclare) Execute(app *App, done *Promise) {
 	room := app.RoomByID(cmd.RoomID)
-	sprites := app.res.LoadSpriteSheet(cmd.Sprites)
+	var sprites *SpriteSheet
+	if cmd.Sprites != ResourceRefNull {
+		sprites = app.res.LoadSpriteSheet(cmd.Sprites)
+	}
+
 	obj := &Object{
 		classes: cmd.Classes,
 		hotspot: cmd.Hotspot,

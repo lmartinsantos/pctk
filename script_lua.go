@@ -107,9 +107,9 @@ func (s *Script) declareRoom(app *App, roomID string, room luaTableUtils) {
 				Hotspot:  obj.GetRectangle("hotspot"),
 				Name:     lua.CheckString(s.l, key),
 				ObjectID: objID,
-				Pos:      obj.GetPosition("pos"),
+				Pos:      obj.GetPositionOpt("pos", NewPos(0, 0)),
 				RoomID:   roomID,
-				Sprites:  obj.GetRef("sprites"),
+				Sprites:  obj.GetRefOpt("sprites", ResourceRefNull),
 				UseDir:   obj.GetDirection("usedir"),
 				UsePos:   obj.GetPosition("usepos"),
 			}
