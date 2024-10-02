@@ -182,6 +182,11 @@ func (p *Positionf) IsIntersecting(p1, p2 *Positionf) bool {
 	return false
 }
 
+// Equals returns true if both Positionf instances have the same X and Y coordinates.
+func (p *Positionf) Equals(p1 *Positionf) bool {
+	return p.X == p1.X && p.Y == p1.Y
+}
+
 // Size represents a 2D size.
 type Size struct {
 	W, H int
