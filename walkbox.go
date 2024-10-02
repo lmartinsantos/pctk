@@ -187,13 +187,13 @@ func (wm *WalkBoxMatrix) walkBoxAt(p *Positionf) (id int, included bool) {
 	panic("Not implemented yet!")
 }
 
-// ClosestPositionToWalkBox returns the closest point to the specified walkbox identifiers from
+// closestPositionToWalkBox returns the closest point to the specified walkbox identifiers from
 // the origin.
-func (wm *WalkBoxMatrix) cllosestPositionToWalkBox(from, to int) *Positionf {
+func (wm *WalkBoxMatrix) closestPositionToWalkBox(from, to int) *Positionf {
 	panic("Not implemented yet!")
 }
 
-// ClosestPositionOnWalkBox returns the closest point on the walk box at a given position.
+// closestPositionOnWalkBox returns the closest point on the walk box at a given position.
 func (wm *WalkBoxMatrix) closestPositionOnWalkBox(p *Positionf) *Positionf {
 	panic("Not implemented yet!")
 }
