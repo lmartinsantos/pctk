@@ -133,8 +133,8 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 				Item:  cmd.Target,
 			},
 			ActorCall{
-				Actor:  item,
-				Method: cmd.Verb.Action(),
+				Actor:    item,
+				Function: cmd.Verb.Action(),
 			},
 		)
 	case *Object:
@@ -147,8 +147,8 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 			default:
 				// It is in the inventory. Do not walk to it, just call.
 				completed = app.RunCommand(ObjectCall{
-					Object: item,
-					Method: cmd.Verb.Action(),
+					Object:   item,
+					Function: cmd.Verb.Action(),
 				})
 			}
 		} else {
@@ -159,8 +159,8 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 					Item:  cmd.Target,
 				},
 				ObjectCall{
-					Object: item,
-					Method: cmd.Verb.Action(),
+					Object:   item,
+					Function: cmd.Verb.Action(),
 				},
 			)
 		}
@@ -229,8 +229,8 @@ func (a *App) ActorByID(id string) *Actor {
 
 // ActorCall is a command that will call a method on an actor.
 type ActorCall struct {
-	Actor  *Actor
-	Method string
+	Actor    *Actor
+	Function string
 }
 
 func (cmd ActorCall) Execute(app *App, done *Promise) {
@@ -242,9 +242,17 @@ func (cmd ActorCall) Execute(app *App, done *Promise) {
 		done.CompleteWithErrorf("no active room to call actor %s", cmd.Actor.Name())
 		return
 	}
-	call := app.room.script.Call(WithMethod(cmd.Actor.id, cmd.Method))
+	call := app.room.script.Call(
+		WithField(cmd.Actor.id, cmd.Function),
+		nil,
+		true,
+	)
 	call = Recover(call, func(err error) Future {
-		return app.room.script.Call(WithMethod("default", cmd.Method))
+		return app.room.script.Call(
+			WithField("default", cmd.Function),
+			[]any{WithField(cmd.Actor.id)},
+			false,
+		)
 	})
 	done.Bind(call)
 }

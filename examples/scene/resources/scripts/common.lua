@@ -36,8 +36,12 @@ function default.push()
     guybrush:say("I can't push that.")
 end
 
-function default.talkto()
-    guybrush:say("I can't talk to that.")
+function default.talkto(what)
+    if what.__type == "actor" then
+        guybrush:say("It's not time for a chat.")
+    else
+        guybrush:say("I can't talk to that.")
+    end
 end
 
 function default.lookat()

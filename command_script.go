@@ -27,7 +27,7 @@ func (c ScriptRun) Execute(app *App, prom *Promise) {
 // ScriptCall is a command to call a script function.
 type ScriptCall struct {
 	ScriptRef ResourceRef
-	Method    Method
+	Function  FieldAccessor
 }
 
 func (c ScriptCall) Execute(app *App, prom *Promise) {
@@ -36,5 +36,5 @@ func (c ScriptCall) Execute(app *App, prom *Promise) {
 		log.Panicf("Script not found: %s", c.ScriptRef)
 	}
 
-	prom.Bind(script.Call(c.Method))
+	prom.Bind(script.Call(c.Function, nil, false))
 }
