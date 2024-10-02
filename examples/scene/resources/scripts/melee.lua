@@ -113,5 +113,9 @@ end
 
 function pirates:lookat() 
     guybrush:say("They didn't move since I arrived\nin Monkey Island I.").wait()
-    guybrush:say("I think they are waiting for\nsomething...").wait()
+    guybrush:say("I guess they are waiting for\nsomething...").wait()
+end
+
+function pirates:talkto()
+    guybrush:say("Now they are busy.\nI will not disturb them.")
 end

@@ -94,9 +94,31 @@ const (
 	// ObjectClassOpenable is a built-in class that represents objects that can be opened by the
 	// player.
 	ObjectClassOpenable ObjectClass = 1 << 2
+
+	// ObjectClassCloseable is a built-in class that represents objects that can be closed by the
+	// player.
+	ObjectClassCloseable ObjectClass = 1 << 3
 )
 
-// Is returns true if the object class is the given class, false otherwise.
-func (c ObjectClass) Is(other ObjectClass) bool {
-	return c&other != 0
+// WithObjectClasses returns a new object class with the given classes.
+func WithObjectClasses(head ObjectClass, tail ...ObjectClass) ObjectClass {
+	for _, class := range tail {
+		head |= class
+	}
+	return head
+}
+
+// IsOneOf returns true if some class of c is also present in other
+func (c ObjectClass) IsOneOf(head ObjectClass, tail ...ObjectClass) bool {
+	return c&WithObjectClasses(head, tail...) != 0
+}
+
+// IsAllOf returns true if all classes of c are also present in other
+func (c ObjectClass) IsAllOf(head ObjectClass, tail ...ObjectClass) bool {
+	return c&WithObjectClasses(head, tail...) == c
+}
+
+// IsNoneOf returns true if none of the classes of c are present in other
+func (c ObjectClass) IsNoneOf(head ObjectClass, tail ...ObjectClass) bool {
+	return c&WithObjectClasses(head, tail...) == 0
 }
