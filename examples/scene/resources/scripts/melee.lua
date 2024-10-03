@@ -12,6 +12,7 @@ melee = room {
     background = "resources:backgrounds/Melee",
     objects = {
         bucket = object {
+            class = APPLICABLE,
             name = "bucket",
             sprites = "resources:sprites/objects",
             pos = {x=260, y=120},
@@ -100,11 +101,28 @@ function melee.objects.bucket:lookat()
     end
 end
 
+function melee.objects.bucket:give(to)
+    if to == pirates then
+        guybrush:say("I'd rather not. I am afraid\nthey'd get attached to it.")
+    else
+        default.give(self)
+    end
+end
+
 function melee.objects.bucket:pickup()
     cursoroff()
     guybrush:say("I don't know how this could help\nme to find the keys, but...").wait()
     guybrush:toinventory(self)
     cursoron()
+end
+
+function melee.objects.bucket:use(on)
+    print("use bucket with", on.id)
+    if on == melee.objects.clock then
+        guybrush:say("Time flies, but I don't think\nI can gather it in the bucket.")
+    else
+        default.use(self, on)
+    end
 end
 
 function melee.objects.clock:lookat()

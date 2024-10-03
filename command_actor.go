@@ -13,6 +13,7 @@ type ActorDeclare struct {
 	ActorName string
 	Costume   ResourceRef
 	TalkColor Color
+	ScriptLoc FieldAccessor
 	Size      Size
 	UsePos    Position
 	UseDir    Direction
@@ -27,6 +28,7 @@ func (cmd ActorDeclare) Execute(app *App, done *Promise) {
 	actor.TalkColor = cmd.TalkColor
 	actor.UsePos = cmd.UsePos
 	actor.UseDir = cmd.UseDir
+	actor.scriptLoc = cmd.ScriptLoc
 	done.CompleteWithValue(cmd)
 }
 
@@ -118,37 +120,57 @@ func (cmd ActorWalkToItem) Execute(app *App, done *Promise) {
 
 // ActorInteractWith is a command that will make an actor interact with an object.
 type ActorInteractWith struct {
-	Actor  *Actor
-	Target RoomItem
-	Verb   Verb
+	Actor   *Actor
+	Targets [2]RoomItem
+	Verb    Verb
 }
 
 func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 	var completed Future
-	switch item := cmd.Target.(type) {
+	var args []any
+	if cmd.Targets[1] != nil {
+		args = []any{cmd.Targets[1].ScriptLocation()}
+	}
+	switch item := cmd.Targets[0].(type) {
 	case *Actor:
 		completed = app.RunCommandSequence(
 			ActorWalkToItem{
 				Actor: cmd.Actor,
-				Item:  cmd.Target,
+				Item:  cmd.Targets[0],
 			},
 			ActorCall{
 				Actor:    item,
 				Function: cmd.Verb.Action(),
+				Args:     args,
 			},
 		)
 	case *Object:
-		if item.Owner() != nil {
+		if item.Owner() == cmd.Actor {
 			switch cmd.Verb {
 			case VerbWalkTo, VerbPickUp:
 				// Verb not applicable to inventory item
 				done.Complete()
 				return
-			default:
-				// It is in the inventory. Do not walk to it, just call.
+			}
+			// The first argument is in the inventory. If there is a second argument that is not in
+			// the inventory, walk to it and then interact. Othewise, just interact.
+			if cmd.Targets[1] != nil && cmd.Targets[1].Owner() != cmd.Actor {
+				completed = app.RunCommandSequence(
+					ActorWalkToItem{
+						Actor: cmd.Actor,
+						Item:  cmd.Targets[1],
+					},
+					ObjectCall{
+						Object:   item,
+						Function: cmd.Verb.Action(),
+						Args:     args,
+					},
+				)
+			} else {
 				completed = app.RunCommand(ObjectCall{
 					Object:   item,
 					Function: cmd.Verb.Action(),
+					Args:     args,
 				})
 			}
 		} else {
@@ -156,11 +178,12 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 			completed = app.RunCommandSequence(
 				ActorWalkToItem{
 					Actor: cmd.Actor,
-					Item:  cmd.Target,
+					Item:  cmd.Targets[0],
 				},
 				ObjectCall{
 					Object:   item,
 					Function: cmd.Verb.Action(),
+					Args:     args,
 				},
 			)
 		}
@@ -231,6 +254,7 @@ func (a *App) ActorByID(id string) *Actor {
 type ActorCall struct {
 	Actor    *Actor
 	Function string
+	Args     []any
 }
 
 func (cmd ActorCall) Execute(app *App, done *Promise) {
@@ -243,14 +267,14 @@ func (cmd ActorCall) Execute(app *App, done *Promise) {
 		return
 	}
 	call := app.room.script.Call(
-		WithField(cmd.Actor.id, cmd.Function),
-		nil,
+		cmd.Actor.ScriptLocation().Append(cmd.Function),
+		cmd.Args,
 		true,
 	)
 	call = Recover(call, func(err error) Future {
 		return app.room.script.Call(
-			WithField("default", cmd.Function),
-			[]any{WithField(cmd.Actor.id)},
+			WithDefaultsField(cmd.Function),
+			append([]any{cmd.Actor.ScriptLocation()}, cmd.Args...),
 			false,
 		)
 	})

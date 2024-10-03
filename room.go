@@ -101,7 +101,9 @@ type RoomItem interface {
 	Class() ObjectClass
 	Draw()
 	Name() string
+	Owner() *Actor
 	Position() Position
+	ScriptLocation() FieldAccessor
 	UsePosition() (Position, Direction)
 }
 
