@@ -3,18 +3,19 @@ package pctk
 // Object represents an object in the game. Objects are defined in the scope of rooms and generated
 // by the room scripts.
 type Object struct {
-	classes ObjectClass    // The classes the object belongs to as OR-ed bit flags
-	hotspot Rectangle      // The hotspot of the object (for mouse interaction)
-	id      string         // The ID of the object
-	name    string         // The name of the object as seen by the player
-	owner   *Actor         // The actor that owns the object, or nil if not picked up
-	pos     Position       // The position of the object in its room (for rendering)
-	room    *Room          // The room where the object is declared, and where actions code resides
-	sprites *SpriteSheet   // The sprites of the object
-	states  []*ObjectState // The states the object can be in
-	state   int            // The current state of the object
-	useDir  Direction      // The direction the actor when using the object
-	usePos  Position       // The position the actor was when using the object
+	classes   ObjectClass    // The classes the object belongs to as OR-ed bit flags
+	hotspot   Rectangle      // The hotspot of the object (for mouse interaction)
+	id        string         // The ID of the object
+	name      string         // The name of the object as seen by the player
+	owner     *Actor         // The actor that owns the object, or nil if not picked up
+	pos       Position       // The position of the object in its room (for rendering)
+	room      *Room          // The room where the object is declared, and where actions code resides
+	sprites   *SpriteSheet   // The sprites of the object
+	scriptLoc FieldAccessor  // The location of the object in the script
+	states    []*ObjectState // The states the object can be in
+	state     int            // The current state of the object
+	useDir    Direction      // The direction the actor when using the object
+	usePos    Position       // The position the actor was when using the object
 }
 
 // Class returns the class of the object.
@@ -68,6 +69,11 @@ func (o *Object) Position() Position {
 	return o.pos
 }
 
+// ScriptLocation returns the location of the object in the script.
+func (o *Object) ScriptLocation() FieldAccessor {
+	return o.scriptLoc
+}
+
 // UsePosition returns the position where actors interact with the object.
 func (o *Object) UsePosition() (Position, Direction) {
 	return o.usePos, o.useDir
@@ -98,6 +104,10 @@ const (
 	// ObjectClassCloseable is a built-in class that represents objects that can be closed by the
 	// player.
 	ObjectClassCloseable ObjectClass = 1 << 3
+
+	// ObjectClassApplicable is a built-in class that represents objects that can be applied to
+	// other objects. This is what determines that "use" verb requires an object to be applied to.
+	ObjectClassApplicable ObjectClass = 1 << 4
 )
 
 // WithObjectClasses returns a new object class with the given classes.

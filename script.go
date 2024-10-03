@@ -102,6 +102,26 @@ func WithField(global string, fields ...string) FieldAccessor {
 	return append(FieldAccessor{global}, fields...)
 }
 
+// WithActorField creates a new FieldAccessor pointing to an actor value.
+func WithActorField(actor *Actor, fields ...string) FieldAccessor {
+	return WithField(actor.id, fields...)
+}
+
+// WithObjectField creates a new FieldAccessor pointing to an object value.
+func WithObjectField(obj *Object, fields ...string) FieldAccessor {
+	return WithField(obj.id, append([]string{"objects"}, fields...)...)
+}
+
+// WithDefaultsField creates a new FieldAccessor pointing to the defaults object.
+func WithDefaultsField(fields ...string) FieldAccessor {
+	return WithField("DEFAULT", fields...)
+}
+
+// Append appends the given fields to the accessor.
+func (m FieldAccessor) Append(fields ...string) FieldAccessor {
+	return append(m, fields...)
+}
+
 // ForEach calls the given function for each element of the accessor.
 func (m FieldAccessor) ForEach(f func(string)) {
 	for _, part := range m {

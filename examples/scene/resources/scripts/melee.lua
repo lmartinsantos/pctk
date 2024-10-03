@@ -5,18 +5,19 @@ pirates = actor {
     size = {w=60, h=64},
     talkcolor = magenta,
     usepos = {x=90, y=128},
-    usedir = left
+    usedir = LEFT
 }
 
 melee = room {
     background = "resources:backgrounds/Melee",
     objects = {
         bucket = object {
+            class = APPLICABLE,
             name = "bucket",
             sprites = "resources:sprites/objects",
             pos = {x=260, y=120},
             hotspot = {x=250, y=100, w=20, h=20},
-            usedir = right,
+            usedir = RIGHT,
             usepos = {x=240, y=120},
             states = {
                 default = {
@@ -30,7 +31,7 @@ melee = room {
         clock = object {
             name = "clock",
             hotspot = {x=150, y=25, w=24, h=18},
-            usedir = up,
+            usedir = UP,
             usepos = {x=161, y=116}
         }
     }
@@ -43,12 +44,12 @@ function melee:enter()
 
     pirates:show{
         pos={x=38, y=137},         
-        dir=right,
+        dir=RIGHT,
     }
 
     guybrush:show{
         pos={x=340, y=140}, 
-        dir=left,
+        dir=LEFT,
     }
     
     music1:play()
@@ -72,10 +73,10 @@ function melee:enter()
         guybrush:walkto({x=120, y=140}).wait()
         guybrush:say("Ooooook...").wait()
         sleep(2000)
-        guybrush:stand({dir = right}).wait()
+        guybrush:stand({dir = RIGHT}).wait()
         sleep(2000)
         guybrush:say("Ok, I will try the Scumm bar.").wait()
-        guybrush:stand({dir = left}).wait()
+        guybrush:stand({dir = LEFT}).wait()
         guybrush:say("Thank you guys!").wait()
         cricket:play()
         guybrush:walkto({x=360, y=140}).wait()
@@ -100,6 +101,14 @@ function melee.objects.bucket:lookat()
     end
 end
 
+function melee.objects.bucket:give(to)
+    if to == pirates then
+        guybrush:say("I'd rather not. I am afraid\nthey'd get attached to it.")
+    else
+        DEFAULT.give(self)
+    end
+end
+
 function melee.objects.bucket:pickup()
     cursoroff()
     guybrush:say("I don't know how this could help\nme to find the keys, but...").wait()
@@ -107,8 +116,27 @@ function melee.objects.bucket:pickup()
     cursoron()
 end
 
+function melee.objects.bucket:use(on)
+    print("use bucket with", on.id)
+    if on == melee.objects.clock then
+        guybrush:say("Time flies, but I don't think\nI can gather it in the bucket.")
+    elseif on == pirates then
+        melee.objects.bucket:give(pirates)
+    else
+        DEFAULT.use(self, on)
+    end
+end
+
 function melee.objects.clock:lookat()
     guybrush:say("It's weird. I have the feeling\nthat the time is not passing.").wait()
+end
+
+function melee.objects.clock:turnon()
+    guybrush:say("Do I look like a watchmaker?").wait()
+end
+
+function melee.objects.clock:turnoff()
+    guybrush:say("Well, I guess I couldn't be more off").wait()
 end
 
 function pirates:lookat() 

@@ -83,6 +83,7 @@ func (s *Script) declareActor(app *App, actorID string, actor luaTableUtils) {
 		ActorID:   actorID,
 		ActorName: actor.GetString("name"),
 		Costume:   actor.GetRefOpt("costume", ResourceRefNull),
+		ScriptLoc: WithField(actorID),
 		Size:      actor.GetSizeOpt("size", DefaultActorSize),
 		TalkColor: actor.GetColorOpt("talkcolor", DefaultActorTalkColor),
 		UsePos:    actor.GetPositionOpt("usepos", DefaultActorUsePos),
@@ -107,15 +108,16 @@ func (s *Script) declareRoom(app *App, roomID string, room luaTableUtils) {
 			obj.SetString("id", objID)
 
 			cmd := ObjectDeclare{
-				Classes:  ObjectClass(obj.GetIntegerOpt("class", 0)),
-				Hotspot:  obj.GetRectangle("hotspot"),
-				Name:     lua.CheckString(s.l, key),
-				ObjectID: objID,
-				Pos:      obj.GetPositionOpt("pos", NewPos(0, 0)),
-				RoomID:   roomID,
-				Sprites:  obj.GetRefOpt("sprites", ResourceRefNull),
-				UseDir:   obj.GetDirection("usedir"),
-				UsePos:   obj.GetPosition("usepos"),
+				Class:     obj.GetClassOpt("class", 0),
+				Hotspot:   obj.GetRectangle("hotspot"),
+				Name:      lua.CheckString(s.l, key),
+				ObjectID:  objID,
+				Pos:       obj.GetPositionOpt("pos", NewPos(0, 0)),
+				RoomID:    roomID,
+				ScriptLoc: WithField(roomID, "objects", objID),
+				Sprites:   obj.GetRefOpt("sprites", ResourceRefNull),
+				UseDir:    obj.GetDirection("usedir"),
+				UsePos:    obj.GetPosition("usepos"),
 			}
 			obj.IfTableFieldExists("states", func(states luaTableUtils) {
 				states.ForEach(func(_ int, value int) {
@@ -395,11 +397,21 @@ func CallFunction(l *lua.State, f FieldAccessor, args []any, method bool) Future
 
 func luaDeclareConstants(l *lua.State) {
 	for k, pushFunc := range map[string]func(){
-		"up":      func() { l.PushInteger(int(DirUp)) },
-		"right":   func() { l.PushInteger(int(DirRight)) },
-		"down":    func() { l.PushInteger(int(DirDown)) },
-		"left":    func() { l.PushInteger(int(DirLeft)) },
-		"default": func() { l.NewTable() },
+		// Defaults table. Needed to declare default actions.
+		"DEFAULT": func() { l.NewTable() },
+
+		// Predefined directions
+		"UP":    func() { l.PushInteger(int(DirUp)) },
+		"RIGHT": func() { l.PushInteger(int(DirRight)) },
+		"DOWN":  func() { l.PushInteger(int(DirDown)) },
+		"LEFT":  func() { l.PushInteger(int(DirLeft)) },
+
+		// Predefined classes
+		"PERSON":     func() { luaPushClass(l, ObjectClassPerson) },
+		"PICKABLE":   func() { luaPushClass(l, ObjectClassPickable) },
+		"OPENABLE":   func() { luaPushClass(l, ObjectClassOpenable) },
+		"CLOSEABLE":  func() { luaPushClass(l, ObjectClassCloseable) },
+		"APPLICABLE": func() { luaPushClass(l, ObjectClassApplicable) },
 	} {
 		pushFunc()
 		l.SetGlobal(k)
@@ -439,6 +451,11 @@ func luaCheckColor(l *lua.State, index int) (col Color) {
 	col.B = byte(tab.GetInteger("b"))
 	col.A = byte(tab.GetIntegerOpt("a", 255))
 	return
+}
+
+func luaCheckClass(l *lua.State, index int) ObjectClass {
+	tab := withLuaTableAtIndex(l, index).CheckObjectType("class")
+	return ObjectClass(tab.GetInteger("mask"))
 }
 
 func luaCheckDurationMillis(l *lua.State, index int) time.Duration {
@@ -518,6 +535,11 @@ func luaPushFuture(l *lua.State, f Future) {
 		}},
 	})
 	return
+}
+
+func luaPushClass(l *lua.State, c ObjectClass) {
+	class := withNewLuaObject(l, "class")
+	class.SetInteger("mask", int(c))
 }
 
 func luaPushField(l *lua.State, f FieldAccessor) error {
@@ -691,6 +713,17 @@ func (t luaTableUtils) GetDirection(key string) (val Direction) {
 func (t luaTableUtils) GetDirectionOpt(key string, def Direction) (val Direction) {
 	val = def
 	t.getFieldOpt(key, lua.TypeNumber, func() { val = Direction(lua.CheckInteger(t.l, -1)) })
+	return
+}
+
+func (t luaTableUtils) GetClass(key string) (val ObjectClass) {
+	t.getField(key, lua.TypeTable, func() { val = luaCheckClass(t.l, -1) })
+	return
+}
+
+func (t luaTableUtils) GetClassOpt(key string, def ObjectClass) (val ObjectClass) {
+	val = def
+	t.getFieldOpt(key, lua.TypeTable, func() { val = luaCheckClass(t.l, -1) })
 	return
 }
 

@@ -36,6 +36,7 @@ type Actor struct {
 	name      string
 	pos       Positionf
 	room      *Room
+	scriptLoc FieldAccessor // The location of the actor in the script
 	speed     Positionf
 }
 
@@ -125,6 +126,12 @@ func (a *Actor) Name() string {
 	return a.name
 }
 
+// Owner returns the actor that owns the actor in its inventory. Typically nil unless you manage to
+// model that actors can be picked up (as if they were dogs or monkeys).
+func (a *Actor) Owner() *Actor {
+	return nil
+}
+
 // Position returns the position of the actor.
 func (a *Actor) Position() Position {
 	return a.pos.ToPos()
@@ -139,6 +146,11 @@ func (a *Actor) Room() *Room {
 func (a *Actor) SetCostume(costume *Costume) *Actor {
 	a.costume = costume
 	return a
+}
+
+// ScriptLocation returns the location of the actor in the script.
+func (a *Actor) ScriptLocation() FieldAccessor {
+	return a.scriptLoc
 }
 
 // UsePosition returns the position where actors interact with the actor.

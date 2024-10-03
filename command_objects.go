@@ -2,16 +2,17 @@ package pctk
 
 // ObjectDeclare is a command that will declare a new object with the given properties.
 type ObjectDeclare struct {
-	Classes  ObjectClass
-	Hotspot  Rectangle
-	Name     string
-	ObjectID string
-	Pos      Position
-	RoomID   string
-	Sprites  ResourceRef
-	States   []*ObjectState
-	UseDir   Direction
-	UsePos   Position
+	Class     ObjectClass
+	Hotspot   Rectangle
+	Name      string
+	ObjectID  string
+	Pos       Position
+	RoomID    string
+	ScriptLoc FieldAccessor // The location of the object in the script
+	Sprites   ResourceRef
+	States    []*ObjectState
+	UseDir    Direction
+	UsePos    Position
 }
 
 func (cmd ObjectDeclare) Execute(app *App, done *Promise) {
@@ -22,16 +23,17 @@ func (cmd ObjectDeclare) Execute(app *App, done *Promise) {
 	}
 
 	obj := &Object{
-		classes: cmd.Classes,
-		hotspot: cmd.Hotspot,
-		id:      cmd.ObjectID,
-		name:    cmd.Name,
-		pos:     cmd.Pos,
-		room:    room,
-		sprites: sprites,
-		states:  cmd.States,
-		useDir:  cmd.UseDir,
-		usePos:  cmd.UsePos,
+		classes:   cmd.Class,
+		hotspot:   cmd.Hotspot,
+		id:        cmd.ObjectID,
+		name:      cmd.Name,
+		pos:       cmd.Pos,
+		room:      room,
+		scriptLoc: cmd.ScriptLoc,
+		sprites:   sprites,
+		states:    cmd.States,
+		useDir:    cmd.UseDir,
+		usePos:    cmd.UsePos,
 	}
 	room.DeclareObject(obj)
 	done.Complete()
@@ -41,19 +43,20 @@ func (cmd ObjectDeclare) Execute(app *App, done *Promise) {
 type ObjectCall struct {
 	Object   *Object
 	Function string
+	Args     []any
 }
 
 func (cmd ObjectCall) Execute(app *App, done *Promise) {
 	obj := cmd.Object
 	call := obj.room.script.Call(
-		WithField(obj.room.id, "objects", obj.id, cmd.Function),
-		nil,
+		cmd.Object.ScriptLocation().Append(cmd.Function),
+		cmd.Args,
 		true,
 	)
 	call = Recover(call, func(err error) Future {
 		return obj.room.script.Call(
-			WithField("default", cmd.Function),
-			[]any{WithField(obj.room.id, "objects", obj.id)},
+			WithDefaultsField(cmd.Function),
+			append([]any{cmd.Object.ScriptLocation()}, cmd.Args...),
 			false,
 		)
 	})
