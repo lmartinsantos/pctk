@@ -128,8 +128,9 @@ type ActorInteractWith struct {
 func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 	var completed Future
 	var args []any
-	if cmd.Targets[1] != nil {
-		args = []any{cmd.Targets[1].ScriptLocation()}
+	other := cmd.Targets[1]
+	if other != nil {
+		args = []any{other.ScriptLocation()}
 	}
 	switch item := cmd.Targets[0].(type) {
 	case *Actor:
@@ -174,18 +175,45 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 				})
 			}
 		} else {
-			// It is in the room. Walk to it and then interact.
-			completed = app.RunCommandSequence(
-				ActorWalkToItem{
-					Actor: cmd.Actor,
-					Item:  cmd.Targets[0],
-				},
-				ObjectCall{
-					Object:   item,
-					Function: cmd.Verb.Action(),
-					Args:     args,
-				},
-			)
+			// It is in the room.
+
+			// Special case: use verb for a applicable object. Must walk to it, pick it up and then
+			// do the rest of the action.
+			if cmd.Verb == VerbUse && item.Class().IsOneOf(ObjectClassApplicable) && other != nil {
+				completed = app.RunCommandSequence(
+					ActorWalkToItem{
+						Actor: cmd.Actor,
+						Item:  item,
+					},
+					ObjectCall{
+						Object:   item,
+						Function: VerbPickUp.Action(),
+						Args:     nil,
+					},
+					ActorWalkToItem{
+						Actor: cmd.Actor,
+						Item:  other,
+					},
+					ObjectCall{
+						Object:   item,
+						Function: cmd.Verb.Action(),
+						Args:     args,
+					},
+				)
+			} else {
+				// General case. Walk to it and then interact.
+				completed = app.RunCommandSequence(
+					ActorWalkToItem{
+						Actor: cmd.Actor,
+						Item:  cmd.Targets[0],
+					},
+					ObjectCall{
+						Object:   item,
+						Function: cmd.Verb.Action(),
+						Args:     args,
+					},
+				)
+			}
 		}
 	default:
 		log.Fatalf("unknown room item type %T", item)

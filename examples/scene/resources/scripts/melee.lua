@@ -131,6 +131,14 @@ function melee.objects.clock:lookat()
     guybrush:say("It's weird. I have the feeling\nthat the time is not passing.").wait()
 end
 
+function melee.objects.clock:turnon()
+    guybrush:say("Do I look like a watchmaker?").wait()
+end
+
+function melee.objects.clock:turnoff()
+    guybrush:say("Well, I guess I couldn't be more off").wait()
+end
+
 function pirates:lookat() 
     guybrush:say("They didn't move since I arrived\nin Monkey Island I.").wait()
     guybrush:say("I guess they are waiting for\nsomething...").wait()

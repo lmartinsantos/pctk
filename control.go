@@ -142,6 +142,11 @@ func (s *ActionSentence) ProcessLeftClick(app *App, click Position, item RoomIte
 	if s.admits(item) {
 		if s.args[0] == nil {
 			// Item is candidate to first argument.
+			if s.verb == VerbUse && item.Class().IsAllOf(ObjectClassApplicable) {
+				// Special case for use verb on a room item that is applicable.
+				s.args[0] = item
+				return
+			}
 			s.interactWith(app, s.verb, item, nil)
 		} else {
 			// Item is candidate to second argument.
@@ -180,7 +185,9 @@ func (s *ActionSentence) admits(item RoomItem) bool {
 		switch s.verb {
 		case VerbTalkTo:
 			return item.Class().IsOneOf(ObjectClassPerson)
-		case VerbOpen, VerbClose, VerbPickUp, VerbGive, VerbUse, VerbTurnOn, VerbTurnOff:
+		case VerbOpen, VerbClose, VerbPickUp, VerbGive, VerbTurnOn, VerbTurnOff:
+			return !item.Class().IsOneOf(ObjectClassPerson)
+		case VerbUse:
 			return !item.Class().IsOneOf(ObjectClassPerson)
 		default:
 			return true
