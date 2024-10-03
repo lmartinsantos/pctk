@@ -104,10 +104,13 @@ func (s *ActionSentence) Draw(app *App, hover RoomItem) {
 	if s.fut != nil {
 		// Ongoing action.
 		color = ControlActionOngoingColor
-	} else if hover != nil {
-		if s.args[0] != hover {
-			action = action + " " + hover.Name()
-		}
+		DrawDefaultText(action, pos, AlignCenter, color)
+		return
+	}
+
+	// Sentence incompleted. Check if hover exists and must be added to the sentence.
+	if s.admits(hover) {
+		action = action + " " + hover.Name()
 	}
 	DrawDefaultText(action, pos, AlignCenter, color)
 }
@@ -135,17 +138,15 @@ func (s *ActionSentence) ProcessLeftClick(app *App, click Position, item RoomIte
 			s.walkToPos(app, click)
 		}
 		return
-	} else if s.args[0] != nil {
-		s.interactWith(app, s.verb, s.args[0], item)
-	} else {
-		switch s.verb {
-		case VerbUse, VerbGive:
-			if item.Class().IsOneOf(ObjectClassApplicable) {
-				s.args[0] = item
-				return
-			}
+	}
+	if s.admits(item) {
+		if s.args[0] == nil {
+			// Item is candidate to first argument.
+			s.interactWith(app, s.verb, item, nil)
+		} else {
+			// Item is candidate to second argument.
+			s.interactWith(app, s.verb, s.args[0], item)
 		}
-		s.interactWith(app, s.verb, item, nil)
 	}
 }
 
@@ -167,6 +168,35 @@ func (s *ActionSentence) ProcessRightClick(app *App, click Position, item RoomIt
 	// No item there. Only respond if current verb is walk to.
 	if s.verb == VerbWalkTo {
 		s.walkToPos(app, click)
+	}
+}
+
+func (s *ActionSentence) admits(item RoomItem) bool {
+	if item == nil || s.fut != nil {
+		return false
+	}
+	if s.args[0] == nil {
+		// Item is candidate to first argument.
+		switch s.verb {
+		case VerbTalkTo:
+			return item.Class().IsOneOf(ObjectClassPerson)
+		case VerbOpen, VerbClose, VerbPickUp, VerbGive, VerbUse, VerbTurnOn, VerbTurnOff:
+			return !item.Class().IsOneOf(ObjectClassPerson)
+		default:
+			return true
+		}
+	}
+
+	// Item is candidate to second argument.
+	if !s.args[0].Class().IsOneOf(ObjectClassApplicable) || item == s.args[0] {
+		// First argument is not applicable or is the same item.
+		return false
+	}
+	switch s.verb {
+	case VerbGive:
+		return item.Class().IsOneOf(ObjectClassPerson)
+	default:
+		return true
 	}
 }
 
