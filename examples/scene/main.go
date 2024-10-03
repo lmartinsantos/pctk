@@ -8,6 +8,6 @@ func main() {
 	loader := pctk.NewResourceFileLoader("./")
 
 	app := pctk.New(loader)
-	app.Do(pctk.ScriptRun{ScriptRef: pctk.NewResourceRef("resources", "scripts/boot")})
+	app.RunCommand(pctk.ScriptRun{ScriptRef: pctk.NewResourceRef("resources", "scripts/boot")})
 	app.Run()
 }

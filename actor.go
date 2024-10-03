@@ -1,7 +1,7 @@
 package pctk
 
 import (
-	"slices"
+	"log"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -16,28 +16,123 @@ var (
 	DefaultActorSpeed     = NewPosf(80, 20)
 	DefaultActorSize      = NewSize(32, 48)
 	DefaultActorDirection = DirRight
+	DefaultActorTalkColor = BrigthGrey
+	DefaultActorUsePos    = NewPos(rl.GetScreenWidth()/2, 120)
 )
 
 type Actor struct {
-	name string
+	Size      Size      // Size of the actor
+	TalkColor Color     // Color of the text when the actor talks
+	UsePos    Position  // Position where other actors interact with this actor
+	UseDir    Direction // Direction where other actors interact with this actor
 
-	costume *Costume
-
-	lookAt Direction
-	pos    Positionf
-	size   Size
-	speed  Positionf
-	elev   int
-	act    action
+	act       *Action
+	costume   *Costume
+	elev      int
+	ego       bool
+	id        string
+	inventory []*Object
+	lookAt    Direction
+	name      string
+	pos       Positionf
+	room      *Room
+	speed     Positionf
 }
 
-func NewActor(name string) *Actor {
+// NewActor creates a new actor with the given ID and name.
+func NewActor(id, name string) *Actor {
 	return &Actor{
+		TalkColor: DefaultActorTalkColor,
+		Size:      DefaultActorSize,
+		UsePos:    DefaultActorUsePos,
+		UseDir:    DefaultActorDirection,
+
+		id:    id,
 		name:  name,
 		pos:   DefaultActorPosition.ToPosf(),
-		size:  DefaultActorSize,
 		speed: DefaultActorSpeed,
 	}
+}
+
+// AddToInventory adds an object to the actor's inventory.
+func (a *Actor) AddToInventory(obj *Object) {
+	a.inventory = append(a.inventory, obj)
+	obj.owner = a
+}
+
+// CancelAction cancels the current action of the actor.
+func (a *Actor) CancelAction() {
+	if a.act != nil {
+		a.act.Cancel()
+	}
+	a.act = nil
+}
+
+// Class returns the class of the actor.
+func (a *Actor) Class() ObjectClass {
+	return ObjectClassPerson
+}
+
+// Do executes the action in the actor.
+func (a *Actor) Do(action *Action) Future {
+	if a.act != nil {
+		a.act.Cancel()
+	}
+	a.act = action
+	return a.act.Done()
+}
+
+// Draw renders the actor in the viewport.
+func (a *Actor) Draw() {
+	if a.act == nil {
+		a.act = Standing(a.lookAt)
+	}
+
+	if a.act.RunFrame(a) {
+		a.act = nil
+	}
+}
+
+// Hotspot returns the hotspot of the actor.
+func (a *Actor) Hotspot() Rectangle {
+	return Rectangle{Pos: a.costumePos(), Size: a.Size}
+}
+
+// ID returns the ID of the actor.
+func (a *Actor) ID() string {
+	return a.name
+}
+
+// Inventory returns the inventory of the actor.
+func (a *Actor) Inventory() []*Object {
+	return a.inventory
+}
+
+// IsEgo returns true if the actor is the actor under player's control, false otherwise.
+func (a *Actor) IsEgo() bool {
+	return a.ego
+}
+
+// Locate the actor in the given room, position and direction.
+func (a *Actor) Locate(room *Room, pos Position, dir Direction) {
+	a.room = room
+	a.pos = pos.ToPosf()
+	a.Do(Standing(dir))
+}
+
+// Name returns the name of the actor.
+func (a *Actor) Name() string {
+	return a.name
+}
+
+// Position returns the position of the actor.
+func (a *Actor) Position() Position {
+	return a.pos.ToPos()
+}
+
+// Room returns the room where the actor is.
+func (a *Actor) Room() *Room {
+	return a.room
 }
 
 // SetCostume sets the costume for the actor.
@@ -46,186 +141,106 @@ func (a *Actor) SetCostume(costume *Costume) *Actor {
 	return a
 }
 
+// UsePosition returns the position where actors interact with the actor.
+func (a *Actor) UsePosition() (Position, Direction) {
+	return a.UsePos, a.UseDir
+}
+
 func (a *Actor) costumePos() Position {
-	return a.pos.ToPos().Sub(NewPos(a.size.W/2, a.size.H-a.elev))
+	return a.pos.ToPos().Sub(NewPos(a.Size.W/2, a.Size.H-a.elev))
 }
 
 func (a *Actor) dialogPos() Position {
-	return a.pos.ToPos().Above(a.size.H + 40)
+	return a.pos.ToPos().Above(a.Size.H + 40)
 }
 
-func (a *Actor) stand(dir Direction) *Actor {
-	a.lookAt = dir
-	a.act = func() (completed bool) {
-		if cos := a.costume; cos != nil {
-			cos.draw(CostumeIdle(dir), a.costumePos())
-		}
-		return false
+// Action is an action that an actor is performing.
+type Action struct {
+	prom *Promise
+	f    func(*Actor, *Promise)
+}
+
+// Standing creates a new action that makes an actor stand in the given direction.
+func Standing(dir Direction) *Action {
+	return &Action{
+		prom: NewPromise(),
+		f: func(a *Actor, done *Promise) {
+			a.lookAt = dir
+			if cos := a.costume; cos != nil {
+				cos.draw(CostumeIdle(dir), a.costumePos())
+			}
+		},
 	}
-	return a
 }
 
-func (a *Actor) draw() {
-	if a.act == nil {
-		a.stand(a.lookAt)
-	}
-	if a.act() {
-		a.stand(a.lookAt)
-	}
-}
-
-type action func() (completed bool)
-
-// ActorShow is a command that will show an actor in the room at the given position.
-type ActorShow struct {
-	CostumeResource ResourceRef
-	ActorID         string
-	Position        Position
-	LookAt          Direction
-}
-
-func (cmd ActorShow) Execute(app *App, done *Promise) {
-	actor := app.ensureActor(cmd.ActorID)
-	actor.pos = cmd.Position.ToPosf()
-	actor.stand(cmd.LookAt)
-	if cmd.CostumeResource != ResourceRefNull {
-		actor.SetCostume(app.res.LoadCostume(cmd.CostumeResource))
-	}
-	app.actors[cmd.ActorID] = actor
-	done.Complete()
-}
-
-// ActorLookAtPos is a command that will make an actor look at a given position.
-type ActorLookAtPos struct {
-	ActorName string
-	Position  Position
-}
-
-func (cmd ActorLookAtPos) Execute(app *App, done *Promise) {
-	app.withActor(cmd.ActorName, func(a *Actor) {
-		a.stand(a.pos.ToPos().DirectionTo(cmd.Position))
-	})
-	done.Complete()
-}
-
-// ActorStand is a command that will make an actor stand in the given direction.
-type ActorStand struct {
-	ActorID   string
-	Direction Direction
-}
-
-func (cmd ActorStand) Execute(app *App, done *Promise) {
-	app.withActor(cmd.ActorID, func(a *Actor) {
-		a.stand(cmd.Direction)
-	})
-	done.Complete()
-}
-
-// ActorWalkToPosition is a command that will make an actor walk to a given position.
-type ActorWalkToPosition struct {
-	ActorID  string
-	Position Position
-}
-
-func (cmd ActorWalkToPosition) Execute(app *App, done *Promise) {
-	app.withActor(cmd.ActorID, func(a *Actor) {
-		a.act = func() (completed bool) {
+// WalkingTo creates a new action that makes an actor walk to a given position.
+func WalkingTo(pos Position) *Action {
+	return &Action{
+		prom: NewPromise(),
+		f: func(a *Actor, done *Promise) {
 			if cos := a.costume; cos != nil {
 				cos.draw(CostumeWalk(a.lookAt), a.costumePos())
 			}
 
-			if a.pos.ToPos() == cmd.Position {
+			if a.pos.ToPos() == pos {
 				done.Complete()
-				return true
+				return
 			}
 
-			a.lookAt = a.pos.ToPos().DirectionTo(cmd.Position)
-			a.pos = a.pos.Move(cmd.Position.ToPosf(), a.speed.Scale(rl.GetFrameTime()))
-			return false
-		}
-	})
+			a.lookAt = a.pos.ToPos().DirectionTo(pos)
+			a.pos = a.pos.Move(pos.ToPosf(), a.speed.Scale(rl.GetFrameTime()))
+		},
+	}
 }
 
-// ActorSpeak is a command that will make an actor speak the given text.
-type ActorSpeak struct {
-	ActorID string
-	Text    string
-	Delay   time.Duration
-	Color   Color
-}
-
-func (cmd ActorSpeak) Execute(app *App, done *Promise) {
-	if cmd.Delay == 0 {
-		cmd.Delay = DefaultActorSpeakDelay
-	}
-
-	if cmd.Color == rl.Blank {
-		cmd.Color = rl.White
-	}
-
-	app.withActor(cmd.ActorID, func(a *Actor) {
-		dialogDone := app.doNow(ShowDialog{
-			Text:     cmd.Text,
-			Position: a.dialogPos(),
-			Color:    cmd.Color,
-			Speed:    1.0,
-		})
-		a.act = func() (completed bool) {
+// SpeakingTo creates a new action that makes an actor speak to a dialog.
+func SpeakingTo(dialog Future) *Action {
+	return &Action{
+		prom: NewPromise(),
+		f: func(a *Actor, done *Promise) {
 			if cos := a.costume; cos != nil {
 				cos.draw(CostumeSpeak(a.lookAt), a.costumePos())
 			}
-			if dialogDone.IsCompleted() {
-				done.CompleteAfter(nil, cmd.Delay)
-				return true
+			if dialog.IsCompleted() {
+				done.Complete()
 			}
-			return false
-		}
-	})
+		},
+	}
 }
 
-func (a *App) withActor(name string, f func(*Actor)) {
-	actor, ok := a.actors[name]
-	if !ok {
-		return
-	}
-	f(actor)
+// Cancel cancels the action.
+func (a *Action) Cancel() {
+	a.prom.Break()
 }
 
-func (a *App) ensureActor(name string) *Actor {
-	actor, ok := a.actors[name]
-	if !ok {
-		actor = NewActor(name)
-		a.actors[name] = actor
+// Done returns a future that will be completed when the action is done.
+func (a *Action) Done() Future {
+	return a.prom
+}
+
+// RunFrame runs a frame of the action.
+func (a *Action) RunFrame(actor *Actor) (completed bool) {
+	a.f(actor, a.prom)
+	return a.prom.IsCompleted()
+}
+
+// DeclareActor declares a new actor with the given ID and name.
+func (a *App) DeclareActor(id, name string) *Actor {
+	if _, ok := a.actors[id]; ok {
+		log.Fatalf("Actor %s already exists", id)
 	}
+	actor := NewActor(id, name)
+	a.actors[id] = actor
 	return actor
 }
 
-func (a *App) drawActors() {
-	actors := make([]*Actor, 0, len(a.actors))
-	for _, actor := range a.actors {
-		actors = append(actors, actor)
+// SelectEgo sets actor as the ego.
+func (a *App) SelectEgo(actor *Actor) {
+	if a.ego != nil {
+		a.ego.ego = false
 	}
-	slices.SortFunc(actors, func(a, b *Actor) int {
-		return a.pos.ToPos().Y - b.pos.ToPos().Y
-	})
-	for _, actor := range actors {
-		actor.draw()
+	a.ego = actor
+	if a.ego != nil {
+		a.ego.ego = true
 	}
-}
-
-// ActorSelectEgo is a command that will make an actor be the actor under player's control.
-type ActorSelectEgo struct {
-	// Using an empty ActorID allows deselecting the previous ego
-	ActorID string
-}
-
-func (cmd ActorSelectEgo) Execute(app *App, done *Promise) {
-	actor, ok := app.actors[cmd.ActorID]
-	if ok {
-		app.ego = actor
-	} else {
-		app.ego = nil
-	}
-
-	done.Complete()
 }

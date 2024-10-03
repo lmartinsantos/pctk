@@ -12,20 +12,22 @@ type App struct {
 	screenCaption string
 	screenZoom    int32
 
-	rooms    map[string]*Room
-	room     *Room
-	dialogs  []Dialog
-	actors   map[string]*Actor
-	scripts  map[ResourceRef]*Script
-	commands commandQueue
+	actors  map[string]*Actor
+	dialogs []Dialog
+	objects []*Object
+	rooms   map[string]*Room
+	room    *Room
+	scripts map[ResourceRef]*Script
 
-	cam                 rl.Camera2D
-	cursorTx            rl.Texture2D
-	cursorColor         Color
-	music               *Music
-	sound               *Sound
-	ego                 *Actor
-	controlPanelEnabled bool
+	control  ControlPane
+	commands CommandQueue
+
+	cam         rl.Camera2D
+	cursorTx    rl.Texture2D
+	cursorColor Color
+	music       *Music
+	sound       *Sound
+	ego         *Actor
 }
 
 // New creates a new pctk application.
@@ -47,17 +49,42 @@ func New(resources ResourceLoader, opts ...AppOption) *App {
 	return app
 }
 
-func (a *App) init() {
-	rl.InitWindow(ScreenWidth*a.screenZoom, ScreenHeight*a.screenZoom, a.screenCaption)
-	rl.InitAudioDevice()
-	rl.SetTargetFPS(60)
-
-	a.cam.Zoom = float32(a.screenZoom)
-	a.initMouse()
-}
-
+// Close closes the application.
 func (a *App) Close() {
 	a.unloadMusic()
 	rl.CloseAudioDevice()
 	rl.CloseWindow()
+}
+
+// Run starts the application.
+func (a *App) Run() {
+	defer a.Close()
+
+	for !rl.WindowShouldClose() {
+		a.run()
+	}
+}
+
+func (a *App) init() {
+	rl.InitWindow(ScreenWidth*a.screenZoom, ScreenHeight*a.screenZoom, a.screenCaption)
+	rl.InitAudioDevice()
+	rl.SetTargetFPS(60)
+	rl.HideCursor()
+
+	a.cam.Zoom = float32(a.screenZoom)
+	a.control.Init(&a.cam)
+}
+
+func (a *App) run() {
+	a.updateMusic()
+	rl.BeginDrawing()
+	rl.ClearBackground(rl.Black)
+	rl.BeginMode2D(a.cam)
+	a.drawSceneViewport()
+	a.control.Draw(a)
+	a.drawDialogs()
+	rl.EndMode2D()
+	rl.EndDrawing()
+	a.control.processControlInputs(a)
+	a.commands.Execute(a)
 }

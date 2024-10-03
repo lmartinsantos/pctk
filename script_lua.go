@@ -9,7 +9,7 @@ import (
 	"github.com/Shopify/go-lua"
 )
 
-func (s *Script) luaInit(app AppContext) {
+func (s *Script) luaInit(app *App) {
 	if s.l == nil {
 		s.l = lua.NewState()
 		lua.BaseOpen(s.l)
@@ -23,7 +23,7 @@ func (s *Script) luaInit(app AppContext) {
 	}
 }
 
-func (s *Script) luaRun(app AppContext, prom *Promise) {
+func (s *Script) luaRun(app *App, prom *Promise) {
 	go func() {
 		if s.l == nil {
 			log.Panic("Script not initialized")
@@ -33,27 +33,19 @@ func (s *Script) luaRun(app AppContext, prom *Promise) {
 	}()
 }
 
-func (s *Script) luaCall(object, method string, prom *Promise) {
+func (s *Script) luaCall(f FieldAccessor, args []any, method bool) Future {
+	prom := NewPromise()
 	go func() {
 		if s.l == nil {
 			log.Panic("Script not initialized")
 		}
 
-		s.l.Global(object)
-		if !s.l.IsTable(-1) {
-			log.Panicf("Object %s not found", object)
-		}
-		s.l.Field(-1, method)
-		if !s.l.IsFunction(-1) {
-			log.Panicf("Method %s not found in object %s", method, object)
-		}
-		s.l.PushValue(-2)
-		s.l.Call(1, 0)
-		prom.Complete()
+		prom.Bind(CallFunction(s.l, f, args, method))
 	}()
+	return prom
 }
 
-func (s *Script) luaEval(app AppContext, code []byte, include bool) {
+func (s *Script) luaEval(app *App, code []byte, include bool) {
 	prev := s.including
 	s.including = include
 
@@ -64,50 +56,78 @@ func (s *Script) luaEval(app AppContext, code []byte, include bool) {
 	if err := s.l.ProtectedCall(0, lua.MultipleReturns, 0); err != nil {
 		log.Panicf("Error running script: %s", err)
 	}
+	s.declareGlobalObjects(app)
+	s.including = prev
+}
 
+func (s *Script) declareGlobalObjects(app *App) {
 	s.forEachDeclaredObject(func(typ, key string, included bool) {
 		obj := withLuaTableAtIndex(s.l, -1)
-		// Define the ID from the object key
 		obj.SetString("id", key)
 
-		// For rooms that are not included, declare them in the app
-		if typ == "room" && !included {
-			room := obj
-			roomID := key
-			app.Do(RoomDeclare{
-				RoomID:        roomID,
-				Script:        s,
-				BackgroundRef: room.GetRef("background"),
-			}).Wait()
+		if included {
+			return
+		}
 
-			room.IfTableFieldExists("objects", func(objs luaTableUtils) {
-				objs.ForEach(func(key int, value int) {
-					obj := withLuaTableAtIndex(s.l, value)
-					cmd := ObjectDeclare{
-						Classes: ObjectClass(obj.GetIntegerOpt("class", 0)),
-						Hotspot: obj.GetRectangle("hotspot"),
-						Name:    lua.CheckString(s.l, key),
-						Pos:     obj.GetPosition("pos"),
-						RoomID:  roomID,
-						Sprites: obj.GetRef("sprites"),
-						UseDir:  obj.GetDirection("usedir"),
-						UsePos:  obj.GetPosition("usepos"),
-					}
-					obj.IfTableFieldExists("states", func(states luaTableUtils) {
-						states.ForEach(func(_ int, value int) {
-							state := withLuaTableAtIndex(s.l, value)
-							cmd.States = append(cmd.States, ObjectState{
-								Anim: state.GetAnimationOpt("anim", nil),
-							})
-						})
-					})
-					app.Do(cmd).Wait()
-				})
-			})
+		switch typ {
+		case "actor":
+			s.declareActor(app, key, obj)
+		case "room":
+			s.declareRoom(app, key, obj)
 		}
 	})
+}
 
-	s.including = prev
+func (s *Script) declareActor(app *App, actorID string, actor luaTableUtils) {
+	app.RunCommand(ActorDeclare{
+		ActorID:   actorID,
+		ActorName: actor.GetString("name"),
+		Costume:   actor.GetRefOpt("costume", ResourceRefNull),
+		Size:      actor.GetSizeOpt("size", DefaultActorSize),
+		TalkColor: actor.GetColorOpt("talkcolor", DefaultActorTalkColor),
+		UsePos:    actor.GetPositionOpt("usepos", DefaultActorUsePos),
+		UseDir:    actor.GetDirectionOpt("usedir", DefaultActorDirection),
+	}).Wait()
+}
+
+func (s *Script) declareRoom(app *App, roomID string, room luaTableUtils) {
+	app.RunCommand(RoomDeclare{
+		RoomID:        roomID,
+		Script:        s,
+		BackgroundRef: room.GetRef("background"),
+	}).Wait()
+
+	room.IfTableFieldExists("objects", func(objs luaTableUtils) {
+		objs.ForEach(func(key int, value int) {
+			objID := lua.CheckString(s.l, key)
+			obj := withLuaTableAtIndex(s.l, value).CheckObjectType("object")
+
+			// Set the related IDs
+			obj.SetString("room", roomID)
+			obj.SetString("id", objID)
+
+			cmd := ObjectDeclare{
+				Classes:  ObjectClass(obj.GetIntegerOpt("class", 0)),
+				Hotspot:  obj.GetRectangle("hotspot"),
+				Name:     lua.CheckString(s.l, key),
+				ObjectID: objID,
+				Pos:      obj.GetPositionOpt("pos", NewPos(0, 0)),
+				RoomID:   roomID,
+				Sprites:  obj.GetRefOpt("sprites", ResourceRefNull),
+				UseDir:   obj.GetDirection("usedir"),
+				UsePos:   obj.GetPosition("usepos"),
+			}
+			obj.IfTableFieldExists("states", func(states luaTableUtils) {
+				states.ForEach(func(_ int, value int) {
+					state := withLuaTableAtIndex(s.l, value)
+					cmd.States = append(cmd.States, &ObjectState{
+						Anim: state.GetAnimationOpt("anim", nil),
+					})
+				})
+			})
+			app.RunCommand(cmd).Wait()
+		})
+	})
 }
 
 func (s *Script) forEachDeclaredObject(f func(typ, key string, included bool)) {
@@ -128,23 +148,24 @@ func (s *Script) forEachDeclaredObject(f func(typ, key string, included bool)) {
 	}
 }
 
-func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
+func (s *Script) luaResourceApi(app *App) []lua.RegistryFunction {
 	return []lua.RegistryFunction{
 		//
 		// Resource construction functions
 		//
 		{Name: "actor", Function: func(l *lua.State) int {
-			actor := withNewLuaObject(l, "actor")
+			actor := withNewLuaObjectWrapping(l, 1, "actor")
+			actor.SetBoolean("included", s.including)
 			actor.SetFunction("say", lua.Function(func(l *lua.State) int {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("actor")
 				text := lua.CheckString(l, 2)
 				opts := withLuaTableAtIndex(l, 3)
 				cmd := ActorSpeak{
-					ActorID: self.GetString("id"),
-					Text:    text,
-					Delay:   opts.GetDurationOpt("delay", DefaultActorSpeakDelay),
+					Actor: self.GetActorByID(app, "id"),
+					Text:  text,
+					Delay: opts.GetDurationOpt("delay", DefaultActorSpeakDelay),
 				}
-				done := app.Do(cmd)
+				done := app.RunCommand(cmd)
 				luaPushFuture(l, done)
 				return 1
 			}))
@@ -152,21 +173,19 @@ func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("actor")
 				opts := withLuaTableAtIndex(l, 2)
 				cmd := ActorShow{
-					ActorID:         self.GetString("id"),
-					Position:        opts.GetPositionOpt("pos", DefaultActorPosition),
-					LookAt:          opts.GetDirectionOpt("dir", DefaultActorDirection),
-					CostumeResource: opts.GetRefOpt("costume", ResourceRefNull),
+					Actor:    self.GetActorByID(app, "id"),
+					Position: opts.GetPositionOpt("pos", DefaultActorPosition),
+					LookAt:   opts.GetDirectionOpt("dir", DefaultActorDirection),
 				}
-				done := app.Do(cmd)
-				luaPushFuture(l, done)
-				return 1
+				app.RunCommand(cmd).Wait()
+				return 0
 			}))
 			actor.SetFunction("select", lua.Function(func(l *lua.State) int {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("actor")
 				cmd := ActorSelectEgo{
-					ActorID: self.GetString("id"),
+					Actor: self.GetActorByID(app, "id"),
 				}
-				done := app.Do(cmd)
+				done := app.RunCommand(cmd)
 				luaPushFuture(l, done)
 				return 1
 			}))
@@ -174,10 +193,21 @@ func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("actor")
 				opts := withLuaTableAtIndex(l, 2)
 				cmd := ActorStand{
-					ActorID:   self.GetString("id"),
+					Actor:     app.ActorByID(self.GetString("id")),
 					Direction: opts.GetDirectionOpt("dir", DefaultActorDirection),
 				}
-				done := app.Do(cmd)
+				done := app.RunCommand(cmd)
+				luaPushFuture(l, done)
+				return 1
+			}))
+			actor.SetFunction("toinventory", lua.Function(func(l *lua.State) int {
+				self := withLuaTableAtIndex(l, 1).CheckObjectType("actor")
+				obj := withLuaTableAtIndex(l, 2)
+				cmd := ActorAddToInventory{
+					Actor:  self.GetActorByID(app, "id"),
+					Object: obj.GetObjectByID(app, "room", "id"),
+				}
+				done := app.RunCommand(cmd)
 				luaPushFuture(l, done)
 				return 1
 			}))
@@ -185,10 +215,10 @@ func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("actor")
 				pos := luaCheckPosition(l, 2)
 				cmd := ActorWalkToPosition{
-					ActorID:  self.GetString("id"),
+					Actor:    self.GetActorByID(app, "id"),
 					Position: pos,
 				}
-				done := app.Do(cmd)
+				done := app.RunCommand(cmd)
 				luaPushFuture(l, done)
 				return 1
 			}))
@@ -206,26 +236,13 @@ func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
 			cost.SetResourceRef("ref", opts.GetRef("ref"))
 			return 1
 		}},
-		{Name: "include", Function: func(l *lua.State) int {
-			ref := luaCheckResourceRef(l, 1)
-			if luaIsIncluded(l, ref) {
-				return 0
-			}
-			script := app.Do(ScriptRun{
-				ScriptRef: ref,
-			}).Wait().(*Script)
-			s.luaEval(app, script.Code, true)
-
-			luaSetIncluded(l, ref)
-			return 0
-		}},
 		{Name: "music", Function: func(l *lua.State) int {
 			opts := withLuaTableAtIndex(l, 1)
 			music := withNewLuaObject(l, "music")
 			music.SetResourceRef("ref", opts.GetRef("ref"))
 			music.SetFunction("play", lua.Function(func(l *lua.State) int {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("music")
-				done := app.Do(MusicPlay{
+				done := app.RunCommand(MusicPlay{
 					MusicResource: self.GetRef("ref"),
 				})
 				luaPushFuture(l, done)
@@ -233,17 +250,31 @@ func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
 			}))
 			return 1
 		}},
+		{Name: "object", Function: func(l *lua.State) int {
+			obj := withNewLuaObjectWrapping(l, 1, "object")
+			obj.SetFunction("owner", lua.Function(func(l *lua.State) int {
+				self := withLuaTableAtIndex(l, 1).CheckObjectType("object")
+				obj := app.FindObject(self.GetString("room"), self.GetString("id"))
+				if owner := obj.Owner(); owner == nil {
+					l.PushNil()
+				} else {
+					l.Global(owner.ID())
+				}
+				return 1
+			}))
+			return 1
+		}},
 		{Name: "room", Function: func(l *lua.State) int {
 			room := withNewLuaObjectWrapping(l, 1, "room")
+			room.SetBoolean("included", s.including)
 			room.SetFunction("show", lua.Function(func(l *lua.State) int {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("room")
-				done := app.Do(RoomShow{
-					RoomID: self.GetString("id"),
+				done := app.RunCommand(RoomShow{
+					Room: self.GetRoomByID(app, "id"),
 				})
 				luaPushFuture(l, done)
 				return 1
 			}))
-			room.SetBoolean("included", s.including)
 			return 1
 		}},
 		{Name: "sound", Function: func(l *lua.State) int {
@@ -252,7 +283,7 @@ func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
 			sound.SetResourceRef("ref", opts.GetRef("ref"))
 			sound.SetFunction("play", lua.Function(func(l *lua.State) int {
 				self := withLuaTableAtIndex(l, 1).CheckObjectType("sound")
-				done := app.Do(SoundPlay{
+				done := app.RunCommand(SoundPlay{
 					SoundResource: self.GetRef("ref"),
 				})
 				luaPushFuture(l, done)
@@ -277,6 +308,23 @@ func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
 		//
 		// API functions
 		//
+		{Name: "include", Function: func(l *lua.State) int {
+			ref := luaCheckResourceRef(l, 1)
+			if luaIsIncluded(l, ref) {
+				return 0
+			}
+			script, err := WaitAs[*Script](app.RunCommand(ScriptRun{
+				ScriptRef: ref,
+			}))
+			if err != nil {
+				lua.Errorf(l, "Error including script: %s", err)
+				return 0
+			}
+			s.luaEval(app, script.Code, true)
+
+			luaSetIncluded(l, ref)
+			return 0
+		}},
 
 		// TODO: this function uses the ShowDialog. It must be replaced by a function that
 		// prints with some selected font.
@@ -288,7 +336,7 @@ func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
 				Position: opts.GetPositionOpt("pos", DefaultDialogPosition),
 				Color:    opts.GetColorOpt("color", DefaultDialogColor),
 			}
-			done := app.Do(cmd)
+			done := app.RunCommand(cmd)
 			luaPushFuture(l, done)
 			return 1
 		}},
@@ -296,20 +344,62 @@ func (s *Script) luaResourceApi(app AppContext) []lua.RegistryFunction {
 			time.Sleep(luaCheckDurationMillis(l, 1))
 			return 0
 		}},
-		{Name: "usercontrol", Function: func(l *lua.State) int {
-			done := app.Do(EnableControlPanel{Enable: l.ToBoolean(1)})
-			luaPushFuture(l, done)
-			return 1
+		{Name: "userputon", Function: func(l *lua.State) int {
+			done := app.RunCommand(EnableControlPanel{Enable: true})
+			done.Wait()
+			return 0
+		}},
+		{Name: "userputoff", Function: func(l *lua.State) int {
+			done := app.RunCommand(EnableControlPanel{Enable: false})
+			done.Wait()
+			return 0
+		}},
+		{Name: "cursoron", Function: func(l *lua.State) int {
+			done := app.RunCommand(EnableMouseCursor{Enable: true})
+			done.Wait()
+			return 0
+		}},
+		{Name: "cursoroff", Function: func(l *lua.State) int {
+			done := app.RunCommand(EnableMouseCursor{Enable: false})
+			done.Wait()
+			return 0
 		}},
 	}
 }
 
+// Call the function pointed by f with the given arguments. If method is true, the first argument
+// is the object that has the method.
+func CallFunction(l *lua.State, f FieldAccessor, args []any, method bool) Future {
+	prom := NewPromise()
+	err := luaPushField(l, f)
+	if err != nil {
+		prom.CompleteWithError(err)
+		return prom
+	}
+	if !l.IsFunction(-1) {
+		prom.CompleteWithErrorf("Field %s is not a function", f)
+		return prom
+	}
+	nargs := len(args)
+	if method {
+		luaPushValue(l, f.Base())
+		nargs++
+	}
+	for _, arg := range args {
+		luaPushValue(l, arg)
+	}
+	l.Call(nargs, 0)
+	prom.Complete()
+	return prom
+}
+
 func luaDeclareConstants(l *lua.State) {
 	for k, pushFunc := range map[string]func(){
-		"up":    func() { l.PushInteger(int(DirUp)) },
-		"right": func() { l.PushInteger(int(DirRight)) },
-		"down":  func() { l.PushInteger(int(DirDown)) },
-		"left":  func() { l.PushInteger(int(DirLeft)) },
+		"up":      func() { l.PushInteger(int(DirUp)) },
+		"right":   func() { l.PushInteger(int(DirRight)) },
+		"down":    func() { l.PushInteger(int(DirDown)) },
+		"left":    func() { l.PushInteger(int(DirLeft)) },
+		"default": func() { l.NewTable() },
 	} {
 		pushFunc()
 		l.SetGlobal(k)
@@ -363,6 +453,13 @@ func luaCheckPosition(l *lua.State, index int) (pos Position) {
 	return
 }
 
+func luaCheckSize(l *lua.State, index int) (size Size) {
+	tab := withLuaTableAtIndex(l, index)
+	size.W = tab.GetInteger("w")
+	size.H = tab.GetInteger("h")
+	return
+}
+
 func luaCheckRectangle(l *lua.State, index int) (rect Rectangle) {
 	tab := withLuaTableAtIndex(l, index)
 	rect.Pos.X = tab.GetInteger("x")
@@ -381,13 +478,19 @@ func luaCheckResourceRef(l *lua.State, index int) ResourceRef {
 	return ref
 }
 
-func luaCheckAnimation(l *lua.State, index int) *Animation {
+func luaCheckAnimation(l *lua.State, index int) (anim *Animation) {
 	tab := withLuaTableAtIndex(l, index)
-	return NewAnimationEx(
-		tab.GetInteger("index"),
-		tab.GetInteger("frames"),
-		tab.GetDuration("delay"),
-	)
+
+	anim = NewAnimation()
+	tab.ForEach(func(key int, value int) {
+		frame := withLuaTableAtIndex(l, value)
+		anim.AddFrames(
+			frame.GetDuration("delay"),
+			frame.GetInteger("row"),
+			frame.GetIntegers("seq")...,
+		)
+	})
+	return anim
 }
 
 func luaPushColor(l *lua.State, c Color) {
@@ -415,6 +518,50 @@ func luaPushFuture(l *lua.State, f Future) {
 		}},
 	})
 	return
+}
+
+func luaPushField(l *lua.State, f FieldAccessor) error {
+	var n int
+	str := FieldAccessor(f).String()
+	l.PushGlobalTable()
+	n++
+	for ; len(f) > 1; f = f[1:] {
+		l.Field(-1, f[0])
+		n++
+		if !l.IsTable(-1) {
+			l.Pop(n)
+			return fmt.Errorf("Object %s not found", str)
+		}
+	}
+	l.Field(-1, f[0])
+	n++
+	if l.IsNil(-1) {
+		l.Pop(n)
+		return fmt.Errorf("Field %s not found in object %s", f[0], str)
+	}
+	for i := 1; i < n; i++ {
+		l.Remove(-2)
+	}
+	return nil
+}
+
+func luaPushValue(l *lua.State, val any) {
+	switch v := val.(type) {
+	case bool:
+		l.PushBoolean(v)
+	case int:
+		l.PushInteger(v)
+	case string:
+		l.PushString(v)
+	case time.Duration:
+		l.PushInteger(int(v / time.Millisecond))
+	case FieldAccessor:
+		if err := luaPushField(l, v); err != nil {
+			lua.ArgumentError(l, 1, err.Error())
+		}
+	default:
+		log.Panicf("Unsupported value type: %T", val)
+	}
 }
 
 type luaTableUtils struct {
@@ -495,6 +642,16 @@ func (t luaTableUtils) GetIntegerOpt(key string, def int) (val int) {
 	return
 }
 
+func (t luaTableUtils) GetIntegers(key string) (val []int) {
+	t.getField(key, lua.TypeTable, func() {
+		tab := withLuaTableAtIndex(t.l, -1)
+		tab.ForEach(func(_, value int) {
+			val = append(val, lua.CheckInteger(t.l, value))
+		})
+	})
+	return
+}
+
 func (t luaTableUtils) GetBoolean(key string) (val bool) {
 	t.getField(key, lua.TypeNone, func() { val = t.l.ToBoolean(-1) })
 	return
@@ -559,6 +716,17 @@ func (t luaTableUtils) GetPositionOpt(key string, def Position) (val Position) {
 	return
 }
 
+func (t luaTableUtils) GetSize(key string) (val Size) {
+	t.getField(key, lua.TypeTable, func() { val = luaCheckSize(t.l, -1) })
+	return
+}
+
+func (t luaTableUtils) GetSizeOpt(key string, def Size) (val Size) {
+	val = def
+	t.getFieldOpt(key, lua.TypeTable, func() { val = luaCheckSize(t.l, -1) })
+	return
+}
+
 func (t luaTableUtils) GetRectangle(key string) (val Rectangle) {
 	t.getField(key, lua.TypeTable, func() {
 		val = luaCheckRectangle(t.l, -1)
@@ -578,6 +746,33 @@ func (t luaTableUtils) GetAnimationOpt(key string, def *Animation) (val *Animati
 	t.getFieldOpt(key, lua.TypeTable, func() {
 		val = luaCheckAnimation(t.l, -1)
 	})
+	return
+}
+func (t luaTableUtils) GetActorByID(app *App, key string) (val *Actor) {
+	actorID := t.GetString(key)
+	val = app.ActorByID(actorID)
+	if val == nil {
+		lua.ArgumentError(t.l, 1, fmt.Sprintf("actor %s not found", actorID))
+	}
+	return
+}
+
+func (t luaTableUtils) GetObjectByID(app *App, roomk, idk string) (val *Object) {
+	roomID := t.GetString(roomk)
+	objID := t.GetString(idk)
+	val = app.FindObject(roomID, objID)
+	if val == nil {
+		lua.ArgumentError(t.l, 1, fmt.Sprintf("object %s not found in room %s", objID, roomID))
+	}
+	return
+}
+
+func (t luaTableUtils) GetRoomByID(app *App, key string) (val *Room) {
+	roomID := t.GetString(key)
+	val = app.FindRoom(roomID)
+	if val == nil {
+		lua.ArgumentError(t.l, 1, fmt.Sprintf("room %s not found", roomID))
+	}
 	return
 }
 
@@ -605,6 +800,11 @@ func (t luaTableUtils) getFieldOpt(key string, expected lua.Type, pull func()) {
 			"field '%s' has type '%s', '%s' expected", key, given, expected))
 	}
 	pull()
+}
+
+func (t luaTableUtils) SetObjectType(typ string) {
+	t.l.PushString(typ)
+	t.l.SetField(t.index, "__type")
 }
 
 func (t luaTableUtils) SetString(key, value string) {

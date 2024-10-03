@@ -3,6 +3,7 @@ package pctk
 import (
 	"io"
 	"log"
+	"strings"
 
 	"github.com/Shopify/go-lua"
 )
@@ -36,6 +37,18 @@ func NewScript(lang ScriptLanguage, code []byte) *Script {
 	}
 }
 
+// Call a method in the script. The method is a chain of identifiers that references a function in
+// the script.
+func (s *Script) Call(f FieldAccessor, args []any, method bool) Future {
+	switch s.Language {
+	case ScriptLua:
+		return s.luaCall(f, args, method)
+	default:
+		log.Panicf("Unknown script language: %0x", s.Language)
+		return nil
+	}
+}
+
 // BinaryDecode decodes the script from a binary stream. The format is:
 //   - byte: the script language.
 //   - uint32: the length of the script code.
@@ -62,7 +75,7 @@ func (s *Script) BinaryDecode(r io.Reader) error {
 	return nil
 }
 
-func (s *Script) init(app AppContext, ref ResourceRef) {
+func (s *Script) init(app *App, ref ResourceRef) {
 	s.ref = ref
 	switch s.Language {
 	case ScriptLua:
@@ -72,7 +85,7 @@ func (s *Script) init(app AppContext, ref ResourceRef) {
 	}
 }
 
-func (s *Script) run(app AppContext, prom *Promise) {
+func (s *Script) run(app *App, prom *Promise) {
 	switch s.Language {
 	case ScriptLua:
 		s.luaRun(app, prom)
@@ -81,49 +94,31 @@ func (s *Script) run(app AppContext, prom *Promise) {
 	}
 }
 
-func (s *Script) call(object, method string, prom *Promise) {
-	switch s.Language {
-	case ScriptLua:
-		s.luaCall(object, method, prom)
-	default:
-		log.Panicf("Unknown script language: %0x", s.Language)
+// FieldAccessor is a sequence of identifiers that references a field in a chain of tables.
+type FieldAccessor []string
+
+// WithField creates a new FieldAccessor with the given parts.
+func WithField(global string, fields ...string) FieldAccessor {
+	return append(FieldAccessor{global}, fields...)
+}
+
+// ForEach calls the given function for each element of the accessor.
+func (m FieldAccessor) ForEach(f func(string)) {
+	for _, part := range m {
+		f(part)
 	}
 }
 
-// ScriptRun is a command to run a script.
-type ScriptRun struct {
-	ScriptRef ResourceRef
+// Base returns the base accessor of the accessor. This is the accessor without the last element.
+// If the accessor points to a global variable, it returns itself.
+func (m FieldAccessor) Base() FieldAccessor {
+	if len(m) == 1 {
+		return m
+	}
+	return m[:len(m)-1]
 }
 
-func (c ScriptRun) Execute(app *App, prom *Promise) {
-	script, ok := app.scripts[c.ScriptRef]
-	if ok {
-		prom.CompleteWithValue(script)
-		return
-	}
-
-	// The script was not loaded yet, so we load and execute it now.
-	script = app.res.LoadScript(c.ScriptRef)
-	if script == nil {
-		log.Panicf("Script not found: %s", c.ScriptRef)
-	}
-	script.init(app, c.ScriptRef)
-	app.scripts[c.ScriptRef] = script
-	script.run(app, prom)
-}
-
-// ScriptCall is a command to call a script function.
-type ScriptCall struct {
-	ScriptRef ResourceRef
-	Object    string
-	method    string
-}
-
-func (c ScriptCall) Execute(app *App, prom *Promise) {
-	script, ok := app.scripts[c.ScriptRef]
-	if !ok {
-		log.Panicf("Script not found: %s", c.ScriptRef)
-	}
-
-	script.call(c.Object, c.method, prom)
+// String returns the string representation of the fields accessor.
+func (m FieldAccessor) String() string {
+	return strings.Join(m, ".")
 }

@@ -85,6 +85,6 @@ func (c *Costume) BinaryDecode(r io.Reader) error {
 
 func (c *Costume) draw(act CostumeAction, pos Position) {
 	if anim := c.anims[act]; anim != nil {
-		anim.draw(c.sprites, pos)
+		anim.Draw(c.sprites, pos)
 	}
 }

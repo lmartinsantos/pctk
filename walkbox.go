@@ -91,6 +91,13 @@ func (w *WalkBox) IsAdjacent(otherWalkBox *WalkBox) bool {
 				return true
 			}
 		}
+
+		// two-way verification
+		for _, vertex := range w.vertices {
+			if otherWalkBox.ContainsPoint(vertex) {
+				return true
+			}
+		}
 	}
 
 	return false
@@ -129,26 +136,28 @@ const (
 
 // NewWalkBoxMatrix creates and returns a new WalkBoxMatrix instance
 func NewWalkBoxMatrix(walkboxes []*WalkBox) *WalkBoxMatrix {
-	return &WalkBoxMatrix{
-		walkBoxes:       walkboxes,
-		itineraryMatrix: calculateItineraryMatrix(walkboxes),
+	wm := &WalkBoxMatrix{
+		walkBoxes: walkboxes,
 	}
+
+	wm.resetItinerary()
+	return wm
 }
 
 // calculateItineraryMatrix computes the shortest paths between WalkBoxes and returns the resulting itinerary matrix.
-func calculateItineraryMatrix(walkboxes []*WalkBox) [][]int {
-	numBoxes := len(walkboxes)
+func (wm *WalkBoxMatrix) resetItinerary() {
+	numBoxes := len(wm.walkBoxes)
 	distanceMatrix := make([][]int, numBoxes)
 	itineraryMatrix := make([][]int, numBoxes)
 
-	for i, walkbox := range walkboxes {
+	for i, walkbox := range wm.walkBoxes {
 		itineraryMatrix[i] = make([]int, numBoxes)
 		distanceMatrix[i] = make([]int, numBoxes)
 
 		// Initialize the distance matrix: each box has distance 0 to itself,
 		// and distance 1 to its direct neighbors. Initially, it has distance
 		// 255 (= infinityDistance) to all other boxes.
-		for j, otherWalkBox := range walkboxes {
+		for j, otherWalkBox := range wm.walkBoxes {
 			if i == j {
 				distanceMatrix[i][j] = 0
 				itineraryMatrix[i][j] = i
@@ -163,9 +172,9 @@ func calculateItineraryMatrix(walkboxes []*WalkBox) [][]int {
 	}
 
 	// Compute the shortest routes between boxes via Kleene's algorithm.
-	for i := range walkboxes {
-		for j := range walkboxes {
-			for k := range walkboxes {
+	for i := range wm.walkBoxes {
+		for j := range wm.walkBoxes {
+			for k := range wm.walkBoxes {
 				distIK := distanceMatrix[i][k]
 				distKJ := distanceMatrix[k][j]
 				if distanceMatrix[i][j] > distIK+distKJ {
@@ -176,14 +185,14 @@ func calculateItineraryMatrix(walkboxes []*WalkBox) [][]int {
 		}
 	}
 
-	return itineraryMatrix
+	wm.itineraryMatrix = itineraryMatrix
 }
 
 // EnableWalkBox enables or disables the specified walk box and recalculates the itinerary matrix.
 func (wm *WalkBoxMatrix) EnableWalkBox(id int, enabled bool) {
 	if id >= 0 && id < len(wm.walkBoxes) {
 		wm.walkBoxes[id].enabled = enabled
-		wm.itineraryMatrix = calculateItineraryMatrix(wm.walkBoxes)
+		wm.resetItinerary()
 	}
 }
 

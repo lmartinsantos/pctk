@@ -13,6 +13,9 @@ const (
 	// FontDialogSize is the size of the font used for dialogs.
 	FontDialogSize = 12
 
+	// FontDialogSpacing is the spacing between glyphs in the dialog font.
+	FontDialogSpacing = -1
+
 	// DialogScreenMarging is the margin of the screen left by the dialog.
 	DialogScreenMarging = 10
 )
@@ -81,7 +84,7 @@ func DrawDialogText(text string, pos Position, color Color) {
 	lines := strings.Split(text, "\n")
 	for i, line := range lines {
 
-		tsize := sizeFromRaylib(rl.MeasureTextEx(fontOutline, line, FontDialogSize, 0))
+		tsize := sizeFromRaylib(rl.MeasureTextEx(fontOutline, line, FontDialogSize, FontDialogSpacing))
 		tw := tsize.W
 
 		if pos.X-tw/2 < DialogScreenMarging {
@@ -96,7 +99,7 @@ func DrawDialogText(text string, pos Position, color Color) {
 			line,
 			rl.Vector2{X: float32(pos.X - tw/2), Y: float32(pos.Y + i*FontDialogSize)},
 			FontDialogSize,
-			0,
+			FontDialogSpacing,
 			color,
 		)
 		rl.DrawTextEx(
@@ -104,7 +107,7 @@ func DrawDialogText(text string, pos Position, color Color) {
 			line,
 			rl.Vector2{X: float32(pos.X - tw/2), Y: float32(pos.Y + i*FontDialogSize)},
 			FontDialogSize,
-			0,
+			FontDialogSpacing,
 			rl.Black,
 		)
 	}

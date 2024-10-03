@@ -1,74 +1,335 @@
 package pctk
 
 import (
+	"strings"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 var (
-	ControlVerbColor      = Green
-	ControlVerbHoverColor = BrigthGreen
-	ControlActionColor    = Cyan
+	ControlActionColor         = Cyan
+	ControlActionOngoingColor  = BrigthCyan
+	ControlInventoryColor      = Magenta
+	ControlInventoryHoverColor = BrigthMagenta
+	ControlVerbColor           = Green
+	ControlVerbHoverColor      = BrigthGreen
 )
 
-func (a *App) drawControlPanel() {
-	if a.controlPanelEnabled {
-		a.drawActionVerb("Open", 0, 0)
-		a.drawActionVerb("Close", 0, 1)
-		a.drawActionVerb("Push", 0, 2)
-		a.drawActionVerb("Pull", 0, 3)
+// Verb is a type that represents the action verb.
+type Verb string
 
-		a.drawActionVerb("Walk to", 1, 0)
-		a.drawActionVerb("Pick up", 1, 1)
-		a.drawActionVerb("Talk to", 1, 2)
-		a.drawActionVerb("Give", 1, 3)
+const (
+	VerbOpen    Verb = "Open"
+	VerbClose   Verb = "Close"
+	VerbPush    Verb = "Push"
+	VerbPull    Verb = "Pull"
+	VerbWalkTo  Verb = "Walk to"
+	VerbPickUp  Verb = "Pick up"
+	VerbTalkTo  Verb = "Talk to"
+	VerbGive    Verb = "Give"
+	VerbUse     Verb = "Use"
+	VerbLookAt  Verb = "Look at"
+	VerbTurnOn  Verb = "Turn on"
+	VerbTurnOff Verb = "Turn off"
+)
 
-		a.drawActionVerb("Use", 2, 0)
-		a.drawActionVerb("Look at", 2, 1)
-		a.drawActionVerb("Turn on", 2, 2)
-		a.drawActionVerb("Turn off", 2, 3)
-
-		a.drawFullAction("Walk to") // TODO: do not hardcode this
-	}
+// Action returns the action codename for the verb.
+func (v Verb) Action() string {
+	action := strings.ToLower(string(v))
+	action = strings.ReplaceAll(action, " ", "")
+	return action
 }
 
-func (a *App) drawActionVerb(verb string, col, row int) {
-	x := 2 + col*ScreenWidth/6
-	y := ViewportHeight + (row+1)*FontDefaultSize
-	w := ScreenWidth / 6
-	h := FontDefaultSize
+// VerbSlot is a slot in the control panel that holds a verb.
+type VerbSlot struct {
+	Verb Verb
+	Row  int
+	Col  int
+}
 
+// Draw renders the verb slot in the control pane.
+func (s VerbSlot) Draw(app *App, m *MouseCursor) {
+	rect := s.Rect()
 	color := ControlVerbColor
-	if a.MouseIsInto(NewRect(x, y, w, h)) {
+	if m.IsInto(rect) {
 		color = ControlVerbHoverColor
 	}
+	if room := app.room; room != nil {
+		if item := room.ItemAt(m.Position()); item != nil {
+			switch s.Verb {
+			case VerbOpen:
+				if item.Class().IsOneOf(ObjectClassOpenable) {
+					color = ControlVerbHoverColor
+				}
+			case VerbClose:
+				if item.Class().IsOneOf(ObjectClassCloseable) {
+					color = ControlVerbHoverColor
+				}
+			case VerbTalkTo:
+				if item.Class().IsOneOf(ObjectClassPerson) {
+					color = ControlVerbHoverColor
+				}
+			case VerbLookAt:
+				if item.Class().IsNoneOf(ObjectClassOpenable, ObjectClassCloseable, ObjectClassPerson) {
+					color = ControlVerbHoverColor
+				}
+			}
+		}
+	}
 
-	DrawDefaultText(verb, NewPos(x, y), AlignLeft, color)
+	DrawDefaultText(string(s.Verb), rect.Pos, AlignLeft, color)
 }
 
-func (a *App) drawFullAction(action string) {
+// Rect returns the rectangle of the verb slot in the screen.
+func (v VerbSlot) Rect() Rectangle {
+	x := 2 + v.Col*ScreenWidth/6
+	y := ViewportHeight + (v.Row+1)*FontDefaultSize
+	w := ScreenWidth / 6
+	h := FontDefaultSize
+	return NewRect(x, y, w, h)
+}
+
+// ActionSentence is a sentence that represents the action the player is doing.
+type ActionSentence struct {
+	verb Verb
+	args [2]RoomItem
+	fut  Future
+}
+
+// Draw renders the action sentence in the control pane.
+func (s *ActionSentence) Draw(app *App, hover RoomItem) {
 	pos := NewPos(ScreenWidth/2, ViewportHeight)
-	DrawDefaultText(action, pos, AlignCenter, ControlActionColor)
+	action := string(s.verb)
+	color := ControlActionColor
+	if s.fut != nil {
+		// Ongoing action.
+		if s.args[0] != nil {
+			action = action + " " + s.args[0].Name()
+		}
+		color = ControlActionOngoingColor
+	} else if hover != nil {
+		action = action + " " + hover.Name()
+
+	}
+	DrawDefaultText(action, pos, AlignCenter, color)
 }
 
-func (a *App) processControlInputs() {
-	if a.ego != nil && rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
-		mouseClick := a.MousePosition()
-		if SceneViewport.Contains(mouseClick) {
-			// TODO missing check action / control selected
-			a.Do(ActorWalkToPosition{
-				ActorID:  a.ego.name,
-				Position: NewPos(mouseClick.X, mouseClick.Y),
-			})
+// ProcessInventoryClick processes a click in the inventory.
+func (s *ActionSentence) ProcessInventoryClick(app *App, obj *Object) {
+	if s.args[0] != nil {
+		// TODO: handle the second argument
+		s.Reset(VerbWalkTo)
+		return
+	}
+	s.interactWith(app, s.verb, obj)
+}
+
+// ProcessLeftClick processes a left click in the control pane.
+func (s *ActionSentence) ProcessLeftClick(app *App, click Position, item RoomItem) {
+	if item == nil {
+		if s.verb == VerbWalkTo || s.fut != nil {
+			s.walkToPos(app, click)
+		}
+		return
+	} else if s.args[0] != nil {
+		// TODO: handle the second argument
+		s.Reset(VerbWalkTo)
+		return
+	}
+
+	s.interactWith(app, s.verb, item)
+}
+
+// ProcessRightClick processes a right click in the control pane.
+func (s *ActionSentence) ProcessRightClick(app *App, click Position, item RoomItem) {
+	if item != nil {
+		// Execute quick action
+		if item.Class().IsOneOf(ObjectClassPerson) {
+			s.interactWith(app, VerbTalkTo, item)
+		} else if item.Class().IsOneOf(ObjectClassOpenable) {
+			s.interactWith(app, VerbOpen, item)
+		} else if item.Class().IsOneOf(ObjectClassCloseable) {
+			s.interactWith(app, VerbClose, item)
+		} else {
+			s.interactWith(app, VerbLookAt, item)
+		}
+		return
+	}
+	// No item there. Only respond if current verb is walk to.
+	if s.verb == VerbWalkTo {
+		s.walkToPos(app, click)
+	}
+}
+
+func (s *ActionSentence) interactWith(app *App, verb Verb, item RoomItem) {
+	s.verb = verb
+	s.args[0] = item
+	s.fut = app.RunCommandSequence(
+		ActorInteractWith{
+			Actor:  app.ego,
+			Target: item,
+			Verb:   verb,
+		},
+		CommandFunc(func(app *App) (any, error) {
+			s.Reset(VerbWalkTo)
+			return nil, nil
+		}),
+	)
+}
+
+func (s *ActionSentence) walkToPos(app *App, click Position) {
+	app.RunCommand(ActorWalkToPosition{
+		Actor:    app.ego,
+		Position: click,
+	})
+	s.Reset(VerbWalkTo)
+}
+
+// Reset resets the action sentence to the given verb.
+func (s *ActionSentence) Reset(verb Verb) {
+	s.verb = verb
+	s.args[0] = nil
+	s.args[1] = nil
+	s.fut = nil
+}
+
+// ControlInventory is a screen control that shows the inventory.
+type ControlInventory struct {
+	slotsRect [6]Rectangle
+}
+
+// Draw renders the inventory in the control pane.
+func (c *ControlInventory) Draw(app *App, m *MouseCursor) {
+	if app.ego == nil {
+		return
+	}
+	mpos := m.Position()
+	for i, item := range app.ego.Inventory() {
+		rect := c.slotsRect[i]
+		color := ControlInventoryColor
+		if rect.Contains(mpos) {
+			color = ControlInventoryHoverColor
+		}
+		DrawDefaultText(item.Name(), rect.Pos, AlignLeft, color)
+	}
+}
+
+// Init initializes the control inventory.
+func (c *ControlInventory) Init() {
+	arrowsWidth := 32
+	for i := range c.slotsRect {
+		c.slotsRect[i] = NewRect(
+			2+3*ScreenWidth/6+arrowsWidth,
+			ViewportHeight+FontDefaultSize*(i+1),
+			2*ScreenWidth/6,
+			FontDefaultSize,
+		)
+	}
+}
+
+// ObjectAt returns the object at the given position in the inventory box.
+func (c *ControlInventory) ObjectAt(app *App, pos Position) *Object {
+	if app.ego == nil {
+		return nil
+	}
+	inv := app.ego.Inventory()
+	for i, rect := range c.slotsRect {
+		if rect.Contains(pos) {
+			if i < len(inv) {
+				return inv[i]
+			}
+			return nil
+		}
+	}
+	return nil
+}
+
+// ControlPane is the screen control pane that shows the action, verbs and inventory.
+type ControlPane struct {
+	Enabled bool
+
+	verbs  []VerbSlot
+	action ActionSentence
+	inv    ControlInventory
+	cursor *MouseCursor
+}
+
+// Init initializes the control pane.
+func (p *ControlPane) Init(cam *rl.Camera2D) {
+	p.verbs = []VerbSlot{
+		{Verb: VerbOpen, Row: 0, Col: 0},
+		{Verb: VerbClose, Row: 1, Col: 0},
+		{Verb: VerbPush, Row: 2, Col: 0},
+		{Verb: VerbPull, Row: 3, Col: 0},
+
+		{Verb: VerbWalkTo, Row: 0, Col: 1},
+		{Verb: VerbPickUp, Row: 1, Col: 1},
+		{Verb: VerbTalkTo, Row: 2, Col: 1},
+		{Verb: VerbGive, Row: 3, Col: 1},
+
+		{Verb: VerbUse, Row: 0, Col: 2},
+		{Verb: VerbLookAt, Row: 1, Col: 2},
+		{Verb: VerbTurnOn, Row: 2, Col: 2},
+		{Verb: VerbTurnOff, Row: 3, Col: 2},
+	}
+	p.action.Reset(VerbWalkTo)
+	p.inv.Init()
+	p.cursor = NewMouseCursor(cam)
+}
+
+// Draw renders the control panel in the viewport.
+func (p *ControlPane) Draw(app *App) {
+	if p.Enabled {
+		for _, v := range p.verbs {
+			v.Draw(app, p.cursor)
+		}
+		hover := p.hover(app, p.cursor.Position())
+		p.action.Draw(app, hover)
+		p.inv.Draw(app, p.cursor)
+		p.cursor.Draw()
+	}
+}
+
+func (p *ControlPane) hover(app *App, pos Position) RoomItem {
+	var item RoomItem
+	if ViewportRect.Contains(pos) && app.room != nil {
+		item = app.room.ItemAt(pos)
+	} else if ControlPaneRect.Contains(pos) {
+		if obj := p.inv.ObjectAt(app, pos); obj != nil {
+			item = obj
+		}
+	}
+	return item
+}
+
+func (p *ControlPane) processControlInputs(app *App) {
+	if !p.cursor.Enabled || app.ego == nil {
+		return
+	}
+	pos := p.cursor.Position()
+	hover := p.hover(app, pos)
+	if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
+		if ViewportRect.Contains(pos) {
+			p.action.ProcessLeftClick(app, pos, hover)
+		}
+		if ControlPaneRect.Contains(pos) {
+			p.processLeftClick(app, pos)
+		}
+	} else if rl.IsMouseButtonPressed(rl.MouseButtonRight) {
+		if ViewportRect.Contains(pos) {
+			p.action.ProcessRightClick(app, pos, hover)
 		}
 	}
 }
 
-// EnableControlPanel is a command that will enable or disable the control panel.
-type EnableControlPanel struct {
-	Enable bool
-}
-
-func (cmd EnableControlPanel) Execute(app *App, done *Promise) {
-	app.controlPanelEnabled = cmd.Enable
-	done.Complete()
+func (p *ControlPane) processLeftClick(app *App, click Position) {
+	for _, v := range p.verbs {
+		if v.Rect().Contains(click) {
+			p.action.Reset(v.Verb)
+			return
+		}
+	}
+	if obj := p.inv.ObjectAt(app, click); obj != nil {
+		p.action.ProcessInventoryClick(app, obj)
+	}
 }
