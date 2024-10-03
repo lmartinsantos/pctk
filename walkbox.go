@@ -88,6 +88,13 @@ func (w *WalkBox) IsAdjacent(otherWalkBox *WalkBox) bool {
 				return true
 			}
 		}
+
+		// two-way verification
+		for _, vertex := range w.vertices {
+			if otherWalkBox.ContainsPoint(vertex) {
+				return true
+			}
+		}
 	}
 
 	return false

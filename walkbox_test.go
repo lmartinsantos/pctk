@@ -113,25 +113,39 @@ func TestContainsPoint(t *testing.T) {
 
 func TestWalkBoxIsAdjacent(t *testing.T) {
 	/*
-		Polygons disposition:
+				Polygons disposition:
 
-		  +-------+-------+-------+
-		  |       |       |       |
-		  | box3  | box4  | box5  |
-		  |       |       |       |
-		  +-------+-------+-------+
-		  |       |       |       |
-		  | box0  | box1  | box2  |
-		  |       |       |       |
-		  +-------+-------+-------+
+						  +-------+
+		                  |       |
+						  |       |
+					      |       |
+				  +-------+       |
+				  |       |       |
+				  | box6  | box7  |
+				  |       |       |
+				  +-------+       |
+				  		  |       |
+				          |       |
+				          |       |
+				  +-------+-------+-------+
+				  |       |       |       |
+				  | box3  | box4  | box5  |
+				  |       |       |       |
+				  +-------+-------+-------+
+				  |       |       |       |
+				  | box0  | box1  | box2  |
+				  |       |       |       |
+				  +-------+-------+-------+
 
-		Each box represents a square, with adjacent connections:
-		- box0 is adjacent to box1, box3
-		- box1 is adjacent to box0, box2, box3, box4
-		- box2 is adjacent to box1, box4, box5
-		- box3 is adjacent to box0, box1, box4
-		- box4 is adjacent to box1, box2, box3, box5
-		- box5 is adjacent to box2, box4
+				Each box represents a square, with adjacent connections:
+				- box0 is adjacent to box1, box3, box4
+				- box1 is adjacent to box0, box2, box3, box4, box5
+				- box2 is adjacent to box1, box4, box5
+				- box3 is adjacent to box0, box1, box4, box7
+				- box4 is adjacent to box0, box1, box2, box3, box5, box7
+				- box5 is adjacent to box1, box2, box4, box7
+				- box6 is adjacent to box7
+				- box7 is adjacent to box4, box5
 	*/
 
 	box0 := pctk.NewWalkBox("walkbox0", [4]*pctk.Positionf{{0, 0}, {1, 0}, {1, 1}, {0, 1}})
@@ -140,20 +154,32 @@ func TestWalkBoxIsAdjacent(t *testing.T) {
 	box3 := pctk.NewWalkBox("walkbox3", [4]*pctk.Positionf{{0, 1}, {1, 1}, {1, 2}, {0, 2}})
 	box4 := pctk.NewWalkBox("walkbox4", [4]*pctk.Positionf{{1, 1}, {2, 1}, {2, 2}, {1, 2}})
 	box5 := pctk.NewWalkBox("walkbox5", [4]*pctk.Positionf{{2, 1}, {3, 1}, {3, 2}, {2, 2}})
+	box6 := pctk.NewWalkBox("walkbox6", [4]*pctk.Positionf{{0, 3}, {1, 3}, {1, 4}, {0, 4}})
+	box7 := pctk.NewWalkBox("walkbox7", [4]*pctk.Positionf{{1, 2}, {2, 2}, {2, 5}, {1, 5}})
 
 	assert.True(t, box0.IsAdjacent(box1), "box0 should be adjacent to box1")
-	assert.True(t, box1.IsAdjacent(box2), "box1 should be adjacent to box2")
-	assert.True(t, box1.IsAdjacent(box3), "box1 should be adjacent to box3")
 	assert.True(t, box0.IsAdjacent(box3), "box0 should be adjacent to box3")
 	assert.True(t, box0.IsAdjacent(box4), "box0 should be adjacent to box4")
+	assert.True(t, box1.IsAdjacent(box0), "box1 should be adjacent to box0")
+	assert.True(t, box1.IsAdjacent(box2), "box1 should be adjacent to box2")
+	assert.True(t, box1.IsAdjacent(box3), "box1 should be adjacent to box3")
 	assert.True(t, box1.IsAdjacent(box4), "box1 should be adjacent to box4")
-	assert.True(t, box3.IsAdjacent(box4), "box3 should be adjacent to box4")
 	assert.True(t, box2.IsAdjacent(box4), "box2 should be adjacent to box4")
 	assert.True(t, box2.IsAdjacent(box5), "box2 should be adjacent to box5")
+	assert.True(t, box3.IsAdjacent(box0), "box3 should be adjacent to box0")
+	assert.True(t, box3.IsAdjacent(box1), "box3 should be adjacent to box1")
+	assert.True(t, box3.IsAdjacent(box4), "box3 should be adjacent to box4")
+	assert.True(t, box3.IsAdjacent(box7), "box3 should be adjacent to box7")
 	assert.True(t, box4.IsAdjacent(box5), "box4 should be adjacent to box5")
+	assert.True(t, box4.IsAdjacent(box7), "box4 should be adjacent to box7")
+	assert.True(t, box5.IsAdjacent(box7), "box5 should be adjacent to box7")
 	// Test non-adjacency
 	assert.False(t, box0.IsAdjacent(box2), "box0 should not be adjacent to box2")
 	assert.False(t, box3.IsAdjacent(box2), "box3 should not be adjacent to box2")
 	assert.False(t, box0.IsAdjacent(box5), "box0 should not be adjacent to box5")
+	assert.False(t, box6.IsAdjacent(box3), "box6 should not be adjacent to box3")
+	// Test adjacency when there are no shared vertices and no overlapping areas
+	assert.True(t, box6.IsAdjacent(box7), "box6 should be adjacent to box7")
+	assert.True(t, box7.IsAdjacent(box6), "box7 should be adjacent to box6")
 
 }
