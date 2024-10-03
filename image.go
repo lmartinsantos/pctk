@@ -77,3 +77,7 @@ func (i *Image) Draw(pos Position, tint rl.Color) {
 	}
 	rl.DrawTexture(i.Texture(), int32(pos.X), int32(pos.Y), tint)
 }
+
+func (i *Image) GetPixel(x, y int) rl.Color {
+	return rl.GetImageColor(*i.raw, int32(x), int32(y))
+}

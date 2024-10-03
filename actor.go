@@ -179,7 +179,7 @@ func Standing(dir Direction) *Action {
 		f: func(a *Actor, done *Promise) {
 			a.lookAt = dir
 			if cos := a.costume; cos != nil {
-				cos.draw(CostumeIdle(dir), a.costumePos())
+				cos.draw(CostumeIdle(dir), a.costumePos(), float32(a.Room().PositionDepth(a.Position()))/255)
 			}
 		},
 	}
@@ -190,8 +190,13 @@ func WalkingTo(pos Position) *Action {
 	return &Action{
 		prom: NewPromise(),
 		f: func(a *Actor, done *Promise) {
+			if a.room.IsPositionColliding(pos) {
+				done.Complete()
+				return
+			}
+
 			if cos := a.costume; cos != nil {
-				cos.draw(CostumeWalk(a.lookAt), a.costumePos())
+				cos.draw(CostumeWalk(a.lookAt), a.costumePos(), float32(a.Room().PositionDepth(a.Position()))/255)
 			}
 
 			if a.pos.ToPos() == pos {
@@ -211,7 +216,7 @@ func SpeakingTo(dialog Future) *Action {
 		prom: NewPromise(),
 		f: func(a *Actor, done *Promise) {
 			if cos := a.costume; cos != nil {
-				cos.draw(CostumeSpeak(a.lookAt), a.costumePos())
+				cos.draw(CostumeSpeak(a.lookAt), a.costumePos(), float32(a.Room().PositionDepth(a.Position()))/255)
 			}
 			if dialog.IsCompleted() {
 				done.Complete()

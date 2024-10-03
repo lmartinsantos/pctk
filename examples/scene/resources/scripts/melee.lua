@@ -10,6 +10,7 @@ pirates = actor {
 
 melee = room {
     background = "resources:backgrounds/Melee",
+    collision_map = "resources:collision_maps/Melee_cm",
     objects = {
         bucket = object {
             class = APPLICABLE,

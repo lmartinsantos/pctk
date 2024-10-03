@@ -27,7 +27,7 @@ func (s *SpriteSheet) Release() {
 }
 
 // DrawSprite draws a sprite from the sprite sheet at the given position.
-func (s *SpriteSheet) DrawSprite(col, row uint, pos Position, flip bool) {
+func (s *SpriteSheet) DrawSprite(col, row uint, pos Position, flip bool, size float32) {
 	src := Rectangle{
 		Pos: Position{
 			int(s.frameSize.W) * int(col),
@@ -35,10 +35,18 @@ func (s *SpriteSheet) DrawSprite(col, row uint, pos Position, flip bool) {
 		},
 		Size: s.frameSize,
 	}
+
+	pro := Rectangle{
+		Pos:  pos,
+		Size: Size{int(float32(s.frameSize.W) * size), int(float32(s.frameSize.H) * size)},
+	}
+
 	if flip {
 		src.Size = src.Size.FlipH()
 	}
-	rl.DrawTextureRec(s.texture(), src.toRaylib(), pos.toRaylib(), rl.White)
+	pro.Pos.X += int(float32(s.frameSize.W) * (1 - size) / 2)
+	pro.Pos.Y += int(float32(s.frameSize.H) * (1 - size))
+	rl.DrawTexturePro(s.texture(), src.toRaylib(), pro.toRaylib(), rl.Vector2{X: 0, Y: 0}, 0, rl.White)
 }
 
 // BinaryEncode encodes the sprite sheet to a binary format. The encoded format is:

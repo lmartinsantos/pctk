@@ -93,9 +93,10 @@ func (s *Script) declareActor(app *App, actorID string, actor luaTableUtils) {
 
 func (s *Script) declareRoom(app *App, roomID string, room luaTableUtils) {
 	app.RunCommand(RoomDeclare{
-		RoomID:        roomID,
-		Script:        s,
-		BackgroundRef: room.GetRef("background"),
+		RoomID:          roomID,
+		Script:          s,
+		BackgroundRef:   room.GetRef("background"),
+		CollisionMapRef: room.GetRef("collision_map"),
 	}).Wait()
 
 	room.IfTableFieldExists("objects", func(objs luaTableUtils) {

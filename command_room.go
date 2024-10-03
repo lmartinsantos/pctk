@@ -4,9 +4,10 @@ import "log"
 
 // RoomDeclare is a command that will declare a new room with the given properties.
 type RoomDeclare struct {
-	BackgroundRef ResourceRef
-	RoomID        string
-	Script        *Script
+	BackgroundRef   ResourceRef
+	CollisionMapRef ResourceRef
+	RoomID          string
+	Script          *Script
 }
 
 func (cmd RoomDeclare) Execute(app *App, done *Promise) {
@@ -14,9 +15,10 @@ func (cmd RoomDeclare) Execute(app *App, done *Promise) {
 		log.Fatalf("Room %s already exists", cmd.RoomID)
 	}
 	room := Room{
-		id:         cmd.RoomID,
-		background: app.res.LoadImage(cmd.BackgroundRef),
-		script:     cmd.Script,
+		id:            cmd.RoomID,
+		background:    app.res.LoadImage(cmd.BackgroundRef),
+		collision_map: app.res.LoadImage(cmd.CollisionMapRef),
+		script:        cmd.Script,
 	}
 	app.rooms[cmd.RoomID] = &room
 	done.CompleteWithValue(room)

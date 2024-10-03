@@ -7,20 +7,22 @@ import (
 
 // Room represents a room in the game.
 type Room struct {
-	actors     []*Actor  // The actors in the room
-	background *Image    // The background image of the room
-	id         string    // The ID of the room
-	objects    []*Object // The objects declared in the room
-	script     *Script   // The script where this room is defined. Used to call the room functions.
+	actors        []*Actor  // The actors in the room
+	background    *Image    // The background image of the room
+	collision_map *Image    // The collision map of the room
+	id            string    // The ID of the room
+	objects       []*Object // The objects declared in the room
+	script        *Script   // The script where this room is defined. Used to call the room functions.
 }
 
 // NewRoom creates a new room with the given background image.
-func NewRoom(bg *Image) *Room {
+func NewRoom(bg *Image, cm *Image) *Room {
 	if bg.Width() < ScreenWidth || bg.Height() < ViewportHeight {
 		log.Fatal("Background image is too small")
 	}
 	return &Room{
-		background: bg,
+		background:    bg,
+		collision_map: cm,
 	}
 }
 
@@ -83,6 +85,26 @@ func (r *Room) ObjectByID(id string) *Object {
 		}
 	}
 	return nil
+}
+
+func (r *Room) IsPositionColliding(pos Position) bool {
+	if r.collision_map == nil {
+		return false
+	}
+	if pos.X < 0 || pos.Y < 0 || int32(pos.X) >= r.collision_map.Width() || int32(pos.Y) >= r.collision_map.Height() {
+		return true
+	}
+	return r.collision_map.GetPixel(pos.X, pos.Y) == Black
+}
+
+func (r *Room) PositionDepth(pos Position) uint8 {
+	if r.collision_map == nil {
+		return 0
+	}
+	if pos.X < 0 || pos.Y < 0 || int32(pos.X) >= r.collision_map.Width() || int32(pos.Y) >= r.collision_map.Height() {
+		return 0
+	}
+	return r.collision_map.GetPixel(pos.X, pos.Y).R
 }
 
 // PutActor puts an actor in the room.

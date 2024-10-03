@@ -37,7 +37,7 @@ func (o *Object) Draw() {
 		return
 	}
 	if st := o.CurrentState(); st != nil {
-		st.Anim.Draw(o.sprites, o.pos.Sub(NewPos(o.sprites.frameSize.W/2, o.sprites.frameSize.H)))
+		st.Anim.Draw(o.sprites, o.pos.Sub(NewPos(o.sprites.frameSize.W/2, o.sprites.frameSize.H)), 1)
 	}
 }
 

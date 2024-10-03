@@ -82,7 +82,7 @@ func (a *Animation) BinaryDecode(r io.Reader) error {
 }
 
 // Draw renders the animation in the viewport.
-func (a *Animation) Draw(sprites *SpriteSheet, pos Position) {
+func (a *Animation) Draw(sprites *SpriteSheet, pos Position, size float32) {
 	if a == nil {
 		return
 	}
@@ -99,6 +99,7 @@ func (a *Animation) Draw(sprites *SpriteSheet, pos Position) {
 		a.frames[a.currentFrame].row,
 		pos,
 		a.flip,
+		size,
 	)
 }
 
