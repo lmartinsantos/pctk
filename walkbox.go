@@ -274,11 +274,12 @@ func (wm *WalkBoxMatrix) closestPositionOnWalkBox(from int, p *Positionf) *Posit
 	for i := 0; i < numVertices; i++ {
 		p1 := wb.vertices[i]
 		p2 := wb.vertices[(i+1)%numVertices]
-		closestPoint := p.ClosestPointOnSegment(p1, p2)
-		currentDistance := p.Distance(closestPoint)
+		currentPoint := p.ClosestPointOnSegment(p1, p2)
+		currentDistance := p.Distance(currentPoint)
 
 		if currentDistance < minDistance {
 			minDistance = currentDistance
+			closestPoint = currentPoint
 		}
 	}
 	return closestPoint
