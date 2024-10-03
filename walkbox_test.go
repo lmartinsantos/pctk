@@ -179,3 +179,50 @@ func TestWalkBoxIsAdjacent(t *testing.T) {
 	assert.True(t, box7.IsAdjacent(box6), "box7 should be adjacent to box6")
 
 }
+
+func TestFindPath(t *testing.T) {
+	testCases := []struct {
+		name       string
+		from       *pctk.Positionf
+		to         *pctk.Positionf
+		expectedTo *pctk.Positionf
+		assertFunc func(t *testing.T, path []*pctk.Positionf, expectedTo *pctk.Positionf)
+	}{
+		{
+			name:       "Should return a valid path when 'from' and 'to' are inside walk boxes",
+			from:       &pctk.Positionf{X: 0.5, Y: 0.5}, // inside box0
+			to:         &pctk.Positionf{X: 1.5, Y: 2.5}, // inside box7
+			expectedTo: &pctk.Positionf{X: 1.5, Y: 2.5}, // expected return to
+			assertFunc: func(t *testing.T, path []*pctk.Positionf, expectedTo *pctk.Positionf) {
+				assert.True(t, path[len(path)-1].Equals(expectedTo))
+			},
+		},
+		{
+			name:       "Should return the closest point when 'to' is outside the closest walk box",
+			from:       &pctk.Positionf{X: 0.5, Y: 0.5}, // inside box0
+			to:         &pctk.Positionf{X: 3.5, Y: 1.5}, // outside all boxes, close to box5
+			expectedTo: &pctk.Positionf{X: 3, Y: 1.5},   // expected to return the closest point inside box5
+			assertFunc: func(t *testing.T, path []*pctk.Positionf, expectedTo *pctk.Positionf) {
+				assert.True(t, path[len(path)-1].Equals(expectedTo))
+			},
+		},
+	}
+
+	box0 := pctk.NewWalkBox("walkbox0", [4]*pctk.Positionf{{0, 0}, {1, 0}, {1, 1}, {0, 1}})
+	box1 := pctk.NewWalkBox("walkbox1", [4]*pctk.Positionf{{1, 0}, {2, 0}, {2, 1}, {1, 1}})
+	box2 := pctk.NewWalkBox("walkbox2", [4]*pctk.Positionf{{2, 0}, {3, 0}, {3, 1}, {2, 1}})
+	box3 := pctk.NewWalkBox("walkbox3", [4]*pctk.Positionf{{0, 1}, {1, 1}, {1, 2}, {0, 2}})
+	box4 := pctk.NewWalkBox("walkbox4", [4]*pctk.Positionf{{1, 1}, {2, 1}, {2, 2}, {1, 2}})
+	box5 := pctk.NewWalkBox("walkbox5", [4]*pctk.Positionf{{2, 1}, {3, 1}, {3, 2}, {2, 2}})
+	box6 := pctk.NewWalkBox("walkbox6", [4]*pctk.Positionf{{0, 3}, {1, 3}, {1, 4}, {0, 4}})
+	box7 := pctk.NewWalkBox("walkbox7", [4]*pctk.Positionf{{1, 2}, {2, 2}, {2, 5}, {1, 5}})
+
+	walkBoxMatrix := pctk.NewWalkBoxMatrix([]*pctk.WalkBox{box0, box1, box2, box3, box4, box5, box6, box7})
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			path := walkBoxMatrix.FindPath(testCase.from, testCase.to)
+			testCase.assertFunc(t, path, testCase.expectedTo)
+		})
+	}
+}
