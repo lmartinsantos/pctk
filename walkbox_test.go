@@ -115,8 +115,8 @@ func TestWalkBoxIsAdjacent(t *testing.T) {
 	/*
 		Polygons disposition:
 
-			      +-------+
-			      |       |
+		          +-------+
+		          |       |
 		  +-------|       |
 		  |       |       |
 		  | box6  | box7  |
