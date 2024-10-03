@@ -195,11 +195,10 @@ func (p *Positionf) Distance(p1 *Positionf) float32 {
 	return float32(math.Sqrt(float64(dx*dx + dy*dy)))
 }
 
-// DistanceToSegment calculates the shortest distance from the point to the
-// line segment defined by its endpoints p1 and p2.
-func (p *Positionf) DistanceToSegment(p1, p2 *Positionf) float32 {
+// ClosestPointOnSegment returns the closest point on the segment defined by p1 and p2 to the point p.
+func (p *Positionf) ClosestPointOnSegment(p1, p2 *Positionf) *Positionf {
 	if p1.Equals(p2) {
-		return p.Distance(p1)
+		return p1
 	}
 
 	px := p.X - p1.X
@@ -219,7 +218,7 @@ func (p *Positionf) DistanceToSegment(p1, p2 *Positionf) float32 {
 	closestX := p1.X + t*vx
 	closestY := p1.Y + t*vy
 
-	return p.Distance(&Positionf{closestX, closestY})
+	return &Positionf{closestX, closestY}
 }
 
 // Equals returns true if both Positionf instances have the same X and Y coordinates.

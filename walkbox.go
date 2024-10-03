@@ -85,22 +85,27 @@ func (w *WalkBox) ContainsPoint(p *Positionf) bool {
 
 // IsAdjacent checks if two WalkBoxes are adjacent. It returns false if either WalkBox is disabled.
 func (w *WalkBox) IsAdjacent(otherWalkBox *WalkBox) bool {
+	return w.GateWith(otherWalkBox) != nil
+}
+
+// GateWith returns the gate (shared point) between two adjacent walk boxes, if any.
+func (w *WalkBox) GateWith(otherWalkBox *WalkBox) *Positionf {
 	if w.enabled && otherWalkBox.enabled {
 		for _, vertex := range otherWalkBox.vertices {
 			if w.ContainsPoint(vertex) {
-				return true
+				return vertex
 			}
 		}
 
 		// two-way verification
 		for _, vertex := range w.vertices {
 			if otherWalkBox.ContainsPoint(vertex) {
-				return true
+				return vertex
 			}
 		}
 	}
 
-	return false
+	return nil // WalkBoxes aren't adjacent
 }
 
 // Distance calculates the shortest distance from the WalkBox to the given position.
@@ -111,7 +116,8 @@ func (wb *WalkBox) Distance(p *Positionf) float32 {
 	for i := 0; i < numVertices; i++ {
 		p1 := wb.vertices[i]
 		p2 := wb.vertices[(i+1)%numVertices]
-		currentDistance := p.DistanceToSegment(p1, p2)
+		closestPoint := p.ClosestPointOnSegment(p1, p2)
+		currentDistance := p.Distance(closestPoint)
 
 		if currentDistance < minDistance {
 			minDistance = currentDistance
@@ -144,7 +150,7 @@ func NewWalkBoxMatrix(walkboxes []*WalkBox) *WalkBoxMatrix {
 	return wm
 }
 
-// calculateItineraryMatrix computes the shortest paths between WalkBoxes and returns the resulting itinerary matrix.
+// resetItinerary computes the shortest paths between WalkBoxes and returns the resulting itinerary matrix.
 func (wm *WalkBoxMatrix) resetItinerary() {
 	numBoxes := len(wm.walkBoxes)
 	distanceMatrix := make([][]int, numBoxes)
@@ -200,7 +206,20 @@ func (wm *WalkBoxMatrix) EnableWalkBox(id int, enabled bool) {
 // starting point 'from' to the destination 'to' within the walk box matrix.
 // The path is returned as a slice of positions representing waypoints.
 func (wm *WalkBoxMatrix) FindPath(from, to *Positionf) []*Positionf {
-	panic("Not implemented yet!")
+	var path []*Positionf
+	current, _ := wm.walkBoxAt(from)
+	target, _ := wm.walkBoxAt(to)
+
+	for current != target {
+		next := wm.nextWalkBox(current, target)
+		if next == InvalidWalkBox {
+			break
+		}
+		path = append(path, wm.closestPositionToWalkBox(current, next))
+		current = next
+	}
+	path = append(path, wm.closestPositionOnWalkBox(current, to))
+	return path
 }
 
 // nextWalkBox returns the next walk box in the path from the source to the destination.
@@ -211,10 +230,10 @@ func (wm *WalkBoxMatrix) nextWalkBox(from, to int) int {
 	return wm.itineraryMatrix[from][to]
 }
 
-// WalkBoxAt returns the walk box identifier at the given position or the closest one,
+// walkBoxAt returns the walk box identifier at the given position or the closest one,
 // along with a boolean indicating inclusion. If the point is located between two or more
 // boxes, it returns the lowest walk box ID among them.
-func (wm *WalkBoxMatrix) WalkBoxAt(p *Positionf) (id int, included bool) {
+func (wm *WalkBoxMatrix) walkBoxAt(p *Positionf) (id int, included bool) {
 	var minDistance float32 = math.MaxFloat32
 	id = InvalidWalkBox
 	for i, wb := range wm.walkBoxes {
@@ -235,10 +254,32 @@ func (wm *WalkBoxMatrix) WalkBoxAt(p *Positionf) (id int, included bool) {
 // closestPositionToWalkBox returns the closest point to the specified walkbox identifiers from
 // the origin.
 func (wm *WalkBoxMatrix) closestPositionToWalkBox(from, to int) *Positionf {
-	panic("Not implemented yet!")
+	fromWb := wm.walkBoxes[from]
+	toWb := wm.walkBoxes[to]
+	// GateWith can return nil, but in this case is not expected, should panic?
+	return fromWb.GateWith(toWb)
 }
 
-// closestPositionOnWalkBox returns the closest point on the walk box at a given position.
-func (wm *WalkBoxMatrix) closestPositionOnWalkBox(p *Positionf) *Positionf {
-	panic("Not implemented yet!")
+// closestPositionOnWalkBox returns the closest point on the walkbox at a given position.
+func (wm *WalkBoxMatrix) closestPositionOnWalkBox(from int, p *Positionf) *Positionf {
+	wb := wm.walkBoxes[from]
+	if wb.ContainsPoint(p) {
+		return p
+	}
+
+	var minDistance float32 = math.MaxFloat32
+	var closestPoint *Positionf
+	numVertices := len(wb.vertices)
+
+	for i := 0; i < numVertices; i++ {
+		p1 := wb.vertices[i]
+		p2 := wb.vertices[(i+1)%numVertices]
+		closestPoint := p.ClosestPointOnSegment(p1, p2)
+		currentDistance := p.Distance(closestPoint)
+
+		if currentDistance < minDistance {
+			minDistance = currentDistance
+		}
+	}
+	return closestPoint
 }
