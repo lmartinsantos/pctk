@@ -12,7 +12,7 @@ var (
 	ControlInventoryColor      = Magenta
 	ControlInventoryHoverColor = BrigthMagenta
 	ControlVerbColor           = Green
-	ControlVerbHoverColor      = BrigthGreen
+	ControlVerbHoverColor      = Yellow
 )
 
 // Verb is a type that represents the action verb.

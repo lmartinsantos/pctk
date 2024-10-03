@@ -120,6 +120,8 @@ function melee.objects.bucket:use(on)
     print("use bucket with", on.id)
     if on == melee.objects.clock then
         guybrush:say("Time flies, but I don't think\nI can gather it in the bucket.")
+    elseif on == pirates then
+        melee.objects.bucket:give(pirates)
     else
         DEFAULT.use(self, on)
     end
