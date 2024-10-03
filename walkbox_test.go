@@ -113,39 +113,35 @@ func TestContainsPoint(t *testing.T) {
 
 func TestWalkBoxIsAdjacent(t *testing.T) {
 	/*
-				Polygons disposition:
+		Polygons disposition:
 
-						  +-------+
-		                  |       |
-						  |       |
-					      |       |
-				  +-------+       |
-				  |       |       |
-				  | box6  | box7  |
-				  |       |       |
-				  +-------+       |
-				  		  |       |
-				          |       |
-				          |       |
-				  +-------+-------+-------+
-				  |       |       |       |
-				  | box3  | box4  | box5  |
-				  |       |       |       |
-				  +-------+-------+-------+
-				  |       |       |       |
-				  | box0  | box1  | box2  |
-				  |       |       |       |
-				  +-------+-------+-------+
+			      +-------+
+			      |       |
+		  +-------|       |
+		  |       |       |
+		  | box6  | box7  |
+		  |       |       |
+		  +-------|       |
+		          |       |
+		  +-------+-------+-------+
+		  |       |       |       |
+		  | box3  | box4  | box5  |
+		  |       |       |       |
+		  +-------+-------+-------+
+		  |       |       |       |
+		  | box0  | box1  | box2  |
+		  |       |       |       |
+		  +-------+-------+-------+
 
-				Each box represents a square, with adjacent connections:
-				- box0 is adjacent to box1, box3, box4
-				- box1 is adjacent to box0, box2, box3, box4, box5
-				- box2 is adjacent to box1, box4, box5
-				- box3 is adjacent to box0, box1, box4, box7
-				- box4 is adjacent to box0, box1, box2, box3, box5, box7
-				- box5 is adjacent to box1, box2, box4, box7
-				- box6 is adjacent to box7
-				- box7 is adjacent to box4, box5
+		Each box represents a square, except box7, which is three times taller.
+		- box0 is adjacent to box1, box3
+		- box1 is adjacent to box0, box2, box3, box4
+		- box2 is adjacent to box1, box5
+		- box3 is adjacent to box0, box1, box4
+		- box4 is adjacent to box1, box3, box5, box7
+		- box5 is adjacent to box2, box4
+		- box6 is adjacent to box7 (positioned above box3 but not connected)
+		- box7 is adjacent to box4, box6 (taller and positioned above box4)
 	*/
 
 	box0 := pctk.NewWalkBox("walkbox0", [4]*pctk.Positionf{{0, 0}, {1, 0}, {1, 1}, {0, 1}})
