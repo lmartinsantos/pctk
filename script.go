@@ -114,7 +114,7 @@ func WithObjectField(obj *Object, fields ...string) FieldAccessor {
 
 // WithDefaultsField creates a new FieldAccessor pointing to the defaults object.
 func WithDefaultsField(fields ...string) FieldAccessor {
-	return WithField("default", fields...)
+	return WithField("DEFAULT", fields...)
 }
 
 // Append appends the given fields to the accessor.
