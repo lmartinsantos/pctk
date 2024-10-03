@@ -397,11 +397,14 @@ func CallFunction(l *lua.State, f FieldAccessor, args []any, method bool) Future
 
 func luaDeclareConstants(l *lua.State) {
 	for k, pushFunc := range map[string]func(){
-		"up":      func() { l.PushInteger(int(DirUp)) },
-		"right":   func() { l.PushInteger(int(DirRight)) },
-		"down":    func() { l.PushInteger(int(DirDown)) },
-		"left":    func() { l.PushInteger(int(DirLeft)) },
-		"default": func() { l.NewTable() },
+		// Defaults table. Needed to declare default actions.
+		"DEFAULT": func() { l.NewTable() },
+
+		// Predefined directions
+		"UP":    func() { l.PushInteger(int(DirUp)) },
+		"RIGHT": func() { l.PushInteger(int(DirRight)) },
+		"DOWN":  func() { l.PushInteger(int(DirDown)) },
+		"LEFT":  func() { l.PushInteger(int(DirLeft)) },
 
 		// Predefined classes
 		"PERSON":     func() { luaPushClass(l, ObjectClassPerson) },

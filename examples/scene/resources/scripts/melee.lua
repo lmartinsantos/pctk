@@ -5,7 +5,7 @@ pirates = actor {
     size = {w=60, h=64},
     talkcolor = magenta,
     usepos = {x=90, y=128},
-    usedir = left
+    usedir = LEFT
 }
 
 melee = room {
@@ -17,7 +17,7 @@ melee = room {
             sprites = "resources:sprites/objects",
             pos = {x=260, y=120},
             hotspot = {x=250, y=100, w=20, h=20},
-            usedir = right,
+            usedir = RIGHT,
             usepos = {x=240, y=120},
             states = {
                 default = {
@@ -31,7 +31,7 @@ melee = room {
         clock = object {
             name = "clock",
             hotspot = {x=150, y=25, w=24, h=18},
-            usedir = up,
+            usedir = UP,
             usepos = {x=161, y=116}
         }
     }
@@ -44,12 +44,12 @@ function melee:enter()
 
     pirates:show{
         pos={x=38, y=137},         
-        dir=right,
+        dir=RIGHT,
     }
 
     guybrush:show{
         pos={x=340, y=140}, 
-        dir=left,
+        dir=LEFT,
     }
     
     music1:play()
@@ -73,10 +73,10 @@ function melee:enter()
         guybrush:walkto({x=120, y=140}).wait()
         guybrush:say("Ooooook...").wait()
         sleep(2000)
-        guybrush:stand({dir = right}).wait()
+        guybrush:stand({dir = RIGHT}).wait()
         sleep(2000)
         guybrush:say("Ok, I will try the Scumm bar.").wait()
-        guybrush:stand({dir = left}).wait()
+        guybrush:stand({dir = LEFT}).wait()
         guybrush:say("Thank you guys!").wait()
         cricket:play()
         guybrush:walkto({x=360, y=140}).wait()
@@ -105,7 +105,7 @@ function melee.objects.bucket:give(to)
     if to == pirates then
         guybrush:say("I'd rather not. I am afraid\nthey'd get attached to it.")
     else
-        default.give(self)
+        DEFAULT.give(self)
     end
 end
 
@@ -121,7 +121,7 @@ function melee.objects.bucket:use(on)
     if on == melee.objects.clock then
         guybrush:say("Time flies, but I don't think\nI can gather it in the bucket.")
     else
-        default.use(self, on)
+        DEFAULT.use(self, on)
     end
 end
 
