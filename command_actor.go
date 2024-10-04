@@ -126,6 +126,12 @@ type ActorInteractWith struct {
 }
 
 func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
+	if cmd.Verb == VerbWalkTo {
+		// This is not an interaction, but a movement command. This should be unreachable.
+		done.CompleteWithErrorf("invalid verb %s for actor interaction", cmd.Verb)
+		return
+	}
+
 	var completed Future
 	var args []any
 	other := cmd.Targets[1]
@@ -219,7 +225,9 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 		log.Fatalf("unknown room item type %T", item)
 	}
 	completed = RecoverWithValue(completed, func(err error) any {
-		log.Printf("Actor interaction failed: %v", err)
+		if err != PromiseBroken {
+			log.Printf("Actor interaction failed: %v", err)
+		}
 		return nil
 	})
 	done.Bind(completed)
@@ -243,6 +251,7 @@ func (cmd ActorSpeak) Execute(app *App, done *Promise) {
 	}
 
 	dialogDone := app.RunCommand(ShowDialog{
+		Actor:    cmd.Actor,
 		Text:     cmd.Text,
 		Position: cmd.Actor.dialogPos(),
 		Color:    cmd.Color,
