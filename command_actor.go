@@ -225,7 +225,9 @@ func (cmd ActorInteractWith) Execute(app *App, done *Promise) {
 		log.Fatalf("unknown room item type %T", item)
 	}
 	completed = RecoverWithValue(completed, func(err error) any {
-		log.Printf("Actor interaction failed: %v", err)
+		if err != PromiseBroken {
+			log.Printf("Actor interaction failed: %v", err)
+		}
 		return nil
 	})
 	done.Bind(completed)
