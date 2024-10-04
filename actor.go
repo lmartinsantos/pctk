@@ -28,6 +28,7 @@ type Actor struct {
 
 	act       *Action
 	costume   *Costume
+	dialog    *Dialog
 	elev      int
 	ego       bool
 	id        string
@@ -114,6 +115,11 @@ func (a *Actor) IsEgo() bool {
 	return a.ego
 }
 
+// IsSpeaking returns true if the actor is speaking, false otherwise.
+func (a *Actor) IsSpeaking() bool {
+	return a.dialog != nil && !a.dialog.Done().IsCompleted()
+}
+
 // Locate the actor in the given room, position and direction.
 func (a *Actor) Locate(room *Room, pos Position, dir Direction) {
 	a.room = room
@@ -148,6 +154,11 @@ func (a *Actor) SetCostume(costume *Costume) *Actor {
 	return a
 }
 
+// SetCurrentDialog sets the current dialog for the actor.
+func (a *Actor) SetCurrentDialog(dialog *Dialog) {
+	a.dialog = dialog
+}
+
 // ScriptLocation returns the location of the actor in the script.
 func (a *Actor) ScriptLocation() FieldAccessor {
 	return a.scriptLoc
@@ -178,8 +189,12 @@ func Standing(dir Direction) *Action {
 		prom: NewPromise(),
 		f: func(a *Actor, done *Promise) {
 			a.lookAt = dir
+			costume := CostumeIdle(dir)
+			if a.IsSpeaking() {
+				costume = CostumeSpeak(dir)
+			}
 			if cos := a.costume; cos != nil {
-				cos.draw(CostumeIdle(dir), a.costumePos())
+				cos.draw(costume, a.costumePos())
 			}
 		},
 	}
