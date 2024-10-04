@@ -251,6 +251,7 @@ func (cmd ActorSpeak) Execute(app *App, done *Promise) {
 	}
 
 	dialogDone := app.RunCommand(ShowDialog{
+		Actor:    cmd.Actor,
 		Text:     cmd.Text,
 		Position: cmd.Actor.dialogPos(),
 		Color:    cmd.Color,
