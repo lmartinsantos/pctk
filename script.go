@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"strings"
+	"sync"
 
 	"github.com/Shopify/go-lua"
 )
@@ -24,6 +25,7 @@ type Script struct {
 	Language ScriptLanguage
 	Code     []byte
 
+	mutex     sync.Mutex
 	ref       ResourceRef
 	l         *lua.State
 	including bool
@@ -37,9 +39,11 @@ func NewScript(lang ScriptLanguage, code []byte) *Script {
 	}
 }
 
-// Call a method in the script. The method is a chain of identifiers that references a function in
-// the script.
+// Call a  script function. The script must be run before calling this method.
 func (s *Script) Call(f FieldAccessor, args []any, method bool) Future {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	switch s.Language {
 	case ScriptLua:
 		return s.luaCall(f, args, method)
@@ -75,19 +79,15 @@ func (s *Script) BinaryDecode(r io.Reader) error {
 	return nil
 }
 
-func (s *Script) init(app *App, ref ResourceRef) {
-	s.ref = ref
+// Run the script. This will evaluate the code in the script, running the declarations (if any) and
+// preparing the code to receive calls.
+func (s *Script) Run(app *App, prom *Promise) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	switch s.Language {
 	case ScriptLua:
 		s.luaInit(app)
-	default:
-		log.Panicf("Unknown script language: %0x", s.Language)
-	}
-}
-
-func (s *Script) run(app *App, prom *Promise) {
-	switch s.Language {
-	case ScriptLua:
 		s.luaRun(app, prom)
 	default:
 		log.Panicf("Unknown script language: %0x", s.Language)

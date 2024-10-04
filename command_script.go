@@ -19,9 +19,8 @@ func (c ScriptRun) Execute(app *App, prom *Promise) {
 	if script == nil {
 		log.Panicf("Script not found: %s", c.ScriptRef)
 	}
-	script.init(app, c.ScriptRef)
 	app.scripts[c.ScriptRef] = script
-	script.run(app, prom)
+	script.Run(app, prom)
 }
 
 // ScriptCall is a command to call a script function.
