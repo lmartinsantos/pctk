@@ -17,18 +17,26 @@ var (
 	DefaultDialogPosition = Position{X: 160, Y: 20}
 )
 
+// Dialog is a dialog that will be shown in the screen.
 type Dialog struct {
+	actor *Actor
 	text  string
 	pos   Position
 	color Color
 	speed float32
 
-	expiresAt time.Time
-	done      *Promise
+	completedAt time.Time
+	done        *Promise
 }
 
-func (d *Dialog) draw() (expired bool) {
-	if time.Now().After(d.expiresAt) {
+// Actor returns the actor that is speaking the dialog, or nil if it comes from a external voice.
+func (d *Dialog) Actor() *Actor {
+	return d.actor
+}
+
+// Draw will draw the dialog in the screen. It returns true if the dialog is completed.
+func (d *Dialog) Draw() (completed bool) {
+	if time.Now().After(d.completedAt) {
 		return true
 	}
 
@@ -36,10 +44,21 @@ func (d *Dialog) draw() (expired bool) {
 	return false
 }
 
+// ClearDialogsFrom will remove all dialogs from the given actor.
+func (a *App) ClearDialogsFrom(actor *Actor) {
+	dialogs := make([]Dialog, 0, len(a.dialogs))
+	for _, d := range a.dialogs {
+		if d.done == nil || d.Actor() != actor {
+			dialogs = append(dialogs, d)
+		}
+	}
+	a.dialogs = dialogs
+}
+
 func (a *App) drawDialogs() {
 	dialogs := make([]Dialog, 0, len(a.dialogs))
 	for _, d := range a.dialogs {
-		if d.draw() {
+		if d.Draw() {
 			d.done.Complete()
 		} else {
 			dialogs = append(dialogs, d)

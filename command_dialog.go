@@ -4,6 +4,7 @@ import "time"
 
 // ShowDialog is a command that will show a dialog with the given text.
 type ShowDialog struct {
+	Actor    *Actor
 	Text     string
 	Position Position
 	Color    Color
@@ -22,13 +23,18 @@ func (cmd ShowDialog) Execute(app *App, done *Promise) {
 	shownDuring /= time.Duration(cmd.Speed)
 	expiresAt := time.Now().Add(shownDuring)
 
+	if cmd.Actor != nil {
+		app.ClearDialogsFrom(cmd.Actor)
+	}
+
 	dialog := Dialog{
-		text:      cmd.Text,
-		pos:       cmd.Position,
-		color:     cmd.Color,
-		speed:     cmd.Speed,
-		expiresAt: expiresAt,
-		done:      done,
+		actor:       cmd.Actor,
+		text:        cmd.Text,
+		pos:         cmd.Position,
+		color:       cmd.Color,
+		speed:       cmd.Speed,
+		completedAt: expiresAt,
+		done:        done,
 	}
 	app.dialogs = append(app.dialogs, dialog)
 }
