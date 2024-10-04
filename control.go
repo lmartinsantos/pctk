@@ -230,12 +230,22 @@ func (s *ActionSentence) interactWith(app *App, verb Verb, item, other RoomItem)
 	s.verb = verb
 	s.args[0] = item
 	s.args[1] = other
-	s.fut = app.RunCommandSequence(
-		ActorInteractWith{
+
+	var cmd Command
+	if verb == VerbWalkTo {
+		cmd = ActorWalkToItem{
+			Actor: app.ego,
+			Item:  item,
+		}
+	} else {
+		cmd = ActorInteractWith{
 			Actor:   app.ego,
 			Targets: [2]RoomItem{item, other},
 			Verb:    verb,
-		},
+		}
+	}
+	s.fut = app.RunCommandSequence(
+		cmd,
 		CommandFunc(func(app *App) (any, error) {
 			s.Reset(VerbWalkTo)
 			return nil, nil
